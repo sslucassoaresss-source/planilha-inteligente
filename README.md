@@ -2,7 +2,7 @@
 
 A multi-tenant SaaS web application built for field sales representatives to manage clients, plan visit routes, log sales, and track commissions — replacing manual spreadsheets and messaging apps.
 
-**🔗 Live demo:** _add your Vercel link here after deployment_
+**🔗 Live demo:** [planilha-inteligente-liart.vercel.app](https://planilha-inteligente-liart.vercel.app)
 **🔐 Demo login:** `demo@planilhainteligente.com` / `Demo2026!`
 
 > This is a real client project. The demo above runs on an isolated demo account with fictional data — no real client information is exposed.
