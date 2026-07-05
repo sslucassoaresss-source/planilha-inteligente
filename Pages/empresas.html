@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Empresas — Planilha Inteligente</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/empresas.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-brand">Planilha Inteligente</div>
+    <nav class="topbar-nav">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="clientes.html">Clientes</a>
+      <a href="empresas.html" class="active">Empresas</a>
+      <a href="rotas.html">Rotas</a>
+      <a href="visitas.html">Visitas</a>
+    </nav>
+    <button id="btnSair" class="btn-sair">Sair</button>
+  </header>
+
+  <main class="pagina" id="conteudo" style="display:none">
+
+    <div class="pagina-topo">
+      <h1>Empresas</h1>
+      <button class="btn-primario" id="btnNovaEmpresa">+ Nova Empresa</button>
+    </div>
+
+    <p class="pagina-desc">Cadastre as empresas que você representa. Cada uma pode ter sua própria comissão.</p>
+
+    <div class="vazio" id="msgVazio" style="display:none">
+      <p>Nenhuma empresa cadastrada ainda.</p>
+      <p>Clique em <strong>+ Nova Empresa</strong> para começar.</p>
+    </div>
+
+    <div class="tabela-wrapper" id="tabelaWrapper">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>Empresa</th>
+            <th>Comissão</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="listaEmpresas"></tbody>
+      </table>
+    </div>
+
+  </main>
+
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-topo">
+        <h2 id="modalTitulo">Nova Empresa</h2>
+        <button class="modal-fechar" id="btnFecharModal">&times;</button>
+      </div>
+
+      <form id="formEmpresa">
+        <input type="hidden" id="empresaId">
+
+        <div class="form-grid" style="grid-template-columns: 1fr">
+          <div class="field">
+            <label for="nome">Nome da empresa *</label>
+            <input type="text" id="nome" placeholder="Ex: Ração XYZ" required>
+          </div>
+          <div class="field">
+            <label for="percentualComissao">Percentual de comissão (%)</label>
+            <input type="number" id="percentualComissao" placeholder="Ex: 5" step="0.01" min="0" max="100">
+          </div>
+        </div>
+
+        <div class="modal-rodape">
+          <button type="button" class="btn-secundario" id="btnCancelar">Cancelar</button>
+          <button type="submit" class="btn-primario" id="btnSalvar">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="../js/empresas.js"></script>
+
+</body>
+</html>

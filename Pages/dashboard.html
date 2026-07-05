@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Planilha Inteligente</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/dashboard.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-brand">Planilha Inteligente</div>
+    <nav class="topbar-nav">
+      <a href="dashboard.html" class="active">Dashboard</a>
+      <a href="clientes.html">Clientes</a>
+      <a href="empresas.html">Empresas</a>
+      <a href="rotas.html">Rotas</a>
+      <a href="visitas.html">Visitas</a>
+    </nav>
+    <button id="btnSair" class="btn-sair">Sair</button>
+  </header>
+
+  <main class="pagina" id="conteudo" style="display:none">
+
+    <div class="pagina-topo">
+      <h1>Dashboard</h1>
+      <div class="filtro-mes">
+        <select id="selectMes"></select>
+      </div>
+    </div>
+
+    <!-- Cards de resumo -->
+    <div class="cards">
+      <div class="card card-acento">
+        <div class="card-label">Visitas no mês</div>
+        <div class="card-valor" id="totalVisitas">—</div>
+        <div class="card-sub">lojas visitadas</div>
+      </div>
+      <div class="card card-acento">
+        <div class="card-label">Total vendido</div>
+        <div class="card-valor" id="totalVendido">—</div>
+        <div class="card-sub">em reais</div>
+      </div>
+      <div class="card card-acento">
+        <div class="card-label">Taxa de conversão</div>
+        <div class="card-valor" id="taxaConversao">—</div>
+        <div class="card-sub">compraram</div>
+      </div>
+      <div class="card card-acento">
+        <div class="card-label">Comissão estimada</div>
+        <div class="card-valor" id="totalComissao">—</div>
+        <div class="card-sub">no período</div>
+      </div>
+    </div>
+
+    <!-- Gráfico + Visitas recentes -->
+    <div class="paineis">
+
+      <div class="painel">
+        <div class="painel-titulo">Vendas por dia</div>
+        <div class="grafico" id="grafico">
+          <!-- Barras inseridas pelo JS -->
+        </div>
+      </div>
+
+      <div class="painel">
+        <div class="painel-titulo">Últimas visitas</div>
+        <div class="visitas-lista" id="visitasRecentes">
+          <!-- Itens inseridos pelo JS -->
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <script type="module" src="../js/dashboard.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visitas — Planilha Inteligente</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/visitas.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-brand">Planilha Inteligente</div>
+    <nav class="topbar-nav">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="clientes.html">Clientes</a>
+      <a href="empresas.html">Empresas</a>
+      <a href="rotas.html">Rotas</a>
+      <a href="visitas.html" class="active">Visitas</a>
+    </nav>
+    <button id="btnSair" class="btn-sair">Sair</button>
+  </header>
+
+  <main class="pagina" id="conteudo" style="display:none">
+
+    <div class="pagina-topo">
+      <h1>Visitas</h1>
+      <button class="btn-primario" id="btnNovaVisita">+ Nova Visita</button>
+    </div>
+
+    <div class="filtros">
+      <select id="selectMes"></select>
+    </div>
+
+    <div class="resumo-dia">
+      <div class="resumo-item">
+        <span class="resumo-label">Visitas hoje</span>
+        <span class="resumo-valor" id="visitasHoje">—</span>
+      </div>
+      <div class="resumo-item">
+        <span class="resumo-label">Compraram</span>
+        <span class="resumo-valor" id="compraramHoje">—</span>
+      </div>
+      <div class="resumo-item">
+        <span class="resumo-label">Total do dia</span>
+        <span class="resumo-valor" id="totalHoje">—</span>
+      </div>
+    </div>
+
+    <div class="vazio" id="msgVazio" style="display:none">
+      <p>Nenhuma visita registrada neste mês.</p>
+      <p>Clique em <strong>+ Nova Visita</strong> para começar.</p>
+    </div>
+
+    <div class="tabela-wrapper" id="tabelaWrapper">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Cliente</th>
+            <th>Status</th>
+            <th>Empresas / Itens</th>
+            <th>Valor total</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="listaVisitas"></tbody>
+      </table>
+    </div>
+
+  </main>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal modal-largo">
+      <div class="modal-topo">
+        <h2 id="modalTitulo">Nova Visita</h2>
+        <button class="modal-fechar" id="btnFecharModal">&times;</button>
+      </div>
+
+      <form id="formVisita">
+        <input type="hidden" id="visitaId">
+
+        <div class="form-grid">
+          <div class="field span-2">
+            <label for="clienteId">Cliente *</label>
+            <select id="clienteId" required>
+              <option value="">Selecione um cliente...</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="dataVisita">Data da visita *</label>
+            <input type="date" id="dataVisita" required>
+          </div>
+
+          <div class="field">
+            <label for="comprou">Status *</label>
+            <select id="comprou" required>
+              <option value="">Selecione...</option>
+              <option value="true">Comprou</option>
+              <option value="false">Não comprou</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Observações fixas do cliente -->
+        <div class="obs-fixa" id="obsFixa" style="display:none">
+          <div class="obs-fixa-label">⚠️ Observações fixas deste cliente:</div>
+          <div class="obs-fixa-texto" id="obsFixaTexto"></div>
+        </div>
+
+        <!-- Itens de venda (só aparece se Comprou) -->
+        <div class="itens-venda" id="blocoItens" style="display:none">
+          <div class="itens-venda-topo">
+            <span class="itens-venda-titulo">Itens da venda</span>
+            <button type="button" class="btn-add-item" id="btnAddItem">+ Adicionar item</button>
+          </div>
+
+          <div id="listaItens"></div>
+
+          <div class="itens-total">
+            <span>Total da visita:</span>
+            <strong id="totalItens">R$ 0,00</strong>
+          </div>
+        </div>
+
+        <div class="field" style="margin-top: 16px">
+          <label for="observacao">Observação da visita</label>
+          <textarea id="observacao" rows="2" placeholder="Ex: Cliente pediu prazo maior..."></textarea>
+        </div>
+
+        <div class="modal-rodape">
+          <button type="button" class="btn-secundario" id="btnCancelar">Cancelar</button>
+          <button type="submit" class="btn-primario" id="btnSalvar">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Template de um item de venda (usado pelo JS) -->
+  <template id="templateItem">
+    <div class="item-venda-row">
+      <select class="item-empresa" required>
+        <option value="">Empresa...</option>
+      </select>
+      <input type="number" class="item-valor" placeholder="Valor bruto (R$)" step="0.01" min="0" required>
+      <span class="item-desconto-info"></span>
+      <button type="button" class="btn-remover-item">🗑️</button>
+    </div>
+  </template>
+
+  <script type="module" src="../js/visitas.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,180 @@
+/* ═══════════════════════════════════════
+   login.css — Estilos exclusivos do login
+   Planilha Inteligente
+═══════════════════════════════════════ */
+
+.layout {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* ── Painel esquerdo ── */
+.brand-panel {
+  flex: 1.1;
+  background: linear-gradient(180deg, #DCEBF6 0%, #C4DCED 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 56px 64px;
+}
+
+.brand-mark {
+  font-family: 'Fraunces', serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--accent-deep);
+}
+
+.brand-copy { max-width: 380px; }
+
+.brand-copy h1 {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: clamp(26px, 3vw, 36px);
+  line-height: 1.2;
+  margin-bottom: 16px;
+  color: var(--text-dark);
+}
+
+.brand-copy p {
+  font-size: 15px;
+  color: var(--text-soft);
+  line-height: 1.65;
+}
+
+.brand-footer {
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+/* ── Painel direito ── */
+.form-panel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.form-card { width: 100%; max-width: 380px; }
+
+.eyebrow {
+  font-size: 13px;
+  color: var(--text-soft);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.form-card h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 32px;
+  color: var(--text-dark);
+}
+
+/* ── Campos do login ── */
+.field { margin-bottom: 20px; }
+
+.field input {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--text-dark);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.field input::placeholder { color: #A9C2D1; }
+
+.field input:focus {
+  outline: none;
+  border-color: var(--accent-deep);
+  box-shadow: 0 0 0 3px rgba(61, 126, 166, 0.15);
+}
+
+/* ── Linha lembrar / esqueci ── */
+.row-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 28px;
+}
+
+.remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-soft);
+  cursor: pointer;
+}
+
+.remember input { accent-color: var(--accent-deep); }
+
+.forgot {
+  font-size: 13px;
+  color: var(--accent-deep);
+  text-decoration: none;
+}
+
+.forgot:hover { text-decoration: underline; }
+
+/* ── Botão de submit ── */
+button.submit {
+  width: 100%;
+  padding: 14px;
+  background: var(--accent-deep);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+button.submit:hover { background: #336E94; }
+button.submit:active { transform: scale(0.99); }
+
+/* ── Mensagem de erro ── */
+.error-msg {
+  display: none;
+  background: #FBEAEA;
+  border: 1px solid #EFC9C9;
+  color: #A85454;
+  font-size: 13px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.error-msg.show { display: block; }
+
+/* ── Rodapé do form ── */
+.footnote {
+  margin-top: 28px;
+  font-size: 13px;
+  color: var(--text-soft);
+  text-align: center;
+}
+
+.footnote a {
+  color: var(--accent-deep);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.footnote a:hover { text-decoration: underline; }
+
+/* ── Responsivo ── */
+@media (max-width: 860px) {
+  .brand-panel { display: none; }
+  .form-panel { flex: 1; }
+}

@@ -1,0 +1,79 @@
+/* ═══════════════════════════════════════
+   clientes.css — Estilos exclusivos da tela de clientes
+   Planilha Inteligente
+═══════════════════════════════════════ */
+
+.obs-cell {
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-soft);
+  font-size: 13px;
+}
+
+.btn-desconto-rapido {
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px dashed var(--line);
+  background: var(--bg);
+  color: var(--accent-deep);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.btn-desconto-rapido:hover {
+  background: #E8F4FC;
+  border-color: var(--accent-deep);
+  border-style: solid;
+}
+
+.desconto-inline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.input-desconto-rapido {
+  width: 60px;
+  padding: 5px 8px;
+  border: 1px solid var(--accent-deep);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-dark);
+}
+
+.input-desconto-rapido:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(61, 126, 166, 0.15);
+}
+
+.btn-salvar-desconto {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent-deep);
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.btn-salvar-desconto:hover {
+  background: #336E94;
+}
+
+@media (max-width: 700px) {
+  .tabela th:nth-child(3),
+  .tabela td:nth-child(3),
+  .tabela th:nth-child(4),
+  .tabela td:nth-child(4) {
+    display: none;
+  }
+}

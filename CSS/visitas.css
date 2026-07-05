@@ -1,0 +1,243 @@
+/* ═══════════════════════════════════════
+   visitas.css — Estilos da tela de visitas
+   Planilha Inteligente
+═══════════════════════════════════════ */
+
+/* ── Filtros ── */
+.filtros {
+  margin-bottom: 20px;
+}
+
+.filtros select {
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-dark);
+  background: var(--card);
+  cursor: pointer;
+}
+
+.filtros select:focus {
+  outline: none;
+  border-color: var(--accent-deep);
+}
+
+/* ── Resumo do dia ── */
+.resumo-dia {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.resumo-item {
+  flex: 1;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.resumo-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.resumo-valor {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+/* ── Tabela ── */
+.obs-cell {
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-soft);
+  font-size: 13px;
+}
+
+/* ── Observações fixas no modal ── */
+.obs-fixa {
+  background: #FFF8E1;
+  border: 1px solid #FFD54F;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  font-size: 13px;
+}
+
+.obs-fixa-label {
+  font-weight: 600;
+  color: #7A5C00;
+  margin-bottom: 4px;
+}
+
+.obs-fixa-texto {
+  color: #5C4400;
+  line-height: 1.5;
+}
+
+/* ── Campo valor (aparece só quando comprou) ── */
+#campoValor {
+  transition: opacity 0.15s;
+}
+
+/* ── Responsivo ── */
+@media (max-width: 700px) {
+  .resumo-dia {
+    flex-wrap: wrap;
+  }
+
+  .resumo-item {
+    flex: 1 1 calc(50% - 8px);
+  }
+
+  .tabela th:nth-child(4),
+  .tabela td:nth-child(4),
+  .tabela th:nth-child(5),
+  .tabela td:nth-child(5) {
+    display: none;
+  }
+}
+
+/* ═══════════════════════════════════════
+   Itens de venda (múltiplas empresas)
+═══════════════════════════════════════ */
+
+.modal-largo {
+  max-width: 640px;
+}
+
+.itens-venda {
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 16px;
+  margin-top: 16px;
+  margin-bottom: 4px;
+}
+
+.itens-venda-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.itens-venda-titulo {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.btn-add-item {
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--card);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-deep);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-add-item:hover {
+  background: #E8F4FC;
+}
+
+.item-venda-row {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.item-venda-row select,
+.item-venda-row input {
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-dark);
+  background: var(--card);
+}
+
+.item-venda-row select:focus,
+.item-venda-row input:focus {
+  outline: none;
+  border-color: var(--accent-deep);
+}
+
+.item-desconto-info {
+  font-size: 11px;
+  color: var(--text-soft);
+  white-space: nowrap;
+  min-width: 60px;
+}
+
+.btn-remover-item {
+  background: #FBEAEA;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 9px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+
+.btn-remover-item:hover {
+  background: #F5D0D0;
+}
+
+.itens-total {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 10px;
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  color: var(--text-dark);
+}
+
+/* ── Tabela: lista de empresas por visita ── */
+.empresas-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.empresa-tag {
+  font-size: 11px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  color: var(--text-soft);
+  padding: 2px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+/* ── Responsivo ── */
+@media (max-width: 600px) {
+  .item-venda-row {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .item-desconto-info {
+    grid-column: span 2;
+  }
+}

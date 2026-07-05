@@ -1,0 +1,334 @@
+/* ═══════════════════════════════════════
+   rotas.css — Estilos da tela de rotas
+   Planilha Inteligente
+═══════════════════════════════════════ */
+
+/* ── Filtro de mês ── */
+.filtro-mes select {
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-dark);
+  background: var(--card);
+  cursor: pointer;
+}
+
+.filtro-mes select:focus {
+  outline: none;
+  border-color: var(--accent-deep);
+}
+
+/* ── Alerta ── */
+.alerta {
+  background: #FFF8E1;
+  border: 1px solid #FFD54F;
+  color: #7A5C00;
+  font-size: 14px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  margin-bottom: 24px;
+}
+
+/* ── Card de cidade ── */
+.cidade-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.cidade-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.cidade-header:hover {
+  background: var(--bg);
+}
+
+.cidade-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cidade-nome {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text-dark);
+}
+
+.cidade-count {
+  font-size: 12px;
+  color: var(--text-soft);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.cidade-count.alerta-count {
+  background: #FFF3CD;
+  border-color: #FFD54F;
+  color: #7A5C00;
+  font-weight: 600;
+}
+
+.cidade-direita {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.data-badge {
+  font-size: 13px;
+  color: var(--accent-deep);
+  font-weight: 500;
+  background: #E8F4FC;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.data-badge.sem-data {
+  color: var(--text-soft);
+  background: var(--bg);
+}
+
+.btn-definir {
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--card);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent-deep);
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.btn-definir:hover {
+  background: #E8F4FC;
+}
+
+.chevron {
+  font-size: 12px;
+  color: var(--text-soft);
+  transition: transform 0.2s;
+}
+
+.cidade-card.aberto .chevron {
+  transform: rotate(180deg);
+}
+
+/* ── Lista de clientes dentro da cidade ── */
+.cidade-clientes {
+  display: none;
+  border-top: 1px solid var(--line);
+}
+
+.cidade-card.aberto .cidade-clientes {
+  display: block;
+}
+
+.cliente-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 20px;
+  border-bottom: 1px solid var(--bg);
+  font-size: 14px;
+}
+
+.cliente-row:last-child {
+  border-bottom: none;
+}
+
+.cliente-row-nome {
+  color: var(--text-dark);
+  font-weight: 500;
+}
+
+.cliente-row-end {
+  font-size: 12px;
+  color: var(--text-soft);
+  margin-top: 2px;
+}
+
+.btn-maps {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--accent-deep);
+  text-decoration: none;
+  font-family: inherit;
+  font-weight: 500;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.btn-maps:hover {
+  background: #D0E7F5;
+}
+
+/* ── Badge "rota fixa" ── */
+.badge-fixa {
+  font-size: 11px;
+  color: #2E7D5A;
+  background: #DFF5EC;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ── Linha de cliente arrastável (rota fixa) ── */
+.cliente-row.arrastavel {
+  cursor: grab;
+  gap: 10px;
+}
+
+.cliente-row.arrastavel:active {
+  cursor: grabbing;
+}
+
+.cliente-row.arrastando {
+  opacity: 0.4;
+  background: #E8F4FC;
+}
+
+.cliente-row.drag-over {
+  border-top: 2px solid var(--accent-deep);
+}
+
+.drag-handle {
+  color: var(--text-soft);
+  font-size: 14px;
+  flex-shrink: 0;
+  cursor: grab;
+  user-select: none;
+}
+
+.ordem-numero {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-deep);
+  background: var(--bg);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cliente-row-conteudo {
+  flex: 1;
+  min-width: 0;
+}
+
+.cliente-row-acoes {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-remover-rota {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: #FBEAEA;
+  color: #A85454;
+  font-size: 13px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.btn-remover-rota:hover {
+  background: #F5D0D0;
+}
+
+/* ── Adicionar cliente à rota ── */
+.adicionar-cliente-rota {
+  display: flex;
+  gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.adicionar-cliente-rota select {
+  flex: 1;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-dark);
+  background: var(--card);
+}
+
+.adicionar-cliente-rota select:focus {
+  outline: none;
+  border-color: var(--accent-deep);
+}
+
+.btn-add-cliente-rota {
+  padding: 9px 16px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent-deep);
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.btn-add-cliente-rota:hover {
+  background: #336E94;
+}
+
+.dica-arrastar {
+  font-size: 12px;
+  color: var(--text-soft);
+  padding: 10px 20px 0;
+  font-style: italic;
+}
+
+/* ── Responsivo ── */
+@media (max-width: 600px) {
+  .cidade-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .cidade-direita {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .adicionar-cliente-rota {
+    flex-direction: column;
+  }
+}

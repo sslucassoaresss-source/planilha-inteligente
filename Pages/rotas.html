@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rotas — Planilha Inteligente</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/rotas.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-brand">Planilha Inteligente</div>
+    <nav class="topbar-nav">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="clientes.html">Clientes</a>
+      <a href="empresas.html">Empresas</a>
+      <a href="rotas.html" class="active">Rotas</a>
+      <a href="visitas.html">Visitas</a>
+    </nav>
+    <button id="btnSair" class="btn-sair">Sair</button>
+  </header>
+
+  <main class="pagina" id="conteudo" style="display:none">
+
+    <div class="pagina-topo">
+      <h1>Rotas</h1>
+      <div class="filtro-mes">
+        <select id="selectMes"></select>
+      </div>
+    </div>
+
+    <!-- Alerta de cidade com mais de 40 clientes -->
+    <div class="alerta" id="alertaDivisao" style="display:none">
+      ⚠️ Uma ou mais cidades têm mais de 40 clientes. Considere dividir em dois dias.
+    </div>
+
+    <!-- Mensagem quando não tem clientes -->
+    <div class="vazio" id="msgVazio" style="display:none">
+      <p>Nenhum cliente cadastrado ainda.</p>
+      <p>Cadastre clientes primeiro para montar as rotas.</p>
+    </div>
+
+    <!-- Lista de cidades agrupadas -->
+    <div id="listaCidades"></div>
+
+  </main>
+
+  <!-- Modal para definir data de visita -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-topo">
+        <h2 id="modalTitulo">Definir data de visita</h2>
+        <button class="modal-fechar" id="btnFecharModal">&times;</button>
+      </div>
+
+      <form id="formRota">
+        <input type="hidden" id="rotaCidade">
+        <input type="hidden" id="rotaId">
+
+        <div class="form-grid" style="grid-template-columns: 1fr">
+          <div class="field">
+            <label for="dataVisita">Data de visita</label>
+            <input type="date" id="dataVisita" required>
+          </div>
+          <div class="field">
+            <label for="obsRota">Observação (opcional)</label>
+            <textarea id="obsRota" rows="2" placeholder="Ex: Priorizar lojas do centro..."></textarea>
+          </div>
+        </div>
+
+        <div class="modal-rodape">
+          <button type="button" class="btn-secundario" id="btnCancelar">Cancelar</button>
+          <button type="submit" class="btn-primario">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="../js/rotas.js"></script>
+
+</body>
+</html>

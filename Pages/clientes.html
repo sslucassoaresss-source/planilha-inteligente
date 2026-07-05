@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clientes — Planilha Inteligente</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/clientes.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-brand">Planilha Inteligente</div>
+    <nav class="topbar-nav">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="clientes.html" class="active">Clientes</a>
+      <a href="empresas.html">Empresas</a>
+      <a href="rotas.html">Rotas</a>
+      <a href="visitas.html">Visitas</a>
+    </nav>
+    <button id="btnSair" class="btn-sair">Sair</button>
+  </header>
+
+  <main class="pagina" id="conteudo" style="display:none">
+
+    <div class="pagina-topo">
+      <h1>Clientes</h1>
+      <button class="btn-primario" id="btnNovoCliente">+ Novo Cliente</button>
+    </div>
+
+    <div class="vazio" id="msgVazio" style="display:none">
+      <p>Nenhum cliente cadastrado ainda.</p>
+      <p>Clique em <strong>+ Novo Cliente</strong> para começar.</p>
+    </div>
+
+    <div class="tabela-wrapper" id="tabelaWrapper">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Cidade</th>
+            <th>Telefone</th>
+            <th>Observações</th>
+            <th>Desconto</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="listaClientes"></tbody>
+      </table>
+    </div>
+
+  </main>
+
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-topo">
+        <h2 id="modalTitulo">Novo Cliente</h2>
+        <button class="modal-fechar" id="btnFecharModal">&times;</button>
+      </div>
+
+      <form id="formCliente">
+        <input type="hidden" id="clienteId">
+        <div class="form-grid">
+          <div class="field span-2">
+            <label for="nome">Nome da loja *</label>
+            <input type="text" id="nome" placeholder="Ex: Mercado Silva" required>
+          </div>
+          <div class="field span-2">
+            <label for="endereco">Endereço</label>
+            <input type="text" id="endereco" placeholder="Ex: Rua das Flores, 123">
+          </div>
+          <div class="field">
+            <label for="bairro">Bairro</label>
+            <input type="text" id="bairro" placeholder="Ex: Centro">
+          </div>
+          <div class="field">
+            <label for="cidade">Cidade</label>
+            <input type="text" id="cidade" placeholder="Ex: São Paulo">
+          </div>
+          <div class="field">
+            <label for="estado">Estado</label>
+            <input type="text" id="estado" placeholder="Ex: SP" maxlength="2">
+          </div>
+          <div class="field">
+            <label for="telefone">Telefone</label>
+            <input type="text" id="telefone" placeholder="Ex: 11 99999-9999">
+          </div>
+          <div class="field span-2">
+            <label for="desconto">Desconto fixo (%)</label>
+            <input type="number" id="desconto" placeholder="Ex: 10" step="0.01" min="0" max="100">
+          </div>
+          <div class="field span-2">
+            <label for="observacoes">Observações fixas</label>
+            <textarea id="observacoes" rows="3" placeholder="Ex: Troca pendente, condição especial..."></textarea>
+          </div>
+        </div>
+        <div class="modal-rodape">
+          <button type="button" class="btn-secundario" id="btnCancelar">Cancelar</button>
+          <button type="submit" class="btn-primario" id="btnSalvar">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="../js/clientes.js"></script>
+
+</body>
+</html>

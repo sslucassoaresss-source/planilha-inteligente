@@ -1,0 +1,11 @@
+/* ═══════════════════════════════════════
+   empresas.css
+   Planilha Inteligente
+═══════════════════════════════════════ */
+
+.pagina-desc {
+  font-size: 14px;
+  color: var(--text-soft);
+  margin-bottom: 24px;
+  margin-top: -16px;
+}
