@@ -95,6 +95,9 @@ formRota.addEventListener('submit', async (e) => {
 })
 
 function linkMapsDe(c) {
+  if (c.latitude != null && c.longitude != null) {
+    return `https://maps.google.com/?q=${c.latitude},${c.longitude}`
+  }
   const enderecoCompleto = [c.endereco, c.bairro, c.cidade, c.estado].filter(Boolean).join(', ')
   return enderecoCompleto
     ? `https://maps.google.com/?q=${encodeURIComponent(enderecoCompleto)}`
@@ -103,6 +106,11 @@ function linkMapsDe(c) {
 
 function enderecoDe(c) {
   return [c.endereco, c.bairro, c.cidade, c.estado].filter(Boolean).join(', ') || '—'
+}
+
+// Normaliza o nome da cidade pra agrupar ignorando maiúscula/minúscula e espaços extras
+function normalizarCidade(cidade) {
+  return (cidade?.trim() || 'Sem cidade').toLowerCase().replace(/\s+/g, ' ')
 }
 
 // ── Carregar e renderizar ─────────────────────────────────────
@@ -127,8 +135,57 @@ async function carregarRotas() {
     .eq('mes', parseInt(mes))
     .eq('ano', parseInt(ano))
 
+  // ── Detecta e mescla rotas duplicadas (ex: "indaiatuba" e "Indaiatuba") ──
+  const rotasPorChaveNormalizada = {}
+  rotas?.forEach(r => {
+    const chave = normalizarCidade(r.cidade)
+    if (!rotasPorChaveNormalizada[chave]) rotasPorChaveNormalizada[chave] = []
+    rotasPorChaveNormalizada[chave].push(r)
+  })
+
   const rotasPorCidade = {}
-  rotas?.forEach(r => { rotasPorCidade[r.cidade] = r })
+
+  for (const [chave, listaRotas] of Object.entries(rotasPorChaveNormalizada)) {
+    if (listaRotas.length === 1) {
+      rotasPorCidade[chave] = listaRotas[0]
+      continue
+    }
+
+    // Duplicata encontrada: escolhe a rota principal (prioriza a que já tem data definida)
+    const [principal, ...duplicatas] = listaRotas
+      .slice()
+      .sort((a, b) => {
+        if (!!a.data_visita !== !!b.data_visita) return a.data_visita ? -1 : 1
+        return new Date(a.created_at) - new Date(b.created_at)
+      })
+
+    for (const dup of duplicatas) {
+      // Move os clientes vinculados à duplicata pra rota principal
+      await supabase.from('rota_clientes').update({ rota_id: principal.id }).eq('rota_id', dup.id)
+      // Remove a rota duplicada (já vazia)
+      await supabase.from('rotas').delete().eq('id', dup.id)
+    }
+
+    // Remove clientes repetidos (caso o mesmo cliente estivesse nas duas rotas)
+    const { data: vinculosMesclados } = await supabase
+      .from('rota_clientes')
+      .select('id, cliente_id')
+      .eq('rota_id', principal.id)
+      .order('ordem')
+
+    if (vinculosMesclados) {
+      const vistos = new Set()
+      for (const v of vinculosMesclados) {
+        if (vistos.has(v.cliente_id)) {
+          await supabase.from('rota_clientes').delete().eq('id', v.id)
+        } else {
+          vistos.add(v.cliente_id)
+        }
+      }
+    }
+
+    rotasPorCidade[chave] = principal
+  }
 
   // Clientes já vinculados a cada rota (lista fixa e ordenada)
   const rotaIds = (rotas || []).map(r => r.id)
@@ -164,21 +221,31 @@ async function carregarRotas() {
 
   msgVazio.style.display = 'none'
 
-  // Agrupa clientes por cidade (só pra saber quais cidades existem e o total)
+  // Agrupa clientes por cidade normalizada (ignora maiúscula/minúscula e espaços)
   const grupos = {}
+  const contagemNomes = {}
   clientes.forEach(c => {
-    const cidade = c.cidade?.trim() || 'Sem cidade'
-    if (!grupos[cidade]) grupos[cidade] = []
-    grupos[cidade].push(c)
+    const raw = c.cidade?.trim() || 'Sem cidade'
+    const chave = normalizarCidade(raw)
+    if (!grupos[chave]) { grupos[chave] = []; contagemNomes[chave] = {} }
+    grupos[chave].push(c)
+    contagemNomes[chave][raw] = (contagemNomes[chave][raw] || 0) + 1
   })
+
+  // Escolhe o nome de exibição mais comum de cada grupo (ex: entre "indaiatuba" e "Indaiatuba")
+  const nomeExibicao = {}
+  for (const chave of Object.keys(grupos)) {
+    nomeExibicao[chave] = Object.entries(contagemNomes[chave])
+      .sort((a, b) => b[1] - a[1])[0][0]
+  }
 
   const temAlerta = Object.values(grupos).some(g => g.length > 40)
   alertaDivisao.style.display = temAlerta ? 'block' : 'none'
 
   // ── Garante que toda cidade tenha uma "rota" no banco, mesmo sem data ──
   // (isso permite que a lista seja sempre arrastável, com ou sem data definida)
-  for (const cidade of Object.keys(grupos)) {
-    if (rotasPorCidade[cidade]) continue
+  for (const chave of Object.keys(grupos)) {
+    if (rotasPorCidade[chave]) continue
 
     const { data: novaRota, error: errNovaRota } = await supabase
       .from('rotas')
@@ -186,24 +253,24 @@ async function carregarRotas() {
         user_id:     userId,
         mes:         parseInt(mes),
         ano:         parseInt(ano),
-        cidade,
+        cidade:      nomeExibicao[chave],
         data_visita: null
       })
       .select()
       .single()
 
     if (errNovaRota) {
-      console.error('Erro ao criar rota para', cidade, errNovaRota)
+      console.error('Erro ao criar rota para', nomeExibicao[chave], errNovaRota)
       continue
     }
 
-    rotasPorCidade[cidade] = novaRota
+    rotasPorCidade[chave] = novaRota
   }
 
   // ── Popula automaticamente a rota fixa na primeira vez ──
   // (agora vale pra toda cidade, tenha data definida ou não)
-  for (const [cidade, listaClientesCidade] of Object.entries(grupos)) {
-    const rota = rotasPorCidade[cidade]
+  for (const [chave, listaClientesCidade] of Object.entries(grupos)) {
+    const rota = rotasPorCidade[chave]
     if (!rota) continue
     if (rotaClientesPorRota[rota.id]?.length > 0) continue
 
@@ -229,9 +296,10 @@ async function carregarRotas() {
 
   // ── Renderiza cada cidade ──
   Object.entries(grupos)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .forEach(([cidade, listaClientesCidade]) => {
-      const rota    = rotasPorCidade[cidade]
+    .sort(([a], [b]) => nomeExibicao[a].localeCompare(nomeExibicao[b]))
+    .forEach(([chave, listaClientesCidade]) => {
+      const cidade  = nomeExibicao[chave]
+      const rota    = rotasPorCidade[chave]
       const temData = rota?.data_visita
       const excede  = listaClientesCidade.length > 40
 

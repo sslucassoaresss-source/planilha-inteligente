@@ -133,10 +133,27 @@ formCliente.addEventListener('submit', async (e) => {
   const id = document.getElementById('clienteId').value
   const btnSalvar = document.getElementById('btnSalvar')
 
+  // Coordenadas: aceita "lat, lng" colado direto do Google Maps
+  const coordRaw = document.getElementById('coordenadas').value.trim()
+  let latitude = null
+  let longitude = null
+
+  if (coordRaw) {
+    const partes = coordRaw.split(',').map(p => parseFloat(p.trim()))
+    if (partes.length === 2 && !isNaN(partes[0]) && !isNaN(partes[1])) {
+      [latitude, longitude] = partes
+    } else {
+      alert('Coordenadas inválidas. Use o formato: latitude, longitude (ex: -23.1234, -47.5678)')
+      return
+    }
+  }
+
   const dados = {
     user_id:     userId,
     nome:        document.getElementById('nome').value.trim(),
     endereco:    document.getElementById('endereco').value.trim(),
+    latitude,
+    longitude,
     bairro:      document.getElementById('bairro').value.trim(),
     cidade:      document.getElementById('cidade').value.trim(),
     estado:      document.getElementById('estado').value.trim().toUpperCase(),
@@ -173,6 +190,8 @@ function editarCliente(id, lista) {
   document.getElementById('clienteId').value   = cliente.id
   document.getElementById('nome').value         = cliente.nome || ''
   document.getElementById('endereco').value     = cliente.endereco || ''
+  document.getElementById('coordenadas').value  =
+    (cliente.latitude != null && cliente.longitude != null) ? `${cliente.latitude}, ${cliente.longitude}` : ''
   document.getElementById('bairro').value       = cliente.bairro || ''
   document.getElementById('cidade').value       = cliente.cidade || ''
   document.getElementById('estado').value       = cliente.estado || ''
