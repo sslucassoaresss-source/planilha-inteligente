@@ -1,0 +1,6 @@
+# Backups do banco de dados — nunca devem ir pro repositório
+*.sql
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
