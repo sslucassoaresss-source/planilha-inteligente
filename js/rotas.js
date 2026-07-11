@@ -175,8 +175,33 @@ async function carregarRotas() {
   const temAlerta = Object.values(grupos).some(g => g.length > 40)
   alertaDivisao.style.display = temAlerta ? 'block' : 'none'
 
+  // ── Garante que toda cidade tenha uma "rota" no banco, mesmo sem data ──
+  // (isso permite que a lista seja sempre arrastável, com ou sem data definida)
+  for (const cidade of Object.keys(grupos)) {
+    if (rotasPorCidade[cidade]) continue
+
+    const { data: novaRota, error: errNovaRota } = await supabase
+      .from('rotas')
+      .insert({
+        user_id:     userId,
+        mes:         parseInt(mes),
+        ano:         parseInt(ano),
+        cidade,
+        data_visita: null
+      })
+      .select()
+      .single()
+
+    if (errNovaRota) {
+      console.error('Erro ao criar rota para', cidade, errNovaRota)
+      continue
+    }
+
+    rotasPorCidade[cidade] = novaRota
+  }
+
   // ── Popula automaticamente a rota fixa na primeira vez ──
-  // (quando a data já foi definida mas ainda não existe lista salva)
+  // (agora vale pra toda cidade, tenha data definida ou não)
   for (const [cidade, listaClientesCidade] of Object.entries(grupos)) {
     const rota = rotasPorCidade[cidade]
     if (!rota) continue
@@ -241,23 +266,19 @@ async function carregarRotas() {
         </div>
 
         <div class="cidade-clientes" data-rota-id="${rota?.id || ''}">
-          ${temData
-            ? renderizarListaFixa(vinculosRota)
-            : renderizarListaPreview(listaClientesCidade)}
+          ${renderizarListaFixa(vinculosRota)}
 
-          ${temData ? `
-            ${vinculosRota.length > 0 ? '<p class="dica-arrastar">Arraste ⠿ para reordenar a sequência de visita.</p>' : ''}
-            <div class="adicionar-cliente-rota">
-              <select class="select-add-cliente">
-                <option value="">+ Adicionar cliente à rota...</option>
-                ${clientes
-                  .filter(c => !vinculosRota.some(v => v.cliente_id === c.id))
-                  .map(c => `<option value="${c.id}">${c.nome}${c.cidade ? ' — ' + c.cidade : ''}</option>`)
-                  .join('')}
-              </select>
-              <button class="btn-add-cliente-rota">Adicionar</button>
-            </div>
-          ` : ''}
+          ${vinculosRota.length > 0 ? '<p class="dica-arrastar">Arraste ⠿ para reordenar a sequência de visita.</p>' : ''}
+          <div class="adicionar-cliente-rota">
+            <select class="select-add-cliente">
+              <option value="">+ Adicionar cliente à rota...</option>
+              ${clientes
+                .filter(c => !vinculosRota.some(v => v.cliente_id === c.id))
+                .map(c => `<option value="${c.id}">${c.nome}${c.cidade ? ' — ' + c.cidade : ''}</option>`)
+                .join('')}
+            </select>
+            <button class="btn-add-cliente-rota">Adicionar</button>
+          </div>
         </div>
       `
 
@@ -318,26 +339,10 @@ async function carregarRotas() {
       }
 
       // Drag and drop pra reordenar
-      if (temData) {
-        ativarDragDrop(card.querySelector('.cidade-clientes'), rota.id)
-      }
+      ativarDragDrop(card.querySelector('.cidade-clientes'), rota.id)
 
       listaCidades.appendChild(card)
     })
-}
-
-function renderizarListaPreview(lista) {
-  return lista.map(c => `
-    <div class="cliente-row">
-      <div class="cliente-row-conteudo">
-        <div class="cliente-row-nome">${c.nome}</div>
-        <div class="cliente-row-end">${enderecoDe(c)}</div>
-      </div>
-      ${linkMapsDe(c)
-        ? `<a href="${linkMapsDe(c)}" target="_blank" class="btn-maps">📍 Ver no Maps</a>`
-        : ''}
-    </div>
-  `).join('')
 }
 
 function renderizarListaFixa(vinculos) {
