@@ -42,15 +42,6 @@ async function carregarClientes() {
 
   if (error) return
   todosClientes = data
-
-  const select = document.getElementById('clienteId')
-  select.innerHTML = '<option value="">Selecione um cliente...</option>'
-  data.forEach(c => {
-    const opt = document.createElement('option')
-    opt.value = c.id
-    opt.textContent = c.nome
-    select.appendChild(opt)
-  })
 }
 
 async function carregarEmpresas() {
@@ -66,11 +57,24 @@ async function carregarEmpresas() {
 // ── Cliente selecionado: mostra obs fixas ─────────────────────
 let clienteAtual = null
 
-document.getElementById('clienteId').addEventListener('change', (e) => {
-  clienteAtual = todosClientes.find(c => c.id === e.target.value) || null
+// ── Busca dinâmica de cliente (autocomplete) ──────────────────
+const inputBusca     = document.getElementById('clienteBusca')
+const inputClienteId = document.getElementById('clienteId')
+const boxSugestoes   = document.getElementById('sugestoesCliente')
+
+function normalizarTexto(txt) {
+  return (txt || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+}
+
+function selecionarCliente(cliente) {
+  clienteAtual = cliente
+  inputBusca.value = cliente.nome
+  inputClienteId.value = cliente.id
+  boxSugestoes.innerHTML = ''
+  boxSugestoes.style.display = 'none'
+
   const obsFixa = document.getElementById('obsFixa')
   const obsFixaTexto = document.getElementById('obsFixaTexto')
-
   if (clienteAtual?.observacoes) {
     obsFixaTexto.textContent = clienteAtual.observacoes
     obsFixa.style.display = 'block'
@@ -78,9 +82,67 @@ document.getElementById('clienteId').addEventListener('change', (e) => {
     obsFixa.style.display = 'none'
   }
 
+  const descontoFixo = document.getElementById('descontoFixo')
+  const descontoFixoValor = document.getElementById('descontoFixoValor')
+  if (clienteAtual?.desconto > 0) {
+    descontoFixoValor.textContent = `${clienteAtual.desconto}%`
+    descontoFixo.style.display = 'block'
+  } else {
+    descontoFixo.style.display = 'none'
+  }
+
   // Recalcula os itens já adicionados (desconto pode mudar)
   document.querySelectorAll('.item-venda-row').forEach(atualizarLinhaItem)
   recalcularTotal()
+}
+
+function renderizarSugestoes(filtro) {
+  const termo = normalizarTexto(filtro)
+  boxSugestoes.innerHTML = ''
+
+  if (!termo) {
+    boxSugestoes.style.display = 'none'
+    return
+  }
+
+  const resultados = todosClientes
+    .filter(c => normalizarTexto(c.nome).includes(termo))
+    .slice(0, 8)
+
+  if (resultados.length === 0) {
+    boxSugestoes.innerHTML = '<div class="sugestao-vazia">Nenhum cliente encontrado</div>'
+    boxSugestoes.style.display = 'block'
+    return
+  }
+
+  resultados.forEach(c => {
+    const item = document.createElement('div')
+    item.className = 'sugestao-item'
+    item.textContent = c.nome
+    // mousedown (não click) pra disparar antes do blur do input
+    item.addEventListener('mousedown', (e) => {
+      e.preventDefault()
+      selecionarCliente(c)
+    })
+    boxSugestoes.appendChild(item)
+  })
+
+  boxSugestoes.style.display = 'block'
+}
+
+inputBusca.addEventListener('input', () => {
+  // Enquanto o usuário digita, invalida a seleção anterior
+  inputClienteId.value = ''
+  clienteAtual = null
+  renderizarSugestoes(inputBusca.value)
+})
+
+inputBusca.addEventListener('focus', () => {
+  if (inputBusca.value) renderizarSugestoes(inputBusca.value)
+})
+
+inputBusca.addEventListener('blur', () => {
+  setTimeout(() => { boxSugestoes.style.display = 'none' }, 150)
 })
 
 // ── Status: mostra/oculta bloco de itens ──────────────────────
@@ -164,7 +226,9 @@ function fecharModal() {
   formVisita.reset()
   document.getElementById('visitaId').value = ''
   document.getElementById('obsFixa').style.display = 'none'
+  document.getElementById('descontoFixo').style.display = 'none'
   document.getElementById('blocoItens').style.display = 'none'
+  boxSugestoes.style.display = 'none'
   listaItens.innerHTML = ''
   clienteAtual = null
 }
@@ -177,6 +241,12 @@ modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) f
 // ── Salvar visita + itens ─────────────────────────────────────
 formVisita.addEventListener('submit', async (e) => {
   e.preventDefault()
+
+  if (!document.getElementById('clienteId').value) {
+    alert('Selecione um cliente da lista de sugestões antes de salvar.')
+    inputBusca.focus()
+    return
+  }
 
   const id        = document.getElementById('visitaId').value
   const btnSalvar = document.getElementById('btnSalvar')
@@ -363,11 +433,18 @@ function editarVisita(id, lista) {
   document.getElementById('observacao').value = v.observacao || ''
 
   clienteAtual = todosClientes.find(c => c.id === v.cliente_id) || null
+  inputBusca.value = clienteAtual?.nome || v.clientes?.nome || ''
 
   const obsFixa = document.getElementById('obsFixa')
   if (clienteAtual?.observacoes) {
     document.getElementById('obsFixaTexto').textContent = clienteAtual.observacoes
     obsFixa.style.display = 'block'
+  }
+
+  const descontoFixo = document.getElementById('descontoFixo')
+  if (clienteAtual?.desconto > 0) {
+    document.getElementById('descontoFixoValor').textContent = `${clienteAtual.desconto}%`
+    descontoFixo.style.display = 'block'
   }
 
   listaItens.innerHTML = ''

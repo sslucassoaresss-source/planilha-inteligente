@@ -84,11 +84,11 @@
         <input type="hidden" id="visitaId">
 
         <div class="form-grid">
-          <div class="field span-2">
-            <label for="clienteId">Cliente *</label>
-            <select id="clienteId" required>
-              <option value="">Selecione um cliente...</option>
-            </select>
+          <div class="field span-2 campo-busca-cliente">
+            <label for="clienteBusca">Cliente *</label>
+            <input type="text" id="clienteBusca" placeholder="Digite o nome do cliente... Ex: pet shop do Lulu" autocomplete="off" required>
+            <input type="hidden" id="clienteId">
+            <div class="sugestoes-cliente" id="sugestoesCliente"></div>
           </div>
 
           <div class="field">
@@ -110,6 +110,11 @@
         <div class="obs-fixa" id="obsFixa" style="display:none">
           <div class="obs-fixa-label">⚠️ Observações fixas deste cliente:</div>
           <div class="obs-fixa-texto" id="obsFixaTexto"></div>
+        </div>
+
+        <!-- Desconto fixo do cliente -->
+        <div class="desconto-fixo" id="descontoFixo" style="display:none">
+          💰 Este cliente tem <strong id="descontoFixoValor"></strong> de desconto fixo
         </div>
 
         <!-- Itens de venda (só aparece se Comprou) -->
