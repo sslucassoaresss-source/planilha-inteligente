@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js'
+import Sortable from 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/+esm'
 
 // ── Proteção de rota ──────────────────────────────────────────
 const { data: { session } } = await supabase.auth.getSession()
@@ -364,62 +365,27 @@ function renderizarListaFixa(vinculos) {
   }).join('')
 }
 
-// ── Drag and drop ───────────────────────────────────────────
+// ── Drag and drop (funciona em mouse e touch) ──────────────
 function ativarDragDrop(container, rotaId) {
-  let arrastando = null
+  Sortable.create(container, {
+    handle: '.drag-handle',
+    draggable: '.arrastavel',
+    animation: 150,
+    ghostClass: 'arrastando',
+    onEnd: async () => {
+      const linhas = Array.from(container.querySelectorAll('.cliente-row.arrastavel'))
 
-  container.addEventListener('dragstart', (e) => {
-    const row = e.target.closest('.cliente-row.arrastavel')
-    if (!row) return
-    arrastando = row
-    row.classList.add('arrastando')
-    e.dataTransfer.effectAllowed = 'move'
-  })
+      // Atualiza os números visíveis na tela imediatamente
+      linhas.forEach((row, i) => {
+        const numero = row.querySelector('.ordem-numero')
+        if (numero) numero.textContent = i + 1
+      })
 
-  container.addEventListener('dragend', (e) => {
-    const row = e.target.closest('.cliente-row.arrastavel')
-    if (row) row.classList.remove('arrastando')
-    container.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'))
-  })
-
-  container.addEventListener('dragover', (e) => {
-    e.preventDefault()
-    const alvo = e.target.closest('.cliente-row.arrastavel')
-    if (!alvo || alvo === arrastando) return
-
-    container.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'))
-    alvo.classList.add('drag-over')
-  })
-
-  container.addEventListener('drop', async (e) => {
-    e.preventDefault()
-    const alvo = e.target.closest('.cliente-row.arrastavel')
-    container.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'))
-    if (!alvo || !arrastando || alvo === arrastando) return
-
-    // Reordena visualmente
-    const todasLinhas = Array.from(container.querySelectorAll('.cliente-row.arrastavel'))
-    const indexArrastando = todasLinhas.indexOf(arrastando)
-    const indexAlvo = todasLinhas.indexOf(alvo)
-
-    if (indexArrastando < indexAlvo) {
-      alvo.after(arrastando)
-    } else {
-      alvo.before(arrastando)
-    }
-
-    // Persiste a nova ordem no banco
-    const novaOrdem = Array.from(container.querySelectorAll('.cliente-row.arrastavel'))
-      .map((row, i) => ({ id: row.dataset.vinculoId, ordem: i }))
-
-    // Atualiza os números visíveis na tela imediatamente
-    container.querySelectorAll('.cliente-row.arrastavel').forEach((row, i) => {
-      const numero = row.querySelector('.ordem-numero')
-      if (numero) numero.textContent = i + 1
-    })
-
-    for (const item of novaOrdem) {
-      await supabase.from('rota_clientes').update({ ordem: item.ordem }).eq('id', item.id)
+      // Persiste a nova ordem no banco
+      const novaOrdem = linhas.map((row, i) => ({ id: row.dataset.vinculoId, ordem: i }))
+      for (const item of novaOrdem) {
+        await supabase.from('rota_clientes').update({ ordem: item.ordem }).eq('id', item.id)
+      }
     }
   })
 }
