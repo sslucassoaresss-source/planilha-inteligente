@@ -127,6 +127,14 @@
           <div id="listaItens"></div>
 
           <div class="itens-total">
+            <span>Subtotal dos itens:</span>
+            <strong id="subtotalItens">R$ 0,00</strong>
+          </div>
+          <div class="itens-total" id="linhaDescontoTotal" style="display:none">
+            <span>Desconto do cliente:</span>
+            <strong id="descontoAplicadoTotal">− R$ 0,00</strong>
+          </div>
+          <div class="itens-total itens-total-final">
             <span>Total da visita:</span>
             <strong id="totalItens">R$ 0,00</strong>
           </div>
@@ -151,8 +159,8 @@
       <select class="item-empresa" required>
         <option value="">Empresa...</option>
       </select>
-      <input type="number" class="item-valor" placeholder="Valor bruto (R$)" step="0.01" min="0" required>
-      <span class="item-desconto-info"></span>
+      <input type="number" class="item-valor" placeholder="Valor da venda (R$)" step="0.01" min="0" required>
+      <input type="number" class="item-comissao-manual" placeholder="Comissão (R$) opcional" step="0.01" min="0">
       <button type="button" class="btn-remover-item">🗑️</button>
     </div>
   </template>

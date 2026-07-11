@@ -38,7 +38,7 @@ async function carregarDados() {
 
   const { data: visitas, error } = await supabase
     .from('visitas')
-    .select('*, clientes(nome), itens_venda(id, valor, empresa_id, empresas(nome, percentual_comissao))')
+    .select('*, clientes(nome), itens_venda(id, valor, empresa_id, comissao_manual, empresas(nome, percentual_comissao))')
     .gte('data_visita', inicio)
     .lte('data_visita', fim)
     .order('data_visita', { ascending: false })
@@ -62,11 +62,18 @@ function renderizarCards(visitas) {
   let totalComissao = 0
 
   compraram.forEach(v => {
-    ;(v.itens_venda || []).forEach(item => {
-      const valor = item.valor || 0
-      const percentual = item.empresas?.percentual_comissao || 0
-      totalVendido += valor
-      totalComissao += valor * (percentual / 100)
+    const itens = v.itens_venda || []
+    const subtotal = itens.reduce((s, item) => s + (item.valor || 0), 0)
+    const desconto = v.desconto_aplicado || 0
+    totalVendido += Math.max(0, subtotal - desconto)
+
+    itens.forEach(item => {
+      if (item.comissao_manual !== null && item.comissao_manual !== undefined) {
+        totalComissao += item.comissao_manual
+      } else {
+        const percentual = item.empresas?.percentual_comissao || 0
+        totalComissao += (item.valor || 0) * (percentual / 100)
+      }
     })
   })
 
@@ -91,7 +98,8 @@ function renderizarGrafico(visitas, ano, mes) {
   visitas.forEach(v => {
     if (!v.comprou) return
     const dia = new Date(v.data_visita).getUTCDate()
-    const totalVisita = (v.itens_venda || []).reduce((s, it) => s + (it.valor || 0), 0)
+    const subtotal = (v.itens_venda || []).reduce((s, it) => s + (it.valor || 0), 0)
+    const totalVisita = Math.max(0, subtotal - (v.desconto_aplicado || 0))
     if (totalVisita > 0) {
       vendasPorDia[dia] = (vendasPorDia[dia] || 0) + totalVisita
     }
@@ -187,7 +195,7 @@ async function carregarDescontos() {
     item.className = 'visita-item'
     item.innerHTML = `
       <div class="visita-nome">${c.nome}</div>
-      <span class="badge badge-desconto">${c.desconto}%</span>
+      <span class="badge badge-desconto">${c.desconto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
     `
     lista.appendChild(item)
   })

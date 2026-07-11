@@ -65,7 +65,7 @@ async function carregarClientes() {
       <td class="obs-cell" title="${cliente.observacoes || ''}">${cliente.observacoes || '—'}</td>
       <td class="celula-desconto" data-id="${cliente.id}">
         <button class="btn-desconto-rapido" data-id="${cliente.id}" data-valor="${cliente.desconto || 0}">
-          ${cliente.desconto ? cliente.desconto + '%' : '+ desconto'}
+          ${cliente.desconto ? cliente.desconto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '+ desconto'}
         </button>
       </td>
       <td>

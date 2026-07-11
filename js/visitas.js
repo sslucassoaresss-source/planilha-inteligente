@@ -85,14 +85,13 @@ function selecionarCliente(cliente) {
   const descontoFixo = document.getElementById('descontoFixo')
   const descontoFixoValor = document.getElementById('descontoFixoValor')
   if (clienteAtual?.desconto > 0) {
-    descontoFixoValor.textContent = `${clienteAtual.desconto}%`
+    descontoFixoValor.textContent = clienteAtual.desconto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
     descontoFixo.style.display = 'block'
   } else {
     descontoFixo.style.display = 'none'
   }
 
-  // Recalcula os itens já adicionados (desconto pode mudar)
-  document.querySelectorAll('.item-venda-row').forEach(atualizarLinhaItem)
+  // Recalcula o total (desconto pode mudar)
   recalcularTotal()
 }
 
@@ -162,11 +161,12 @@ document.getElementById('comprou').addEventListener('change', (e) => {
 const templateItem = document.getElementById('templateItem')
 const listaItens   = document.getElementById('listaItens')
 
-function adicionarLinhaItem(empresaId = '', valor = '') {
+function adicionarLinhaItem(empresaId = '', valor = '', comissaoManual = null) {
   const clone = templateItem.content.cloneNode(true)
   const row = clone.querySelector('.item-venda-row')
   const selectEmpresa = row.querySelector('.item-empresa')
   const inputValor = row.querySelector('.item-valor')
+  const inputComissao = row.querySelector('.item-comissao-manual')
 
   todasEmpresas.forEach(emp => {
     const opt = document.createElement('option')
@@ -177,34 +177,40 @@ function adicionarLinhaItem(empresaId = '', valor = '') {
 
   if (empresaId) selectEmpresa.value = empresaId
   if (valor) inputValor.value = valor
+  if (comissaoManual !== null && comissaoManual !== undefined) inputComissao.value = comissaoManual
 
-  selectEmpresa.addEventListener('change', () => { atualizarLinhaItem(row); recalcularTotal() })
-  inputValor.addEventListener('input', () => { atualizarLinhaItem(row); recalcularTotal() })
+  inputValor.addEventListener('input', recalcularTotal)
   row.querySelector('.btn-remover-item').addEventListener('click', () => {
     row.remove()
     recalcularTotal()
   })
 
   listaItens.appendChild(row)
-  atualizarLinhaItem(row)
-}
-
-function atualizarLinhaItem(row) {
-  const infoSpan = row.querySelector('.item-desconto-info')
-  const desconto = clienteAtual?.desconto || 0
-  infoSpan.textContent = desconto > 0 ? `−${desconto}% desc.` : ''
 }
 
 function recalcularTotal() {
-  let total = 0
+  let subtotal = 0
   document.querySelectorAll('.item-venda-row').forEach(row => {
-    const valorBruto = parseFloat(row.querySelector('.item-valor').value) || 0
-    const desconto = clienteAtual?.desconto || 0
-    const valorFinal = valorBruto * (1 - desconto / 100)
-    total += valorFinal
+    subtotal += parseFloat(row.querySelector('.item-valor').value) || 0
   })
+
+  const desconto = clienteAtual?.desconto || 0
+  const totalFinal = Math.max(0, subtotal - desconto)
+
+  document.getElementById('subtotalItens').textContent =
+    subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+
+  const linhaDesconto = document.getElementById('linhaDescontoTotal')
+  if (desconto > 0) {
+    document.getElementById('descontoAplicadoTotal').textContent =
+      `− ${desconto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
+    linhaDesconto.style.display = 'flex'
+  } else {
+    linhaDesconto.style.display = 'none'
+  }
+
   document.getElementById('totalItens').textContent =
-    total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+    totalFinal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
 document.getElementById('btnAddItem').addEventListener('click', () => adicionarLinhaItem())
@@ -262,8 +268,9 @@ formVisita.addEventListener('submit', async (e) => {
       const empresaId = row.querySelector('.item-empresa').value
       const valorBruto = parseFloat(row.querySelector('.item-valor').value) || 0
       if (!empresaId || valorBruto <= 0) continue
-      const valorFinal = valorBruto * (1 - desconto / 100)
-      itens.push({ empresa_id: empresaId, valor: valorFinal })
+      const comissaoManualRaw = row.querySelector('.item-comissao-manual').value
+      const comissaoManual = comissaoManualRaw !== '' ? parseFloat(comissaoManualRaw) : null
+      itens.push({ empresa_id: empresaId, valor: valorBruto, comissao_manual: comissaoManual })
     }
 
     if (itens.length === 0) {
@@ -273,11 +280,12 @@ formVisita.addEventListener('submit', async (e) => {
   }
 
   const dadosVisita = {
-    user_id:     userId,
-    cliente_id:  document.getElementById('clienteId').value,
-    data_visita: document.getElementById('dataVisita').value,
+    user_id:           userId,
+    cliente_id:        document.getElementById('clienteId').value,
+    data_visita:       document.getElementById('dataVisita').value,
     comprou,
-    observacao:  document.getElementById('observacao').value.trim() || null,
+    desconto_aplicado: comprou ? desconto : 0,
+    observacao:        document.getElementById('observacao').value.trim() || null,
   }
 
   btnSalvar.textContent = 'Salvando...'
@@ -306,7 +314,8 @@ formVisita.addEventListener('submit', async (e) => {
       user_id: userId,
       visita_id: visitaId,
       empresa_id: item.empresa_id,
-      valor: item.valor
+      valor: item.valor,
+      comissao_manual: item.comissao_manual
     }))
 
     const resItens = await supabase.from('itens_venda').insert(itensComVisita)
@@ -334,7 +343,7 @@ async function carregarVisitas() {
 
   const { data: visitas, error } = await supabase
     .from('visitas')
-    .select('*, clientes(nome), itens_venda(id, valor, empresa_id, empresas(nome))')
+    .select('*, clientes(nome), itens_venda(id, valor, empresa_id, comissao_manual, empresas(nome))')
     .gte('data_visita', inicio)
     .lte('data_visita', fim)
     .order('data_visita', { ascending: false })
@@ -351,8 +360,9 @@ function renderizarResumo(visitas) {
   const visitasDeHoje = visitas.filter(v => v.data_visita === hojeStr)
   const compraramHoje = visitasDeHoje.filter(v => v.comprou)
   const totalHoje = compraramHoje.reduce((acc, v) => {
-    const totalVisita = (v.itens_venda || []).reduce((s, it) => s + (it.valor || 0), 0)
-    return acc + totalVisita
+    const subtotal = (v.itens_venda || []).reduce((s, it) => s + (it.valor || 0), 0)
+    const desconto = v.desconto_aplicado || 0
+    return acc + Math.max(0, subtotal - desconto)
   }, 0)
 
   document.getElementById('visitasHoje').textContent = visitasDeHoje.length
@@ -384,7 +394,8 @@ function renderizarTabela(visitas) {
     })
 
     const itens = v.itens_venda || []
-    const totalVisita = itens.reduce((s, it) => s + (it.valor || 0), 0)
+    const subtotal = itens.reduce((s, it) => s + (it.valor || 0), 0)
+    const totalVisita = Math.max(0, subtotal - (v.desconto_aplicado || 0))
     const valorFmt = totalVisita > 0
       ? totalVisita.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
       : '—'
@@ -443,7 +454,8 @@ function editarVisita(id, lista) {
 
   const descontoFixo = document.getElementById('descontoFixo')
   if (clienteAtual?.desconto > 0) {
-    document.getElementById('descontoFixoValor').textContent = `${clienteAtual.desconto}%`
+    document.getElementById('descontoFixoValor').textContent =
+      clienteAtual.desconto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
     descontoFixo.style.display = 'block'
   }
 
@@ -451,12 +463,9 @@ function editarVisita(id, lista) {
 
   if (v.comprou) {
     document.getElementById('blocoItens').style.display = 'block'
-    const desconto = clienteAtual?.desconto || 0
 
     ;(v.itens_venda || []).forEach(item => {
-      // Reconstroi o valor bruto a partir do valor com desconto salvo
-      const valorBruto = desconto > 0 ? item.valor / (1 - desconto / 100) : item.valor
-      adicionarLinhaItem(item.empresa_id, valorBruto.toFixed(2))
+      adicionarLinhaItem(item.empresa_id, item.valor, item.comissao_manual)
     })
 
     recalcularTotal()
