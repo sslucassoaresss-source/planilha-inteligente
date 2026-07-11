@@ -161,5 +161,38 @@ function renderizarVisitasRecentes(visitas) {
   })
 }
 
+// ── Clientes com desconto ativo ───────────────────────────────
+async function carregarDescontos() {
+  const { data: clientes, error } = await supabase
+    .from('clientes')
+    .select('id, nome, desconto')
+    .gt('desconto', 0)
+    .order('desconto', { ascending: false })
+
+  if (error) {
+    console.error('Erro ao carregar descontos:', error)
+    return
+  }
+
+  const lista = document.getElementById('descontosLista')
+  lista.innerHTML = ''
+
+  if (clientes.length === 0) {
+    lista.innerHTML = '<p style="color:var(--text-soft);font-size:14px">Nenhum cliente com desconto ativo no momento.</p>'
+    return
+  }
+
+  clientes.forEach(c => {
+    const item = document.createElement('div')
+    item.className = 'visita-item'
+    item.innerHTML = `
+      <div class="visita-nome">${c.nome}</div>
+      <span class="badge badge-desconto">${c.desconto}%</span>
+    `
+    lista.appendChild(item)
+  })
+}
+
 // ── Inicializar ───────────────────────────────────────────────
 carregarDados()
+carregarDescontos()

@@ -148,6 +148,24 @@
   margin-top: 2px;
 }
 
+/* ── Painel de clientes com desconto ── */
+.painel-descontos {
+  margin-top: 20px;
+}
+
+.descontos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.badge-desconto {
+  background: #DFF5EC;
+  color: #2E7D5A;
+}
+
 /* ── Seletor de mês ── */
 .filtro-mes {
   display: flex;
