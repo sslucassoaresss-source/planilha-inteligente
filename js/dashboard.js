@@ -9,6 +9,13 @@ if (!session) {
 const userId = session.user.id
 document.getElementById('conteudo').style.display = 'block'
 
+// Formata uma data como "AAAA-MM-DD" usando o fuso horário LOCAL do navegador.
+// Evita o bug do toISOString(), que converte pra UTC e pode "virar o dia"
+// à noite (Brasil está 3h atrás do UTC — depois das 21h, toISOString() já mostra o dia seguinte)
+function dataLocalStr(data) {
+  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`
+}
+
 document.getElementById('btnSair').addEventListener('click', async () => {
   await supabase.auth.signOut()
   window.location.href = '../index.html'
@@ -34,7 +41,7 @@ selectMes.addEventListener('change', () => carregarDados())
 async function carregarDados() {
   const [ano, mes] = selectMes.value.split('-')
   const inicio = `${ano}-${mes}-01`
-  const fim = new Date(ano, mes, 0).toISOString().split('T')[0]
+  const fim = dataLocalStr(new Date(ano, mes, 0))
 
   const { data: visitas, error } = await supabase
     .from('visitas')

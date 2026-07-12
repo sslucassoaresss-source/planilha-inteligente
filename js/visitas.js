@@ -10,6 +10,13 @@ const userId = session.user.id
 const hoje = new Date()
 document.getElementById('conteudo').style.display = 'block'
 
+// Formata uma data como "AAAA-MM-DD" usando o fuso horário LOCAL do navegador.
+// Evita o bug do toISOString(), que converte pra UTC e pode "virar o dia"
+// à noite (Brasil está 3h atrás do UTC — depois das 21h, toISOString() já mostra o dia seguinte)
+function dataLocalStr(data) {
+  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`
+}
+
 document.getElementById('btnSair').addEventListener('click', async () => {
   await supabase.auth.signOut()
   window.location.href = '../index.html'
@@ -222,7 +229,7 @@ const formVisita   = document.getElementById('formVisita')
 function abrirModal(titulo = 'Nova Visita') {
   document.getElementById('modalTitulo').textContent = titulo
   if (!document.getElementById('visitaId').value) {
-    document.getElementById('dataVisita').value = hoje.toISOString().split('T')[0]
+    document.getElementById('dataVisita').value = dataLocalStr(hoje)
   }
   modalOverlay.classList.add('aberto')
 }
@@ -339,7 +346,7 @@ formVisita.addEventListener('submit', async (e) => {
 async function carregarVisitas() {
   const [ano, mes] = selectMes.value.split('-')
   const inicio = `${ano}-${mes}-01`
-  const fim    = new Date(ano, mes, 0).toISOString().split('T')[0]
+  const fim    = dataLocalStr(new Date(ano, mes, 0))
 
   const { data: visitas, error } = await supabase
     .from('visitas')
@@ -356,7 +363,7 @@ async function carregarVisitas() {
 
 // ── Resumo do dia ─────────────────────────────────────────────
 function renderizarResumo(visitas) {
-  const hojeStr = hoje.toISOString().split('T')[0]
+  const hojeStr = dataLocalStr(hoje)
   const visitasDeHoje = visitas.filter(v => v.data_visita === hojeStr)
   const compraramHoje = visitasDeHoje.filter(v => v.comprou)
   const totalHoje = compraramHoje.reduce((acc, v) => {
