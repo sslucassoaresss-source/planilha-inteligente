@@ -38,11 +38,15 @@ selectMes.addEventListener('change', carregarRotas)
 const modalOverlay  = document.getElementById('modalOverlay')
 const formRota      = document.getElementById('formRota')
 
-function abrirModal(cidade, rotaId, dataAtual) {
+function abrirModal(cidade, rotaId, nomeAtual, dataAtual, obsAtual) {
   document.getElementById('rotaCidade').value = cidade
   document.getElementById('rotaId').value = rotaId || ''
+  document.getElementById('nomeRota').value = nomeAtual || ''
   document.getElementById('dataVisita').value = dataAtual || ''
-  document.getElementById('modalTitulo').textContent = `Data de visita — ${cidade}`
+  document.getElementById('obsRota').value = obsAtual || ''
+  document.getElementById('modalTitulo').textContent = rotaId
+    ? `Editar rota — ${cidade}`
+    : `Nova rota — ${cidade}`
   modalOverlay.classList.add('aberto')
 }
 
@@ -62,6 +66,7 @@ formRota.addEventListener('submit', async (e) => {
   const [ano, mes] = selectMes.value.split('-')
   const cidade     = document.getElementById('rotaCidade').value
   const rotaId     = document.getElementById('rotaId').value
+  const nome       = document.getElementById('nomeRota').value.trim()
   const dataVisita = document.getElementById('dataVisita').value
   const obs        = document.getElementById('obsRota').value.trim()
 
@@ -70,7 +75,8 @@ formRota.addEventListener('submit', async (e) => {
     mes:         parseInt(mes),
     ano:         parseInt(ano),
     cidade,
-    data_visita: dataVisita,
+    nome,
+    data_visita: dataVisita || null,
     observacao:  obs || null
   }
 
@@ -135,57 +141,15 @@ async function carregarRotas() {
     .eq('mes', parseInt(mes))
     .eq('ano', parseInt(ano))
 
-  // ── Detecta e mescla rotas duplicadas (ex: "indaiatuba" e "Indaiatuba") ──
-  const rotasPorChaveNormalizada = {}
+  // Agrupa as rotas existentes por cidade normalizada.
+  // Diferente de antes, várias rotas na mesma cidade são esperadas e desejadas
+  // (ex: "Rota 1" e "Rota 2" em Indaiatuba) — não mesclamos mais automaticamente.
+  const rotasPorCidade = {}
   rotas?.forEach(r => {
     const chave = normalizarCidade(r.cidade)
-    if (!rotasPorChaveNormalizada[chave]) rotasPorChaveNormalizada[chave] = []
-    rotasPorChaveNormalizada[chave].push(r)
+    if (!rotasPorCidade[chave]) rotasPorCidade[chave] = []
+    rotasPorCidade[chave].push(r)
   })
-
-  const rotasPorCidade = {}
-
-  for (const [chave, listaRotas] of Object.entries(rotasPorChaveNormalizada)) {
-    if (listaRotas.length === 1) {
-      rotasPorCidade[chave] = listaRotas[0]
-      continue
-    }
-
-    // Duplicata encontrada: escolhe a rota principal (prioriza a que já tem data definida)
-    const [principal, ...duplicatas] = listaRotas
-      .slice()
-      .sort((a, b) => {
-        if (!!a.data_visita !== !!b.data_visita) return a.data_visita ? -1 : 1
-        return new Date(a.created_at) - new Date(b.created_at)
-      })
-
-    for (const dup of duplicatas) {
-      // Move os clientes vinculados à duplicata pra rota principal
-      await supabase.from('rota_clientes').update({ rota_id: principal.id }).eq('rota_id', dup.id)
-      // Remove a rota duplicada (já vazia)
-      await supabase.from('rotas').delete().eq('id', dup.id)
-    }
-
-    // Remove clientes repetidos (caso o mesmo cliente estivesse nas duas rotas)
-    const { data: vinculosMesclados } = await supabase
-      .from('rota_clientes')
-      .select('id, cliente_id')
-      .eq('rota_id', principal.id)
-      .order('ordem')
-
-    if (vinculosMesclados) {
-      const vistos = new Set()
-      for (const v of vinculosMesclados) {
-        if (vistos.has(v.cliente_id)) {
-          await supabase.from('rota_clientes').delete().eq('id', v.id)
-        } else {
-          vistos.add(v.cliente_id)
-        }
-      }
-    }
-
-    rotasPorCidade[chave] = principal
-  }
 
   // Clientes já vinculados a cada rota (lista fixa e ordenada)
   const rotaIds = (rotas || []).map(r => r.id)
@@ -242,74 +206,16 @@ async function carregarRotas() {
   const temAlerta = Object.values(grupos).some(g => g.length > 40)
   alertaDivisao.style.display = temAlerta ? 'block' : 'none'
 
-  // ── Garante que toda cidade tenha uma "rota" no banco, mesmo sem data ──
-  // (isso permite que a lista seja sempre arrastável, com ou sem data definida)
-  for (const chave of Object.keys(grupos)) {
-    if (rotasPorCidade[chave]) continue
-
-    const { data: novaRota, error: errNovaRota } = await supabase
-      .from('rotas')
-      .insert({
-        user_id:     userId,
-        mes:         parseInt(mes),
-        ano:         parseInt(ano),
-        cidade:      nomeExibicao[chave],
-        data_visita: null
-      })
-      .select()
-      .single()
-
-    if (errNovaRota) {
-      console.error('Erro ao criar rota para', nomeExibicao[chave], errNovaRota)
-      continue
-    }
-
-    rotasPorCidade[chave] = novaRota
-  }
-
-  // ── Popula automaticamente a rota fixa na primeira vez ──
-  // (agora vale pra toda cidade, tenha data definida ou não)
-  for (const [chave, listaClientesCidade] of Object.entries(grupos)) {
-    const rota = rotasPorCidade[chave]
-    if (!rota) continue
-    if (rotaClientesPorRota[rota.id]?.length > 0) continue
-
-    const inserts = listaClientesCidade.map((c, i) => ({
-      user_id: userId,
-      rota_id: rota.id,
-      cliente_id: c.id,
-      ordem: i
-    }))
-
-    const { data: inseridos, error: errInsert } = await supabase
-      .from('rota_clientes')
-      .insert(inserts)
-      .select('*, clientes(*)')
-
-    if (errInsert) {
-      console.error('Erro ao popular rota inicial:', errInsert)
-      continue
-    }
-
-    rotaClientesPorRota[rota.id] = inseridos.sort((a, b) => a.ordem - b.ordem)
-  }
-
   // ── Renderiza cada cidade ──
   Object.entries(grupos)
     .sort(([a], [b]) => nomeExibicao[a].localeCompare(nomeExibicao[b]))
     .forEach(([chave, listaClientesCidade]) => {
-      const cidade  = nomeExibicao[chave]
-      const rota    = rotasPorCidade[chave]
-      const temData = rota?.data_visita
-      const excede  = listaClientesCidade.length > 40
+      const cidade = nomeExibicao[chave]
+      const excede = listaClientesCidade.length > 40
 
-      const dataFormatada = temData
-        ? new Date(rota.data_visita).toLocaleDateString('pt-BR', {
-            day: '2-digit', month: '2-digit', timeZone: 'UTC'
-          })
-        : null
-
-      const vinculosRota = rota ? (rotaClientesPorRota[rota.id] || []) : []
+      const rotasDaCidade = (rotasPorCidade[chave] || [])
+        .slice()
+        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
 
       const card = document.createElement('div')
       card.className = 'cidade-card'
@@ -320,97 +226,160 @@ async function carregarRotas() {
             <span class="cidade-count ${excede ? 'alerta-count' : ''}">
               ${listaClientesCidade.length} cliente${listaClientesCidade.length > 1 ? 's' : ''}${excede ? ' ⚠️' : ''}
             </span>
-            ${temData ? '<span class="badge-fixa">📌 Rota fixa</span>' : ''}
+            <span class="cidade-count">${rotasDaCidade.length} rota${rotasDaCidade.length !== 1 ? 's' : ''}</span>
           </div>
           <div class="cidade-direita">
-            <span class="data-badge ${temData ? '' : 'sem-data'}">
-              ${temData ? `📅 ${dataFormatada}` : 'Sem data definida'}
-            </span>
-            <button class="btn-definir" data-cidade="${cidade}" data-id="${rota?.id || ''}" data-data="${rota?.data_visita || ''}">
-              ${temData ? 'Alterar data' : 'Definir data'}
-            </button>
+            <button class="btn-definir btn-nova-rota">+ Nova Rota</button>
             <span class="chevron">▼</span>
           </div>
         </div>
 
-        <div class="cidade-clientes" data-rota-id="${rota?.id || ''}">
-          ${renderizarListaFixa(vinculosRota)}
-
-          ${vinculosRota.length > 0 ? '<p class="dica-arrastar">Arraste ⠿ para reordenar a sequência de visita.</p>' : ''}
-          <div class="adicionar-cliente-rota">
-            <select class="select-add-cliente">
-              <option value="">+ Adicionar cliente à rota...</option>
-              ${clientes
-                .filter(c => !vinculosRota.some(v => v.cliente_id === c.id))
-                .map(c => `<option value="${c.id}">${c.nome}${c.cidade ? ' — ' + c.cidade : ''}</option>`)
-                .join('')}
-            </select>
-            <button class="btn-add-cliente-rota">Adicionar</button>
-          </div>
+        <div class="cidade-clientes">
+          ${rotasDaCidade.length === 0
+            ? '<p class="dica-arrastar" style="padding:14px 20px 18px;">Nenhuma rota criada ainda nesta cidade. Clique em "+ Nova Rota" para começar.</p>'
+            : rotasDaCidade.map((rota, i) => renderizarRotaSubcard(rota, i, clientes, rotaClientesPorRota[rota.id] || [])).join('')}
         </div>
       `
 
-      // Abrir/fechar
+      // Abrir/fechar a cidade
       card.querySelector('.cidade-header').addEventListener('click', (e) => {
-        if (e.target.closest('.btn-definir')) return
+        if (e.target.closest('.btn-nova-rota')) return
         card.classList.toggle('aberto')
       })
 
-      // Definir/alterar data
-      card.querySelector('.btn-definir').addEventListener('click', (e) => {
-        const btn = e.currentTarget
-        abrirModal(btn.dataset.cidade, btn.dataset.id, btn.dataset.data)
+      // + Nova Rota
+      card.querySelector('.btn-nova-rota').addEventListener('click', (e) => {
+        e.stopPropagation()
+        abrirModal(cidade, null, '', '', '')
       })
 
-      // Remover cliente da rota fixa
-      card.querySelectorAll('.btn-remover-rota').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
+      // Liga os eventos de cada sub-card de rota
+      rotasDaCidade.forEach(rota => {
+        const subcard = card.querySelector(`.rota-subcard[data-rota-id="${rota.id}"]`)
+        if (!subcard) return
+
+        const vinculosRota = rotaClientesPorRota[rota.id] || []
+
+        // Editar rota (nome, data, observação)
+        subcard.querySelector('.btn-editar-rota').addEventListener('click', (e) => {
           e.stopPropagation()
-          const vinculoId = btn.dataset.vinculoId
-          const { error } = await supabase.from('rota_clientes').delete().eq('id', vinculoId)
+          abrirModal(cidade, rota.id, rota.nome, rota.data_visita, rota.observacao)
+        })
+
+        // Excluir a rota inteira
+        subcard.querySelector('.btn-excluir-rota-completa').addEventListener('click', async (e) => {
+          e.stopPropagation()
+          const confirmar = confirm(
+            `Excluir a rota "${rota.nome || 'sem nome'}"?\nOs clientes só serão desvinculados desta rota — nenhum cadastro é apagado.`
+          )
+          if (!confirmar) return
+
+          // Remove primeiro os vínculos, depois a rota (evita erro de referência)
+          await supabase.from('rota_clientes').delete().eq('rota_id', rota.id)
+          const { error } = await supabase.from('rotas').delete().eq('id', rota.id)
+
           if (error) {
-            console.error('Erro ao remover cliente da rota:', error)
-            alert('Erro ao remover cliente da rota.')
+            console.error('Erro ao excluir rota:', error)
+            alert('Erro ao excluir rota.')
             return
           }
           carregarRotas()
         })
-      })
 
-      // Adicionar cliente à rota fixa
-      const btnAdd = card.querySelector('.btn-add-cliente-rota')
-      if (btnAdd) {
-        btnAdd.addEventListener('click', async (e) => {
-          e.stopPropagation()
-          const select = card.querySelector('.select-add-cliente')
-          const clienteId = select.value
-          if (!clienteId) return
-
-          const proximaOrdem = vinculosRota.length > 0
-            ? Math.max(...vinculosRota.map(v => v.ordem)) + 1
-            : 0
-
-          const { error } = await supabase.from('rota_clientes').insert({
-            user_id: userId,
-            rota_id: rota.id,
-            cliente_id: clienteId,
-            ordem: proximaOrdem
+        // Remover cliente da rota
+        subcard.querySelectorAll('.btn-remover-rota').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation()
+            const vinculoId = btn.dataset.vinculoId
+            const { error } = await supabase.from('rota_clientes').delete().eq('id', vinculoId)
+            if (error) {
+              console.error('Erro ao remover cliente da rota:', error)
+              alert('Erro ao remover cliente da rota.')
+              return
+            }
+            carregarRotas()
           })
-
-          if (error) {
-            console.error('Erro ao adicionar cliente à rota:', error)
-            alert('Erro ao adicionar cliente à rota.')
-            return
-          }
-          carregarRotas()
         })
-      }
 
-      // Drag and drop pra reordenar
-      ativarDragDrop(card.querySelector('.cidade-clientes'), rota.id)
+        // Adicionar cliente à rota
+        const btnAdd = subcard.querySelector('.btn-add-cliente-rota')
+        if (btnAdd) {
+          btnAdd.addEventListener('click', async (e) => {
+            e.stopPropagation()
+            const select = subcard.querySelector('.select-add-cliente')
+            const clienteId = select.value
+            if (!clienteId) return
+
+            const proximaOrdem = vinculosRota.length > 0
+              ? Math.max(...vinculosRota.map(v => v.ordem)) + 1
+              : 0
+
+            const { error } = await supabase.from('rota_clientes').insert({
+              user_id: userId,
+              rota_id: rota.id,
+              cliente_id: clienteId,
+              ordem: proximaOrdem
+            })
+
+            if (error) {
+              console.error('Erro ao adicionar cliente à rota:', error)
+              alert('Erro ao adicionar cliente à rota.')
+              return
+            }
+            carregarRotas()
+          })
+        }
+
+        // Drag and drop pra reordenar (uma instância por rota)
+        ativarDragDrop(subcard.querySelector('.rota-lista-clientes'), rota.id)
+      })
 
       listaCidades.appendChild(card)
     })
+}
+
+function renderizarRotaSubcard(rota, index, clientes, vinculosRota) {
+  const nomeRota = rota.nome?.trim() || `Rota ${index + 1}`
+  const temData  = rota.data_visita
+  const dataFormatada = temData
+    ? new Date(rota.data_visita).toLocaleDateString('pt-BR', {
+        day: '2-digit', month: '2-digit', timeZone: 'UTC'
+      })
+    : null
+
+  return `
+    <div class="rota-subcard" data-rota-id="${rota.id}">
+      <div class="rota-subcard-header">
+        <div class="rota-subcard-info">
+          <span class="rota-nome">${nomeRota}</span>
+          <span class="data-badge ${temData ? '' : 'sem-data'}">
+            ${temData ? `📅 ${dataFormatada}` : 'Sem data definida'}
+          </span>
+        </div>
+        <div class="rota-subcard-acoes">
+          <button class="btn-definir btn-editar-rota">Editar</button>
+          <button class="btn-excluir-rota-completa" title="Excluir esta rota">🗑️</button>
+        </div>
+      </div>
+
+      <div class="rota-lista-clientes" data-rota-id="${rota.id}">
+        ${renderizarListaFixa(vinculosRota)}
+      </div>
+
+      ${vinculosRota.length > 0 ? '<p class="dica-arrastar">Arraste ⠿ para reordenar a sequência de visita.</p>' : ''}
+
+      <div class="adicionar-cliente-rota">
+        <select class="select-add-cliente">
+          <option value="">+ Adicionar cliente à rota...</option>
+          ${clientes
+            .filter(c => !vinculosRota.some(v => v.cliente_id === c.id))
+            .map(c => `<option value="${c.id}">${c.nome}${c.cidade ? ' — ' + c.cidade : ''}</option>`)
+            .join('')}
+        </select>
+        <button class="btn-add-cliente-rota">Adicionar</button>
+      </div>
+    </div>
+  `
 }
 
 function renderizarListaFixa(vinculos) {

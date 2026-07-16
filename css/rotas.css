@@ -140,6 +140,73 @@
   display: block;
 }
 
+/* ── Sub-card de rota (uma cidade pode ter várias) ── */
+.rota-subcard {
+  border-bottom: 8px solid var(--bg);
+}
+
+.rota-subcard:last-child {
+  border-bottom: none;
+}
+
+.rota-subcard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: var(--bg);
+}
+
+.rota-subcard-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rota-nome {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-dark);
+}
+
+.rota-subcard-acoes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-editar-rota {
+  padding: 5px 12px;
+  font-size: 12px;
+}
+
+.btn-excluir-rota-completa {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: #FBEAEA;
+  color: #A85454;
+  font-size: 13px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.btn-excluir-rota-completa:hover {
+  background: #F5D0D0;
+}
+
+.btn-nova-rota {
+  background: var(--accent-deep);
+  color: #fff;
+  border-color: var(--accent-deep);
+}
+
+.btn-nova-rota:hover {
+  background: #336E94;
+}
+
 .cliente-row {
   display: flex;
   align-items: center;
