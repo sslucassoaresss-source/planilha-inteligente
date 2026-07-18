@@ -32,6 +32,11 @@
       </div>
     </div>
 
+    <div class="visao-toggle">
+      <button id="btnVisaoLista" class="visao-btn ativo">📋 Lista</button>
+      <button id="btnVisaoCalendario" class="visao-btn">📅 Calendário</button>
+    </div>
+
     <!-- Alerta de cidade com mais de 40 clientes -->
     <div class="alerta" id="alertaDivisao" style="display:none">
       ⚠️ Uma ou mais cidades têm mais de 40 clientes. Considere dividir em dois dias.
@@ -45,6 +50,9 @@
 
     <!-- Lista de cidades agrupadas -->
     <div id="listaCidades"></div>
+
+    <!-- Visão em calendário do mês -->
+    <div id="calendarioMes" style="display:none"></div>
 
   </main>
 

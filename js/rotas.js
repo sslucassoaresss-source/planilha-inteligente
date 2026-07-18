@@ -21,7 +21,7 @@ document.getElementById('btnSair').addEventListener('click', async () => {
 const selectMes = document.getElementById('selectMes')
 const hoje = new Date()
 
-for (let i = -1; i < 5; i++) {
+for (let i = -12; i < 5; i++) {
   const d = new Date(hoje.getFullYear(), hoje.getMonth() + i, 1)
   const valor = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
   const label = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
@@ -34,7 +34,28 @@ for (let i = -1; i < 5; i++) {
 
 selectMes.addEventListener('change', carregarRotas)
 
-// ── Modal (definir data) ───────────────────────────────────────
+// ── Alternância Lista / Calendário ─────────────────────────────
+const btnVisaoLista       = document.getElementById('btnVisaoLista')
+const btnVisaoCalendario  = document.getElementById('btnVisaoCalendario')
+
+function mostrarLista() {
+  document.getElementById('listaCidades').style.display = 'block'
+  document.getElementById('calendarioMes').style.display = 'none'
+  btnVisaoLista.classList.add('ativo')
+  btnVisaoCalendario.classList.remove('ativo')
+}
+
+function mostrarCalendarioView() {
+  document.getElementById('listaCidades').style.display = 'none'
+  document.getElementById('calendarioMes').style.display = 'block'
+  btnVisaoCalendario.classList.add('ativo')
+  btnVisaoLista.classList.remove('ativo')
+}
+
+btnVisaoLista.addEventListener('click', mostrarLista)
+btnVisaoCalendario.addEventListener('click', mostrarCalendarioView)
+
+// ── Modal (nova rota / editar rota) ────────────────────────────
 const modalOverlay  = document.getElementById('modalOverlay')
 const formRota      = document.getElementById('formRota')
 
@@ -59,7 +80,7 @@ document.getElementById('btnFecharModal').addEventListener('click', fecharModal)
 document.getElementById('btnCancelar').addEventListener('click', fecharModal)
 modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) fecharModal() })
 
-// ── Salvar data de visita ─────────────────────────────────────
+// ── Salvar rota (nova ou edição) ───────────────────────────────
 formRota.addEventListener('submit', async (e) => {
   e.preventDefault()
 
@@ -142,8 +163,8 @@ async function carregarRotas() {
     .eq('ano', parseInt(ano))
 
   // Agrupa as rotas existentes por cidade normalizada.
-  // Diferente de antes, várias rotas na mesma cidade são esperadas e desejadas
-  // (ex: "Rota 1" e "Rota 2" em Indaiatuba) — não mesclamos mais automaticamente.
+  // Várias rotas na mesma cidade são esperadas e desejadas
+  // (ex: "Rota 1" e "Rota 2" em Indaiatuba) — não mesclamos automaticamente.
   const rotasPorCidade = {}
   rotas?.forEach(r => {
     const chave = normalizarCidade(r.cidade)
@@ -206,6 +227,8 @@ async function carregarRotas() {
   const temAlerta = Object.values(grupos).some(g => g.length > 40)
   alertaDivisao.style.display = temAlerta ? 'block' : 'none'
 
+  renderizarCalendario(parseInt(ano), parseInt(mes), rotasPorCidade, nomeExibicao)
+
   // ── Renderiza cada cidade ──
   Object.entries(grupos)
     .sort(([a], [b]) => nomeExibicao[a].localeCompare(nomeExibicao[b]))
@@ -219,6 +242,7 @@ async function carregarRotas() {
 
       const card = document.createElement('div')
       card.className = 'cidade-card'
+      card.setAttribute('data-cidade-chave', chave)
       card.innerHTML = `
         <div class="cidade-header">
           <div class="cidade-info">
@@ -382,6 +406,80 @@ function renderizarRotaSubcard(rota, index, clientes, vinculosRota) {
   `
 }
 
+// ── Visão em calendário do mês ──────────────────────────────────
+const nomesDiasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+
+function renderizarCalendario(ano, mes, rotasPorCidade, nomeExibicao) {
+  const calendario = document.getElementById('calendarioMes')
+  calendario.innerHTML = ''
+
+  const diasNoMes         = new Date(ano, mes, 0).getDate()
+  const primeiroDiaSemana = new Date(ano, mes - 1, 1).getDay()
+
+  // Mapeia cada dia do mês pras rotas marcadas nele (usando a string "AAAA-MM-DD"
+  // direto, sem passar por new Date(), pra evitar o mesmo bug de fuso horário
+  // que já corrigimos em Visitas/Dashboard)
+  const rotasPorDia = {}
+  Object.entries(rotasPorCidade).forEach(([chave, lista]) => {
+    const cidade = nomeExibicao[chave]
+    lista.forEach(rota => {
+      if (!rota.data_visita) return
+      const dia = parseInt(rota.data_visita.split('-')[2], 10)
+      if (!rotasPorDia[dia]) rotasPorDia[dia] = []
+      rotasPorDia[dia].push({ rota, cidade, chave })
+    })
+  })
+
+  const grid = document.createElement('div')
+  grid.className = 'calendario-grid'
+
+  nomesDiasSemana.forEach(nome => {
+    const cab = document.createElement('div')
+    cab.className = 'calendario-cabecalho'
+    cab.textContent = nome
+    grid.appendChild(cab)
+  })
+
+  for (let i = 0; i < primeiroDiaSemana; i++) {
+    const vazio = document.createElement('div')
+    vazio.className = 'calendario-dia vazio'
+    grid.appendChild(vazio)
+  }
+
+  for (let dia = 1; dia <= diasNoMes; dia++) {
+    const celula = document.createElement('div')
+    celula.className = 'calendario-dia'
+
+    const rotasDoDia = rotasPorDia[dia] || []
+
+    celula.innerHTML = `
+      <div class="calendario-dia-numero">${dia}</div>
+      ${rotasDoDia.map(({ rota, cidade, chave }) => `
+        <button class="calendario-rota-pill" data-chave="${chave}">
+          ${rota.nome?.trim() || 'Rota'} — ${cidade}
+        </button>
+      `).join('')}
+    `
+
+    grid.appendChild(celula)
+  }
+
+  calendario.appendChild(grid)
+
+  // Clique numa rota do calendário: volta pra Lista e abre a cidade correspondente
+  calendario.querySelectorAll('.calendario-rota-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const chave = btn.dataset.chave
+      mostrarLista()
+      const card = document.querySelector(`.cidade-card[data-cidade-chave="${chave}"]`)
+      if (card) {
+        card.classList.add('aberto')
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    })
+  })
+}
+
 function renderizarListaFixa(vinculos) {
   if (vinculos.length === 0) {
     return `<div class="cliente-row"><span style="color:var(--text-soft);font-size:13px;">Nenhum cliente nesta rota ainda. Adicione abaixo.</span></div>`
@@ -433,4 +531,5 @@ function ativarDragDrop(container, rotaId) {
 }
 
 // ── Inicializar ───────────────────────────────────────────────
+mostrarLista()
 carregarRotas()

@@ -20,7 +20,7 @@
   border-color: var(--accent-deep);
 }
 
-/* ── Alerta ── */
+/* ── Alertas ── */
 .alerta {
   background: #FFF8E1;
   border: 1px solid #FFD54F;
@@ -29,6 +29,98 @@
   padding: 12px 16px;
   border-radius: 10px;
   margin-bottom: 24px;
+}
+
+/* ── Alternância Lista / Calendário ── */
+.visao-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.visao-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.visao-btn:hover {
+  background: var(--bg);
+}
+
+.visao-btn.ativo {
+  background: var(--accent-deep);
+  border-color: var(--accent-deep);
+  color: #fff;
+}
+
+/* ── Calendário do mês ── */
+.calendario-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.calendario-cabecalho {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 6px 0;
+}
+
+.calendario-dia {
+  min-height: 90px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.calendario-dia.vazio {
+  background: transparent;
+  border: none;
+}
+
+.calendario-dia-numero {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-soft);
+}
+
+.calendario-rota-pill {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 5px;
+  background: #E8F4FC;
+  color: var(--accent-deep);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.15s;
+}
+
+.calendario-rota-pill:hover {
+  background: #D0E7F5;
 }
 
 /* ── Card de cidade ── */
@@ -397,5 +489,24 @@
 
   .adicionar-cliente-rota {
     flex-direction: column;
+  }
+
+  .calendario-grid {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 3px;
+  }
+
+  .calendario-dia {
+    min-height: 56px;
+    padding: 4px;
+  }
+
+  .calendario-dia-numero {
+    font-size: 10px;
+  }
+
+  .calendario-rota-pill {
+    font-size: 8px;
+    padding: 2px 3px;
   }
 }
