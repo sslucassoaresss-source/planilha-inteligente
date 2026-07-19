@@ -1,74 +1,76 @@
-# 📊 Planilha Inteligente
+# Planilha Inteligente
 
-A multi-tenant SaaS web application built for field sales representatives to manage clients, plan visit routes, log sales, and track commissions — replacing manual spreadsheets and messaging apps.
+A route and sales management SaaS built for field sales representatives who visit dozens of stores per cycle. Originally designed for a rep who covers 150+ stores across multiple cities, it replaces spreadsheets and WhatsApp notes with a single, mobile-friendly workflow: plan the route, visit the store, log the sale, track the commission.
 
 **🔗 Live demo:** [planilha-inteligente-liart.vercel.app](https://planilha-inteligente-liart.vercel.app)
-**🔐 Demo login:** `demo@planilhainteligente.com` / `Demo2026!`
+**Demo credentials:** `demo@planilhainteligente.com` / `Demo2026!`
 
-> This is a real client project. The demo above runs on an isolated demo account with fictional data — no real client information is exposed.
-
----
-
-## 🖼️ Preview
-
-_Add 2-3 screenshots or a short GIF here (Dashboard, Clients, Routes) once available._
+> The demo runs on isolated, fictional data — every account is fully separated at the database level via Row Level Security (RLS), so no user can ever see another user's clients, visits, or routes.
 
 ---
 
-## 🎯 Why this project
+## Overview
 
-Built for a sales representative who manages 30–40 store visits a day across multiple cities, and represents several partner companies — each with its own commission rate. The goal was to replace scattered Excel sheets and WhatsApp notes with a single, reliable system.
+Sales reps who cover a large territory usually end up juggling a spreadsheet for client data, a notebook (or WhatsApp) for daily visit logs, and their own memory for who's owed a discount or which store hasn't been visited in a while. Planilha Inteligente puts all of that in one place, built around how a rep actually works day to day: cluster clients by city, plan multiple named routes per city, log each visit in seconds from the road, and see sales/commission numbers roll up automatically.
 
----
+## Features
 
-## ✨ Features
+### 📊 Dashboard
+- Monthly summary cards: visits, total sold, conversion rate, estimated commission
+- Daily sales bar chart with hover tooltips
+- Recent visits feed
+- Live widget listing clients with an active fixed discount
 
-- **Authentication** — Supabase Auth, session-based access control
-- **Clients** — full CRUD, per-client fixed discount, quick inline discount editing
-- **Companies** — each partner company has its own commission percentage
-- **Routes** — clients auto-grouped by city, persistent & manually curated once a visit date is set, drag-and-drop reordering, Google Maps integration
-- **Visits** — multi-item sales per visit (one visit can include sales from multiple partner companies), automatic discount application
-- **Dashboard** — daily/monthly KPIs, sales chart, commission calculated per company
-- **Multi-tenant architecture** — Row Level Security ensures each user only ever sees their own data
+### 👥 Clientes (Clients)
+- Full CRUD with address, city, state, phone, and fixed discount (in R$, deducted once per visit total — not per item)
+- Optional Google Maps coordinates (paste `lat, lng` directly from the Maps app) for pinpoint-accurate directions, with automatic fallback to the text address when coordinates aren't set
+- Real-time search by name or city (accent- and case-insensitive)
+- Inline quick-edit for discount values directly from the table
+- Persistent notes field surfaced automatically during visit logging
 
----
+### 🏢 Empresas (Companies)
+- Manage the companies/brands the rep represents, each with its own commission percentage
+- Optional manual commission override per sale item, for companies whose commission isn't a flat rate
 
-## 🛠️ Tech Stack
+### 🗺️ Rotas (Routes)
+- Clients automatically grouped by city (case/whitespace normalized, so "Indaiatuba" and "indaiatuba" always merge into one group)
+- **Multiple independently named routes per city** ("Route 1", "Route 2"...), so a rep visiting 30+ stores in one city can split them into manageable batches across different days
+- Drag-and-drop reordering within a route (touch-friendly, works on mobile via SortableJS)
+- One-tap "Open in Maps" per stop, using precise coordinates when available
+- **Calendar view**: see the whole month at a glance, with every scheduled route shown on its date — click a route to jump straight to it in the list view
+- Full client mobility between routes — a client can appear in multiple routes with no restriction, giving the rep total freedom to reorganize
 
-- **Frontend:** HTML5, CSS3, JavaScript (ES6+, native modules — no framework/build step)
-- **Backend:** Supabase (PostgreSQL, Auth, Row Level Security, Realtime)
-- **Hosting:** Vercel
-- **Version control:** Git / GitHub
+### 🧾 Visitas (Visits)
+- Type-ahead client search (no more scrolling a 150-option dropdown from the road)
+- Multi-item sales per visit, each linked to a company, with automatic commission calculation (or manual override)
+- Fixed client discount clearly broken down: subtotal → discount → final total
+- Daily summary (visits today, purchases today, total sold today)
+- Persistent client notes surfaced automatically when logging a visit
 
----
+## Tech Stack
 
-## 🗄️ Data Model (simplified)
+- **Frontend:** HTML5, CSS3, JavaScript (ES6+, vanilla — no framework)
+- **Backend:** [Supabase](https://supabase.com) (PostgreSQL, Auth, Row Level Security, Realtime-ready)
+- **Hosting:** [Vercel](https://vercel.com)
+- **Drag & drop:** [SortableJS](https://sortablejs.github.io/Sortable/)
+
+## Project Structure
 
 ```
-clientes      → client profiles, fixed discount, notes
-empresas      → partner companies, each with its own commission %
-rotas         → one row per city per month, with a defined visit date
-rota_clientes → ordered, persistent list of clients within a route
-visitas       → one row per visit (client, date, purchase status)
-itens_venda   → one or more sale line items per visit, linked to a company
+├── index.html              # Login
+├── pages/                  # App pages (Dashboard, Clientes, Empresas, Rotas, Visitas)
+├── js/                     # One module per page + supabase.js client + auth.js
+├── css/                    # One stylesheet per page + shared style.css
+└── README.md
 ```
 
-Every table is protected with Row Level Security policies scoped to `auth.uid()`, so the same codebase safely serves multiple independent users.
+## Running Locally
 
----
+1. Clone the repo
+2. Create a Supabase project and set up the schema (clients, companies, visits, sale items, routes, route-client links) with RLS policies scoped to `auth.uid() = user_id`
+3. Update `js/supabase.js` with your project URL and public (anon) key
+4. Serve the folder with any static file server (no build step required)
 
-## 🚀 Running locally
+## About
 
-```bash
-git clone https://github.com/sslucassoaresss-source/planilha-inteligente.git
-cd planilha-inteligente
-```
-
-Open `index.html` with a local static server (e.g. VS Code's Live Server extension). No build step or dependencies required — it's plain HTML/CSS/JS with ES modules.
-
----
-
-## 👤 Author
-
-**Lucas Soares de Sousa**
-Frontend / Full-Stack Developer — [LinkedIn](https://www.linkedin.com/in/lucas-soares-8942a4405/) · [Email](mailto:sslucassoares.s.s@icloud.com)
+Built by [Lucas Soares](https://www.linkedin.com/in/lucas-soares-8942a4405/) — a self-taught developer transitioning from six years in live TV/audiovisual production into web development. This project is in active production use by a real field sales rep, with ongoing feature development driven directly by real-world usage feedback.
