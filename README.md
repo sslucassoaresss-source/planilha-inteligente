@@ -74,3 +74,4 @@ Sales reps who cover a large territory usually end up juggling a spreadsheet for
 ## About
 
 Built by [Lucas Soares](https://www.linkedin.com/in/lucas-soares-8942a4405/) — a self-taught developer transitioning from six years in live TV/audiovisual production into web development. This project is in active production use by a real field sales rep, with ongoing feature development driven directly by real-world usage feedback.
+Built by [Lucas Soares](https://www.linkedin.com/in/lucas-soares-8942a4405/) — a self-taught developer transitioning from six years in live TV/audiovisual production into web development. This project is in active production use by a real field sales rep, with ongoing feature development driven directly by real-world usage feedback.
