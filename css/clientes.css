@@ -3,6 +3,28 @@
    Planilha Inteligente
 ═══════════════════════════════════════ */
 
+/* ── Busca ── */
+.filtros {
+  margin-bottom: 20px;
+}
+
+.filtros input {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--text-dark);
+  background: var(--card);
+}
+
+.filtros input:focus {
+  outline: none;
+  border-color: var(--accent-deep);
+  box-shadow: 0 0 0 3px rgba(61, 126, 166, 0.15);
+}
+
 .obs-cell {
   max-width: 220px;
   white-space: nowrap;

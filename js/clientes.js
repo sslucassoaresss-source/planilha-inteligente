@@ -9,12 +9,16 @@ if (!session) {
 const userId = session.user.id
 document.getElementById('conteudo').style.display = 'block'
 
-const listaClientes  = document.getElementById('listaClientes')
-const modalOverlay   = document.getElementById('modalOverlay')
-const modalTitulo    = document.getElementById('modalTitulo')
-const formCliente    = document.getElementById('formCliente')
-const msgVazio       = document.getElementById('msgVazio')
-const tabelaWrapper  = document.getElementById('tabelaWrapper')
+const listaClientes   = document.getElementById('listaClientes')
+const modalOverlay    = document.getElementById('modalOverlay')
+const modalTitulo     = document.getElementById('modalTitulo')
+const formCliente     = document.getElementById('formCliente')
+const msgVazio        = document.getElementById('msgVazio')
+const msgBuscaVazia   = document.getElementById('msgBuscaVazia')
+const tabelaWrapper   = document.getElementById('tabelaWrapper')
+const inputBuscaCliente = document.getElementById('buscaCliente')
+
+let todosClientes = []
 
 function abrirModal(titulo = 'Novo Cliente') {
   modalTitulo.textContent = titulo
@@ -37,6 +41,10 @@ document.getElementById('btnSair').addEventListener('click', async () => {
   window.location.href = '../index.html'
 })
 
+function normalizarTexto(txt) {
+  return (txt || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+}
+
 async function carregarClientes() {
   const { data, error } = await supabase
     .from('clientes')
@@ -45,18 +53,34 @@ async function carregarClientes() {
 
   if (error) { console.error('Erro ao carregar clientes:', error); return }
 
-  listaClientes.innerHTML = ''
+  todosClientes = data
 
   if (data.length === 0) {
     msgVazio.style.display = 'block'
     tabelaWrapper.style.display = 'none'
+    document.querySelector('.filtros').style.display = 'none'
     return
   }
 
   msgVazio.style.display = 'none'
+  document.querySelector('.filtros').style.display = 'block'
+
+  renderizarTabela(todosClientes)
+}
+
+function renderizarTabela(lista) {
+  listaClientes.innerHTML = ''
+
+  if (lista.length === 0) {
+    tabelaWrapper.style.display = 'none'
+    msgBuscaVazia.style.display = 'block'
+    return
+  }
+
+  msgBuscaVazia.style.display = 'none'
   tabelaWrapper.style.display = 'block'
 
-  data.forEach(cliente => {
+  lista.forEach(cliente => {
     const tr = document.createElement('tr')
     tr.innerHTML = `
       <td><strong>${cliente.nome}</strong></td>
@@ -79,7 +103,7 @@ async function carregarClientes() {
   })
 
   document.querySelectorAll('.btn-editar').forEach(btn => {
-    btn.addEventListener('click', () => editarCliente(btn.dataset.id, data))
+    btn.addEventListener('click', () => editarCliente(btn.dataset.id, lista))
   })
 
   document.querySelectorAll('.btn-excluir').forEach(btn => {
@@ -90,6 +114,22 @@ async function carregarClientes() {
     btn.addEventListener('click', () => abrirDescontoRapido(btn))
   })
 }
+
+// ── Busca dinâmica (filtra por nome ou cidade, ignorando acentos/maiúsculas) ──
+inputBuscaCliente.addEventListener('input', () => {
+  const termo = normalizarTexto(inputBuscaCliente.value)
+
+  if (!termo) {
+    renderizarTabela(todosClientes)
+    return
+  }
+
+  const filtrados = todosClientes.filter(c =>
+    normalizarTexto(c.nome).includes(termo) || normalizarTexto(c.cidade).includes(termo)
+  )
+
+  renderizarTabela(filtrados)
+})
 
 function abrirDescontoRapido(btn) {
   const celula = btn.closest('.celula-desconto')
