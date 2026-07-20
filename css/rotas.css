@@ -434,8 +434,12 @@
   background: var(--bg);
 }
 
-.adicionar-cliente-rota select {
+.adicionar-cliente-rota .campo-busca-cliente {
   flex: 1;
+}
+
+.adicionar-cliente-rota .campo-busca-cliente input[type="text"] {
+  width: 100%;
   padding: 9px 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -445,7 +449,7 @@
   background: var(--card);
 }
 
-.adicionar-cliente-rota select:focus {
+.adicionar-cliente-rota .campo-busca-cliente input[type="text"]:focus {
   outline: none;
   border-color: var(--accent-deep);
 }
@@ -466,6 +470,55 @@
 
 .btn-add-cliente-rota:hover {
   background: #336E94;
+}
+
+.btn-add-cliente-rota:disabled {
+  background: var(--text-soft);
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+/* ── Busca dinâmica de cliente (autocomplete) — mesmo padrão de Visitas ── */
+.campo-busca-cliente {
+  position: relative;
+}
+
+.sugestoes-cliente {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(31, 59, 77, 0.12);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 20;
+}
+
+.sugestao-item {
+  padding: 10px 13px;
+  font-size: 14px;
+  color: var(--text-dark);
+  cursor: pointer;
+  border-bottom: 1px solid var(--bg);
+}
+
+.sugestao-item:last-child {
+  border-bottom: none;
+}
+
+.sugestao-item:hover {
+  background: #E8F4FC;
+}
+
+.sugestao-vazia {
+  padding: 10px 13px;
+  font-size: 13px;
+  color: var(--text-soft);
+  font-style: italic;
 }
 
 .dica-arrastar {

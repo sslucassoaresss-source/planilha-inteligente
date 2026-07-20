@@ -4,3 +4,6 @@
 # Arquivos de sistema
 .DS_Store
 Thumbs.db
+
+# Configuração local de ferramentas de IA (ex: Claude Code)
+.claude/

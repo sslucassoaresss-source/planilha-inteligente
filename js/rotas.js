@@ -32,7 +32,7 @@ for (let i = -12; i < 5; i++) {
   selectMes.appendChild(opt)
 }
 
-selectMes.addEventListener('change', carregarRotas)
+selectMes.addEventListener('change', () => carregarRotas())
 
 // ── Alternância Lista / Calendário ─────────────────────────────
 const btnVisaoLista       = document.getElementById('btnVisaoLista')
@@ -118,7 +118,7 @@ formRota.addEventListener('submit', async (e) => {
   }
 
   fecharModal()
-  carregarRotas()
+  carregarRotas([normalizarCidade(cidade)])
 })
 
 function linkMapsDe(c) {
@@ -140,8 +140,18 @@ function normalizarCidade(cidade) {
   return (cidade?.trim() || 'Sem cidade').toLowerCase().replace(/\s+/g, ' ')
 }
 
+// Remove acentos e ignora maiúscula/minúscula, pra buscar "sao paulo" e achar "São Paulo"
+// (mesmo helper usado na busca de cliente em Visitas)
+function normalizarTexto(txt) {
+  return (txt || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
+}
+
 // ── Carregar e renderizar ─────────────────────────────────────
-async function carregarRotas() {
+// "chavesParaAbrir" recebe as cidades (já normalizadas) que devem
+// continuar/ficar abertas depois do recarregamento — sem isso, toda
+// ação (criar rota, adicionar/remover cliente, etc.) reconstrói os
+// cards do zero e todas as cidades fecham sozinhas.
+async function carregarRotas(chavesParaAbrir = []) {
   const [ano, mes] = selectMes.value.split('-')
 
   // Todos os clientes (pra agrupar por cidade e alimentar o "+ adicionar")
@@ -197,6 +207,13 @@ async function carregarRotas() {
   const msgVazio      = document.getElementById('msgVazio')
   const alertaDivisao = document.getElementById('alertaDivisao')
 
+  // Guarda quem já estava aberto antes de apagar tudo, e soma as
+  // cidades que devem abrir por causa da ação que acabou de acontecer
+  const cidadesAbertas = new Set([
+    ...Array.from(listaCidades.querySelectorAll('.cidade-card.aberto')).map(el => el.dataset.cidadeChave),
+    ...chavesParaAbrir
+  ])
+
   listaCidades.innerHTML = ''
 
   if (clientes.length === 0) {
@@ -243,6 +260,7 @@ async function carregarRotas() {
       const card = document.createElement('div')
       card.className = 'cidade-card'
       card.setAttribute('data-cidade-chave', chave)
+      if (cidadesAbertas.has(chave)) card.classList.add('aberto')
       card.innerHTML = `
         <div class="cidade-header">
           <div class="cidade-info">
@@ -307,7 +325,7 @@ async function carregarRotas() {
             alert('Erro ao excluir rota.')
             return
           }
-          carregarRotas()
+          carregarRotas([chave])
         })
 
         // Remover cliente da rota
@@ -321,18 +339,80 @@ async function carregarRotas() {
               alert('Erro ao remover cliente da rota.')
               return
             }
-            carregarRotas()
+            carregarRotas([chave])
           })
         })
 
-        // Adicionar cliente à rota
-        const btnAdd = subcard.querySelector('.btn-add-cliente-rota')
-        if (btnAdd) {
+        // Adicionar cliente à rota — busca com autocomplete (mesmo padrão de Visitas),
+        // em vez de um <select> com todos os clientes pra rolar um por um
+        const inputBuscaCliente   = subcard.querySelector('.input-busca-cliente-rota')
+        const boxSugestoesCliente = subcard.querySelector('.sugestoes-cliente')
+        const btnAdd              = subcard.querySelector('.btn-add-cliente-rota')
+
+        if (inputBuscaCliente && btnAdd) {
+          const clientesDisponiveis = clientes.filter(c => !vinculosRota.some(v => v.cliente_id === c.id))
+          let clienteEscolhido = null
+
+          function renderizarSugestoesRota(filtro) {
+            const termo = normalizarTexto(filtro)
+            boxSugestoesCliente.innerHTML = ''
+
+            if (!termo) {
+              boxSugestoesCliente.style.display = 'none'
+              return
+            }
+
+            const resultados = clientesDisponiveis
+              .filter(c => normalizarTexto(c.nome).includes(termo))
+              .slice(0, 8)
+
+            if (resultados.length === 0) {
+              boxSugestoesCliente.innerHTML = '<div class="sugestao-vazia">Nenhum cliente encontrado</div>'
+              boxSugestoesCliente.style.display = 'block'
+              return
+            }
+
+            resultados.forEach(c => {
+              const item = document.createElement('div')
+              item.className = 'sugestao-item'
+              item.textContent = `${c.nome}${c.cidade ? ' — ' + c.cidade : ''}`
+              // mousedown (não click) pra disparar antes do blur do input
+              item.addEventListener('mousedown', (e) => {
+                e.preventDefault()
+                clienteEscolhido = c
+                inputBuscaCliente.value = c.nome
+                boxSugestoesCliente.innerHTML = ''
+                boxSugestoesCliente.style.display = 'none'
+                btnAdd.disabled = false
+              })
+              boxSugestoesCliente.appendChild(item)
+            })
+
+            boxSugestoesCliente.style.display = 'block'
+          }
+
+          inputBuscaCliente.addEventListener('input', () => {
+            // Enquanto o usuário digita, invalida a seleção anterior
+            clienteEscolhido = null
+            btnAdd.disabled = true
+            renderizarSugestoesRota(inputBuscaCliente.value)
+          })
+
+          inputBuscaCliente.addEventListener('focus', () => {
+            if (inputBuscaCliente.value) renderizarSugestoesRota(inputBuscaCliente.value)
+          })
+
+          inputBuscaCliente.addEventListener('blur', () => {
+            setTimeout(() => { boxSugestoesCliente.style.display = 'none' }, 150)
+          })
+
           btnAdd.addEventListener('click', async (e) => {
             e.stopPropagation()
-            const select = subcard.querySelector('.select-add-cliente')
-            const clienteId = select.value
-            if (!clienteId) return
+            if (!clienteEscolhido) {
+              alert('Escolha um cliente da lista de sugestões antes de adicionar.')
+              inputBuscaCliente.focus()
+              return
+            }
 
             const proximaOrdem = vinculosRota.length > 0
               ? Math.max(...vinculosRota.map(v => v.ordem)) + 1
@@ -341,7 +421,7 @@ async function carregarRotas() {
             const { error } = await supabase.from('rota_clientes').insert({
               user_id: userId,
               rota_id: rota.id,
-              cliente_id: clienteId,
+              cliente_id: clienteEscolhido.id,
               ordem: proximaOrdem
             })
 
@@ -350,7 +430,7 @@ async function carregarRotas() {
               alert('Erro ao adicionar cliente à rota.')
               return
             }
-            carregarRotas()
+            carregarRotas([chave])
           })
         }
 
@@ -393,14 +473,11 @@ function renderizarRotaSubcard(rota, index, clientes, vinculosRota) {
       ${vinculosRota.length > 0 ? '<p class="dica-arrastar">Arraste ⠿ para reordenar a sequência de visita.</p>' : ''}
 
       <div class="adicionar-cliente-rota">
-        <select class="select-add-cliente">
-          <option value="">+ Adicionar cliente à rota...</option>
-          ${clientes
-            .filter(c => !vinculosRota.some(v => v.cliente_id === c.id))
-            .map(c => `<option value="${c.id}">${c.nome}${c.cidade ? ' — ' + c.cidade : ''}</option>`)
-            .join('')}
-        </select>
-        <button class="btn-add-cliente-rota">Adicionar</button>
+        <div class="campo-busca-cliente">
+          <input type="text" class="input-busca-cliente-rota" placeholder="Buscar cliente para adicionar..." autocomplete="off">
+          <div class="sugestoes-cliente"></div>
+        </div>
+        <button class="btn-add-cliente-rota" disabled>Adicionar</button>
       </div>
     </div>
   `
