@@ -11,6 +11,15 @@ if (!session) {
 const userId = session.user.id
 document.getElementById('conteudo').style.display = 'block'
 
+// Esconde qualquer caixa de sugestão de cliente aberta ao rolar a página —
+// como elas são posicionadas via coordenadas fixas (ver carregarRotas), sem
+// isso ficariam "flutuando" no lugar errado depois do scroll.
+window.addEventListener('scroll', () => {
+  document.querySelectorAll('.sugestoes-cliente-flutuante').forEach(el => {
+    el.style.display = 'none'
+  })
+}, true)
+
 // ── Sair ──────────────────────────────────────────────────────
 document.getElementById('btnSair').addEventListener('click', async () => {
   await supabase.auth.signOut()
@@ -21,7 +30,8 @@ document.getElementById('btnSair').addEventListener('click', async () => {
 const selectMes = document.getElementById('selectMes')
 const hoje = new Date()
 
-for (let i = -12; i < 5; i++) {
+// Do mais recente pro mais antigo (mês atual/futuros no topo, indo pra baixo)
+for (let i = 4; i >= -12; i--) {
   const d = new Date(hoje.getFullYear(), hoje.getMonth() + i, 1)
   const valor = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
   const label = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
@@ -84,12 +94,27 @@ modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) f
 formRota.addEventListener('submit', async (e) => {
   e.preventDefault()
 
-  const [ano, mes] = selectMes.value.split('-')
+  const [anoSelecionado, mesSelecionado] = selectMes.value.split('-')
   const cidade     = document.getElementById('rotaCidade').value
   const rotaId     = document.getElementById('rotaId').value
   const nome       = document.getElementById('nomeRota').value.trim()
   const dataVisita = document.getElementById('dataVisita').value
   const obs        = document.getElementById('obsRota').value.trim()
+
+  // A rota pertence ao mês da DATA DE VISITA (quando informada) — não ao mês
+  // que estava selecionado na tela no momento de salvar. Isso permite
+  // planejar com antecedência: o representante pode estar vendo Julho e
+  // já cadastrar uma rota pra 04/08, que deve aparecer quando ele for ver
+  // Agosto depois. Sem data definida ainda, a rota fica no mês selecionado.
+  let ano, mes
+  if (dataVisita) {
+    const [anoData, mesData] = dataVisita.split('-')
+    ano = anoData
+    mes = mesData
+  } else {
+    ano = anoSelecionado
+    mes = mesSelecionado
+  }
 
   const dados = {
     user_id:     userId,
@@ -115,6 +140,15 @@ formRota.addEventListener('submit', async (e) => {
     console.error('Erro ao salvar rota:', error)
     alert('Erro ao salvar. Tente novamente.')
     return
+  }
+
+  // Avisa quando a rota foi arquivada num mês diferente do que está sendo
+  // visto agora (por causa da data de visita) — sem isso, ela some da tela
+  // atual sem nenhuma explicação.
+  if (ano !== anoSelecionado || mes !== mesSelecionado) {
+    const labelMesDestino = new Date(parseInt(ano), parseInt(mes) - 1, 1)
+      .toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+    alert(`Rota salva em ${labelMesDestino.charAt(0).toUpperCase() + labelMesDestino.slice(1)}, de acordo com a data de visita.`)
   }
 
   fecharModal()
@@ -215,6 +249,12 @@ async function carregarRotas(chavesParaAbrir = []) {
   ])
 
   listaCidades.innerHTML = ''
+
+  // As caixas de sugestão de cliente (ver renderização abaixo) são anexadas
+  // direto no <body> pra escapar do "overflow: hidden" do card — como os
+  // cards são recriados do zero a cada chamada, removemos as antigas aqui
+  // pra não acumular elementos órfãos.
+  document.querySelectorAll('.sugestoes-cliente-flutuante').forEach(el => el.remove())
 
   if (clientes.length === 0) {
     msgVazio.style.display = 'block'
@@ -345,13 +385,30 @@ async function carregarRotas(chavesParaAbrir = []) {
 
         // Adicionar cliente à rota — busca com autocomplete (mesmo padrão de Visitas),
         // em vez de um <select> com todos os clientes pra rolar um por um
-        const inputBuscaCliente   = subcard.querySelector('.input-busca-cliente-rota')
-        const boxSugestoesCliente = subcard.querySelector('.sugestoes-cliente')
-        const btnAdd              = subcard.querySelector('.btn-add-cliente-rota')
+        const inputBuscaCliente = subcard.querySelector('.input-busca-cliente-rota')
+        const btnAdd            = subcard.querySelector('.btn-add-cliente-rota')
 
         if (inputBuscaCliente && btnAdd) {
           const clientesDisponiveis = clientes.filter(c => !vinculosRota.some(v => v.cliente_id === c.id))
           let clienteEscolhido = null
+
+          // A caixa de sugestões é anexada direto no <body>, em vez de ficar
+          // dentro do card de cidade — o card tem "overflow: hidden" (pra manter
+          // os cantos arredondados) e isso cortava a lista quando ela aparecia
+          // perto do fim do card. Posicionamos via JS usando as coordenadas
+          // reais do campo na tela, então ela sempre aparece por cima de tudo.
+          const boxSugestoesCliente = document.createElement('div')
+          boxSugestoesCliente.className = 'sugestoes-cliente sugestoes-cliente-flutuante'
+          document.body.appendChild(boxSugestoesCliente)
+
+          function posicionarSugestoes() {
+            const rect = inputBuscaCliente.getBoundingClientRect()
+            boxSugestoesCliente.style.position = 'fixed'
+            boxSugestoesCliente.style.top   = `${rect.bottom + 4}px`
+            boxSugestoesCliente.style.left  = `${rect.left}px`
+            boxSugestoesCliente.style.width = `${rect.width}px`
+            boxSugestoesCliente.style.right = 'auto'
+          }
 
           function renderizarSugestoesRota(filtro) {
             const termo = normalizarTexto(filtro)
@@ -368,6 +425,7 @@ async function carregarRotas(chavesParaAbrir = []) {
 
             if (resultados.length === 0) {
               boxSugestoesCliente.innerHTML = '<div class="sugestao-vazia">Nenhum cliente encontrado</div>'
+              posicionarSugestoes()
               boxSugestoesCliente.style.display = 'block'
               return
             }
@@ -388,6 +446,7 @@ async function carregarRotas(chavesParaAbrir = []) {
               boxSugestoesCliente.appendChild(item)
             })
 
+            posicionarSugestoes()
             boxSugestoesCliente.style.display = 'block'
           }
 
@@ -475,7 +534,6 @@ function renderizarRotaSubcard(rota, index, clientes, vinculosRota) {
       <div class="adicionar-cliente-rota">
         <div class="campo-busca-cliente">
           <input type="text" class="input-busca-cliente-rota" placeholder="Buscar cliente para adicionar..." autocomplete="off">
-          <div class="sugestoes-cliente"></div>
         </div>
         <button class="btn-add-cliente-rota" disabled>Adicionar</button>
       </div>
