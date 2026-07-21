@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js'
+import { mensagemErro } from './erros.js'
 
 const { data: { session } } = await supabase.auth.getSession()
 if (!session) {
@@ -217,7 +218,7 @@ formCliente.addEventListener('submit', async (e) => {
   btnSalvar.textContent = 'Salvar'
   btnSalvar.disabled = false
 
-  if (error) { console.error('Erro ao salvar:', error); alert('Erro ao salvar. Tente novamente.'); return }
+  if (error) { console.error('Erro ao salvar:', error); alert(mensagemErro(error)); return }
 
   fecharModal()
   carregarClientes()
