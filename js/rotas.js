@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js'
+import { mensagemErro } from './erros.js'
 import Sortable from 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/+esm'
 
 // ── Proteção de rota ──────────────────────────────────────────
@@ -26,9 +27,10 @@ document.getElementById('btnSair').addEventListener('click', async () => {
   window.location.href = '../index.html'
 })
 
-// ── Seletor de mês ────────────────────────────────────────────
+// ── Seletor de mês (só usado pelo Calendário — rotas são fixas agora) ──
 const selectMes = document.getElementById('selectMes')
 const hoje = new Date()
+const hojeISO = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`
 
 // Do mais recente pro mais antigo (mês atual/futuros no topo, indo pra baixo)
 for (let i = 4; i >= -12; i--) {
@@ -44,13 +46,17 @@ for (let i = 4; i >= -12; i--) {
 
 selectMes.addEventListener('change', () => carregarRotas())
 
-// ── Alternância Lista / Calendário ─────────────────────────────
+// ── Alternância Rotas Salvas / Calendário ──────────────────────
 const btnVisaoLista       = document.getElementById('btnVisaoLista')
 const btnVisaoCalendario  = document.getElementById('btnVisaoCalendario')
+const filtroMes           = document.querySelector('.filtro-mes')
 
 function mostrarLista() {
   document.getElementById('listaCidades').style.display = 'block'
   document.getElementById('calendarioMes').style.display = 'none'
+  // O seletor de mês só faz sentido no Calendário agora — rotas são fixas
+  // e não pertencem mais a nenhum mês específico.
+  filtroMes.style.display = 'none'
   btnVisaoLista.classList.add('ativo')
   btnVisaoCalendario.classList.remove('ativo')
 }
@@ -58,6 +64,7 @@ function mostrarLista() {
 function mostrarCalendarioView() {
   document.getElementById('listaCidades').style.display = 'none'
   document.getElementById('calendarioMes').style.display = 'block'
+  filtroMes.style.display = ''
   btnVisaoCalendario.classList.add('ativo')
   btnVisaoLista.classList.remove('ativo')
 }
@@ -69,11 +76,15 @@ btnVisaoCalendario.addEventListener('click', mostrarCalendarioView)
 const modalOverlay  = document.getElementById('modalOverlay')
 const formRota      = document.getElementById('formRota')
 
-function abrirModal(cidade, rotaId, nomeAtual, dataAtual, obsAtual) {
+// Id da rota de origem quando o modal foi aberto pra "Duplicar" — se
+// setado, o submit copia os clientes (e a ordem) dessa rota pra rota nova
+// criada. Fica null em qualquer outro fluxo (nova rota / editar rota).
+let duplicarOrigemId = null
+
+function abrirModal(cidade, rotaId, nomeAtual, obsAtual) {
   document.getElementById('rotaCidade').value = cidade
   document.getElementById('rotaId').value = rotaId || ''
   document.getElementById('nomeRota').value = nomeAtual || ''
-  document.getElementById('dataVisita').value = dataAtual || ''
   document.getElementById('obsRota').value = obsAtual || ''
   document.getElementById('modalTitulo').textContent = rotaId
     ? `Editar rota — ${cidade}`
@@ -84,75 +95,153 @@ function abrirModal(cidade, rotaId, nomeAtual, dataAtual, obsAtual) {
 function fecharModal() {
   modalOverlay.classList.remove('aberto')
   formRota.reset()
+  duplicarOrigemId = null
 }
 
 document.getElementById('btnFecharModal').addEventListener('click', fecharModal)
 document.getElementById('btnCancelar').addEventListener('click', fecharModal)
 modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) fecharModal() })
 
-// ── Salvar rota (nova ou edição) ───────────────────────────────
+// ── Salvar rota (nova ou edição) — rota fixa, sem mês/data própria ──
 formRota.addEventListener('submit', async (e) => {
   e.preventDefault()
 
-  const [anoSelecionado, mesSelecionado] = selectMes.value.split('-')
-  const cidade     = document.getElementById('rotaCidade').value
-  const rotaId     = document.getElementById('rotaId').value
-  const nome       = document.getElementById('nomeRota').value.trim()
-  const dataVisita = document.getElementById('dataVisita').value
-  const obs        = document.getElementById('obsRota').value.trim()
-
-  // A rota pertence ao mês da DATA DE VISITA (quando informada) — não ao mês
-  // que estava selecionado na tela no momento de salvar. Isso permite
-  // planejar com antecedência: o representante pode estar vendo Julho e
-  // já cadastrar uma rota pra 04/08, que deve aparecer quando ele for ver
-  // Agosto depois. Sem data definida ainda, a rota fica no mês selecionado.
-  let ano, mes
-  if (dataVisita) {
-    const [anoData, mesData] = dataVisita.split('-')
-    ano = anoData
-    mes = mesData
-  } else {
-    ano = anoSelecionado
-    mes = mesSelecionado
-  }
+  const cidade = document.getElementById('rotaCidade').value
+  const rotaId = document.getElementById('rotaId').value
+  const nome   = document.getElementById('nomeRota').value.trim()
+  const obs    = document.getElementById('obsRota').value.trim()
 
   const dados = {
-    user_id:     userId,
-    mes:         parseInt(mes),
-    ano:         parseInt(ano),
+    user_id:    userId,
     cidade,
     nome,
-    data_visita: dataVisita || null,
-    observacao:  obs || null
+    observacao: obs || null
   }
 
   let error
+  let novaRotaId = null
 
   if (rotaId) {
     const res = await supabase.from('rotas').update(dados).eq('id', rotaId)
     error = res.error
   } else {
-    const res = await supabase.from('rotas').insert(dados)
+    const res = await supabase.from('rotas').insert(dados).select().single()
     error = res.error
+    novaRotaId = res.data?.id
   }
 
   if (error) {
     console.error('Erro ao salvar rota:', error)
-    alert('Erro ao salvar. Tente novamente.')
+    alert(mensagemErro(error))
     return
   }
 
-  // Avisa quando a rota foi arquivada num mês diferente do que está sendo
-  // visto agora (por causa da data de visita) — sem isso, ela some da tela
-  // atual sem nenhuma explicação.
-  if (ano !== anoSelecionado || mes !== mesSelecionado) {
-    const labelMesDestino = new Date(parseInt(ano), parseInt(mes) - 1, 1)
-      .toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-    alert(`Rota salva em ${labelMesDestino.charAt(0).toUpperCase() + labelMesDestino.slice(1)}, de acordo com a data de visita.`)
+  // Duplicação: copia os clientes (e a ordem) da rota de origem pra rota
+  // recém-criada. Só roda em inserts (rotaId vazio) originados do botão
+  // "Duplicar" — edição normal e nova rota em branco não passam por aqui.
+  if (!rotaId && duplicarOrigemId && novaRotaId) {
+    const { data: vinculosOrigem, error: errOrigem } = await supabase
+      .from('rota_clientes')
+      .select('cliente_id, ordem')
+      .eq('rota_id', duplicarOrigemId)
+      .order('ordem')
+
+    if (errOrigem) {
+      console.error('Erro ao copiar clientes da rota de origem:', errOrigem)
+    } else if (vinculosOrigem.length > 0) {
+      const copias = vinculosOrigem.map(v => ({
+        user_id:    userId,
+        rota_id:    novaRotaId,
+        cliente_id: v.cliente_id,
+        ordem:      v.ordem
+      }))
+      const { error: errCopia } = await supabase.from('rota_clientes').insert(copias)
+      if (errCopia) console.error('Erro ao copiar clientes da rota de origem:', errCopia)
+    }
   }
+  duplicarOrigemId = null
 
   fecharModal()
   carregarRotas([normalizarCidade(cidade)])
+})
+
+// ── Modal (atribuir rota fixa já criada a um dia do calendário) ──
+const modalAtribuirOverlay  = document.getElementById('modalAtribuirOverlay')
+const formAtribuir          = document.getElementById('formAtribuir')
+const selectRotaAtribuir    = document.getElementById('selectRotaAtribuir')
+const msgSemRotas           = document.getElementById('msgSemRotas')
+const btnAtribuir           = document.getElementById('btnAtribuir')
+
+let diaSelecionadoParaAtribuir = null
+
+function abrirModalAtribuir(dia, ano, mes, todasRotasFixas) {
+  diaSelecionadoParaAtribuir = { dia, ano, mes }
+
+  const diaFormatado = `${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}`
+  document.getElementById('modalAtribuirTitulo').textContent = `Atribuir rota ao dia ${diaFormatado}`
+
+  selectRotaAtribuir.innerHTML = ''
+
+  if (todasRotasFixas.length === 0) {
+    selectRotaAtribuir.style.display = 'none'
+    btnAtribuir.style.display = 'none'
+    msgSemRotas.style.display = 'block'
+  } else {
+    selectRotaAtribuir.style.display = ''
+    btnAtribuir.style.display = ''
+    msgSemRotas.style.display = 'none'
+
+    todasRotasFixas
+      .slice()
+      .sort((a, b) => a.cidade.localeCompare(b.cidade) || a.nome.localeCompare(b.nome))
+      .forEach(r => {
+        const opt = document.createElement('option')
+        opt.value = r.id
+        opt.textContent = `${r.nome} — ${r.cidade}`
+        selectRotaAtribuir.appendChild(opt)
+      })
+  }
+
+  modalAtribuirOverlay.classList.add('aberto')
+}
+
+function fecharModalAtribuir() {
+  modalAtribuirOverlay.classList.remove('aberto')
+  formAtribuir.reset()
+  diaSelecionadoParaAtribuir = null
+}
+
+document.getElementById('btnFecharAtribuir').addEventListener('click', fecharModalAtribuir)
+document.getElementById('btnCancelarAtribuir').addEventListener('click', fecharModalAtribuir)
+modalAtribuirOverlay.addEventListener('click', (e) => { if (e.target === modalAtribuirOverlay) fecharModalAtribuir() })
+
+// Atribuir sempre CRIA uma nova ocorrência (nunca move uma já existente) —
+// assim a mesma rota fixa pode rodar em mais de um dia do mesmo mês, se for
+// o caso, e o histórico de meses anteriores nunca é sobrescrito.
+formAtribuir.addEventListener('submit', async (e) => {
+  e.preventDefault()
+  if (!diaSelecionadoParaAtribuir) return
+
+  const { dia, ano, mes } = diaSelecionadoParaAtribuir
+  const rotaId = selectRotaAtribuir.value
+  if (!rotaId) return
+
+  const data = `${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
+
+  const { error } = await supabase.from('rota_agendamentos').insert({
+    user_id: userId,
+    rota_id: rotaId,
+    data
+  })
+
+  if (error) {
+    console.error('Erro ao agendar rota:', error)
+    alert(mensagemErro(error, 'agendar a rota'))
+    return
+  }
+
+  fecharModalAtribuir()
+  carregarRotas()
 })
 
 function linkMapsDe(c) {
@@ -186,7 +275,10 @@ function normalizarTexto(txt) {
 // ação (criar rota, adicionar/remover cliente, etc.) reconstrói os
 // cards do zero e todas as cidades fecham sozinhas.
 async function carregarRotas(chavesParaAbrir = []) {
-  const [ano, mes] = selectMes.value.split('-')
+  const [ano, mes]  = selectMes.value.split('-')
+  const diasNoMes   = new Date(parseInt(ano), parseInt(mes), 0).getDate()
+  const primeiroDia = `${ano}-${mes}-01`
+  const ultimoDia   = `${ano}-${mes}-${String(diasNoMes).padStart(2, '0')}`
 
   // Todos os clientes (pra agrupar por cidade e alimentar o "+ adicionar")
   const { data: clientes, error: errClientes } = await supabase
@@ -199,14 +291,36 @@ async function carregarRotas(chavesParaAbrir = []) {
     return
   }
 
-  // Rotas (dias) já criadas neste mês
+  // Rotas fixas — não pertencem mais a nenhum mês, então sempre buscamos todas.
   const { data: rotas } = await supabase
     .from('rotas')
     .select('*')
-    .eq('mes', parseInt(mes))
-    .eq('ano', parseInt(ano))
 
-  // Agrupa as rotas existentes por cidade normalizada.
+  // Agendamentos (ocorrências no calendário) só do mês em exibição
+  const { data: agendamentosDoMes, error: errAgendamentosMes } = await supabase
+    .from('rota_agendamentos')
+    .select('id, rota_id, data')
+    .gte('data', primeiroDia)
+    .lte('data', ultimoDia)
+
+  if (errAgendamentosMes) console.error('Erro ao carregar agendamentos do mês:', errAgendamentosMes)
+
+  // Todas as datas já agendadas de cada rota (passadas e futuras), pra
+  // mostrar em Rotas Salvas — passadas em vermelho, futuras em verde.
+  const { data: todosAgendamentos, error: errTodosAgendamentos } = await supabase
+    .from('rota_agendamentos')
+    .select('rota_id, data')
+    .order('data')
+
+  if (errTodosAgendamentos) console.error('Erro ao carregar agendamentos:', errTodosAgendamentos)
+
+  const datasPorRota = {}
+  todosAgendamentos?.forEach(a => {
+    if (!datasPorRota[a.rota_id]) datasPorRota[a.rota_id] = []
+    datasPorRota[a.rota_id].push(a.data)
+  })
+
+  // Agrupa as rotas fixas por cidade normalizada.
   // Várias rotas na mesma cidade são esperadas e desejadas
   // (ex: "Rota 1" e "Rota 2" em Indaiatuba) — não mesclamos automaticamente.
   const rotasPorCidade = {}
@@ -281,10 +395,44 @@ async function carregarRotas(chavesParaAbrir = []) {
       .sort((a, b) => b[1] - a[1])[0][0]
   }
 
+  // Cidades com rota fixa criada mas sem nenhum cliente atual (ex: cliente que
+  // gerou o grupo foi excluído ou mudou de cidade depois) não entram em
+  // "grupos" acima — sem isso a rota fica presa: some de Rotas Salvas e vira
+  // "Rota — undefined" no Calendário, sem jeito de editar/excluir.
+  Object.keys(rotasPorCidade).forEach(chave => {
+    if (!grupos[chave]) {
+      grupos[chave] = []
+      nomeExibicao[chave] = rotasPorCidade[chave][0].cidade?.trim() || 'Sem cidade'
+    }
+  })
+
   const temAlerta = Object.values(grupos).some(g => g.length > 40)
   alertaDivisao.style.display = temAlerta ? 'block' : 'none'
 
-  renderizarCalendario(parseInt(ano), parseInt(mes), rotasPorCidade, nomeExibicao)
+  // Mapa rota_id -> {nome, cidade, chave}, reaproveitado tanto no Calendário
+  // quanto no seletor do modal "Atribuir rota ao dia".
+  const infoPorRotaId = {}
+  rotas?.forEach(r => {
+    const chave = normalizarCidade(r.cidade)
+    infoPorRotaId[r.id] = { nome: r.nome?.trim() || 'Rota', cidade: nomeExibicao[chave], chave }
+  })
+
+  const rotasPorDia = {}
+  agendamentosDoMes?.forEach(a => {
+    const info = infoPorRotaId[a.rota_id]
+    if (!info) return
+    const dia = parseInt(a.data.split('-')[2], 10)
+    if (!rotasPorDia[dia]) rotasPorDia[dia] = []
+    rotasPorDia[dia].push({ agendamentoId: a.id, chave: info.chave, nome: info.nome, cidade: info.cidade })
+  })
+
+  const todasRotasFixas = (rotas || []).map(r => ({
+    id:     r.id,
+    nome:   infoPorRotaId[r.id].nome,
+    cidade: infoPorRotaId[r.id].cidade
+  }))
+
+  renderizarCalendario(parseInt(ano), parseInt(mes), rotasPorDia, todasRotasFixas)
 
   // ── Renderiza cada cidade ──
   Object.entries(grupos)
@@ -306,7 +454,7 @@ async function carregarRotas(chavesParaAbrir = []) {
           <div class="cidade-info">
             <span class="cidade-nome">${cidade}</span>
             <span class="cidade-count ${excede ? 'alerta-count' : ''}">
-              ${listaClientesCidade.length} cliente${listaClientesCidade.length > 1 ? 's' : ''}${excede ? ' ⚠️' : ''}
+              ${listaClientesCidade.length} cliente${listaClientesCidade.length !== 1 ? 's' : ''}${excede ? ' ⚠️' : ''}
             </span>
             <span class="cidade-count">${rotasDaCidade.length} rota${rotasDaCidade.length !== 1 ? 's' : ''}</span>
           </div>
@@ -319,7 +467,7 @@ async function carregarRotas(chavesParaAbrir = []) {
         <div class="cidade-clientes">
           ${rotasDaCidade.length === 0
             ? '<p class="dica-arrastar" style="padding:14px 20px 18px;">Nenhuma rota criada ainda nesta cidade. Clique em "+ Nova Rota" para começar.</p>'
-            : rotasDaCidade.map((rota, i) => renderizarRotaSubcard(rota, i, clientes, rotaClientesPorRota[rota.id] || [])).join('')}
+            : rotasDaCidade.map((rota, i) => renderizarRotaSubcard(rota, i, clientes, rotaClientesPorRota[rota.id] || [], datasPorRota[rota.id] || [])).join('')}
         </div>
       `
 
@@ -332,7 +480,7 @@ async function carregarRotas(chavesParaAbrir = []) {
       // + Nova Rota
       card.querySelector('.btn-nova-rota').addEventListener('click', (e) => {
         e.stopPropagation()
-        abrirModal(cidade, null, '', '', '')
+        abrirModal(cidade, null, '', '')
       })
 
       // Liga os eventos de cada sub-card de rota
@@ -342,22 +490,35 @@ async function carregarRotas(chavesParaAbrir = []) {
 
         const vinculosRota = rotaClientesPorRota[rota.id] || []
 
-        // Editar rota (nome, data, observação)
+        // Editar rota (nome, observação)
         subcard.querySelector('.btn-editar-rota').addEventListener('click', (e) => {
           e.stopPropagation()
-          abrirModal(cidade, rota.id, rota.nome, rota.data_visita, rota.observacao)
+          abrirModal(cidade, rota.id, rota.nome, rota.observacao)
         })
 
-        // Excluir a rota inteira
+        // Duplicar rota — cria uma cópia (mesma cidade, mesma lista de
+        // clientes e ordem), pra variar levemente uma rota existente sem
+        // montar do zero. Agendar quando ela roda é feito depois, no
+        // Calendário — a cópia nasce sem nenhuma data.
+        subcard.querySelector('.btn-duplicar-rota').addEventListener('click', (e) => {
+          e.stopPropagation()
+          abrirModal(cidade, null, `${rota.nome?.trim() || 'Rota'} (cópia)`, rota.observacao || '')
+          document.getElementById('modalTitulo').textContent = `Duplicar rota — ${cidade}`
+          duplicarOrigemId = rota.id
+        })
+
+        // Excluir a rota inteira (a rota fixa, os vínculos de clientes e
+        // todas as datas agendadas dela)
         subcard.querySelector('.btn-excluir-rota-completa').addEventListener('click', async (e) => {
           e.stopPropagation()
           const confirmar = confirm(
-            `Excluir a rota "${rota.nome || 'sem nome'}"?\nOs clientes só serão desvinculados desta rota — nenhum cadastro é apagado.`
+            `Excluir a rota "${rota.nome || 'sem nome'}"?\nOs clientes só serão desvinculados desta rota — nenhum cadastro é apagado. As datas já agendadas dela também serão removidas.`
           )
           if (!confirmar) return
 
-          // Remove primeiro os vínculos, depois a rota (evita erro de referência)
+          // Remove primeiro os vínculos/agendamentos, depois a rota (evita erro de referência)
           await supabase.from('rota_clientes').delete().eq('rota_id', rota.id)
+          await supabase.from('rota_agendamentos').delete().eq('rota_id', rota.id)
           const { error } = await supabase.from('rotas').delete().eq('id', rota.id)
 
           if (error) {
@@ -389,7 +550,9 @@ async function carregarRotas(chavesParaAbrir = []) {
         const btnAdd            = subcard.querySelector('.btn-add-cliente-rota')
 
         if (inputBuscaCliente && btnAdd) {
-          const clientesDisponiveis = clientes.filter(c => !vinculosRota.some(v => v.cliente_id === c.id))
+          // Restrito aos clientes desta cidade — evita adicionar por engano
+          // um cliente de outra cidade dentro da rota errada.
+          const clientesDisponiveis = listaClientesCidade.filter(c => !vinculosRota.some(v => v.cliente_id === c.id))
           let clienteEscolhido = null
 
           // A caixa de sugestões é anexada direto no <body>, em vez de ficar
@@ -486,7 +649,7 @@ async function carregarRotas(chavesParaAbrir = []) {
 
             if (error) {
               console.error('Erro ao adicionar cliente à rota:', error)
-              alert('Erro ao adicionar cliente à rota.')
+              alert(mensagemErro(error, 'adicionar cliente à rota'))
               return
             }
             carregarRotas([chave])
@@ -501,25 +664,28 @@ async function carregarRotas(chavesParaAbrir = []) {
     })
 }
 
-function renderizarRotaSubcard(rota, index, clientes, vinculosRota) {
+function renderizarRotaSubcard(rota, index, clientes, vinculosRota, datas) {
   const nomeRota = rota.nome?.trim() || `Rota ${index + 1}`
-  const temData  = rota.data_visita
-  const dataFormatada = temData
-    ? new Date(rota.data_visita).toLocaleDateString('pt-BR', {
-        day: '2-digit', month: '2-digit', timeZone: 'UTC'
-      })
-    : null
+
+  // Cada data já agendada da rota vira um badge — vermelho se já passou,
+  // verde se ainda vai acontecer (comparado com hoje).
+  const badgesData = datas.length === 0
+    ? '<span class="data-badge sem-data">Sem visita agendada</span>'
+    : datas.map(d => {
+        const futura = d >= hojeISO
+        const formatada = new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' })
+        return `<span class="data-badge ${futura ? 'data-futura' : 'data-passada'}">📅 ${formatada}</span>`
+      }).join('')
 
   return `
     <div class="rota-subcard" data-rota-id="${rota.id}">
       <div class="rota-subcard-header">
         <div class="rota-subcard-info">
           <span class="rota-nome">${nomeRota}</span>
-          <span class="data-badge ${temData ? '' : 'sem-data'}">
-            ${temData ? `📅 ${dataFormatada}` : 'Sem data definida'}
-          </span>
+          <div class="rota-datas">${badgesData}</div>
         </div>
         <div class="rota-subcard-acoes">
+          <button class="btn-duplicar-rota" title="Duplicar esta rota">⧉</button>
           <button class="btn-definir btn-editar-rota">Editar</button>
           <button class="btn-excluir-rota-completa" title="Excluir esta rota">🗑️</button>
         </div>
@@ -544,26 +710,12 @@ function renderizarRotaSubcard(rota, index, clientes, vinculosRota) {
 // ── Visão em calendário do mês ──────────────────────────────────
 const nomesDiasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
-function renderizarCalendario(ano, mes, rotasPorCidade, nomeExibicao) {
+function renderizarCalendario(ano, mes, rotasPorDia, todasRotasFixas) {
   const calendario = document.getElementById('calendarioMes')
   calendario.innerHTML = ''
 
   const diasNoMes         = new Date(ano, mes, 0).getDate()
   const primeiroDiaSemana = new Date(ano, mes - 1, 1).getDay()
-
-  // Mapeia cada dia do mês pras rotas marcadas nele (usando a string "AAAA-MM-DD"
-  // direto, sem passar por new Date(), pra evitar o mesmo bug de fuso horário
-  // que já corrigimos em Visitas/Dashboard)
-  const rotasPorDia = {}
-  Object.entries(rotasPorCidade).forEach(([chave, lista]) => {
-    const cidade = nomeExibicao[chave]
-    lista.forEach(rota => {
-      if (!rota.data_visita) return
-      const dia = parseInt(rota.data_visita.split('-')[2], 10)
-      if (!rotasPorDia[dia]) rotasPorDia[dia] = []
-      rotasPorDia[dia].push({ rota, cidade, chave })
-    })
-  })
 
   const grid = document.createElement('div')
   grid.className = 'calendario-grid'
@@ -589,21 +741,31 @@ function renderizarCalendario(ano, mes, rotasPorCidade, nomeExibicao) {
 
     celula.innerHTML = `
       <div class="calendario-dia-numero">${dia}</div>
-      ${rotasDoDia.map(({ rota, cidade, chave }) => `
-        <button class="calendario-rota-pill" data-chave="${chave}">
-          ${rota.nome?.trim() || 'Rota'} — ${cidade}
-        </button>
+      ${rotasDoDia.map(r => `
+        <div class="calendario-rota-item">
+          <button class="calendario-rota-pill" data-chave="${r.chave}">${r.nome} — ${r.cidade}</button>
+          <button class="calendario-rota-remover" data-agendamento-id="${r.agendamentoId}" title="Remover desta data">×</button>
+        </div>
       `).join('')}
     `
+
+    // Clicar em qualquer parte vazia do dia abre o seletor pra atribuir
+    // uma das rotas fixas já criadas a esse dia — assim o calendário vira
+    // o jeito principal de marcar quando cada rota roda, sem precisar
+    // remontar nada em Rotas Salvas.
+    celula.addEventListener('click', () => {
+      abrirModalAtribuir(dia, ano, mes, todasRotasFixas)
+    })
 
     grid.appendChild(celula)
   }
 
   calendario.appendChild(grid)
 
-  // Clique numa rota do calendário: volta pra Lista e abre a cidade correspondente
+  // Clique numa rota do calendário: volta pra Rotas Salvas e abre a cidade correspondente
   calendario.querySelectorAll('.calendario-rota-pill').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation() // não deixa abrir também o modal de atribuir do dia
       const chave = btn.dataset.chave
       mostrarLista()
       const card = document.querySelector(`.cidade-card[data-cidade-chave="${chave}"]`)
@@ -611,6 +773,23 @@ function renderizarCalendario(ano, mes, rotasPorCidade, nomeExibicao) {
         card.classList.add('aberto')
         card.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }
+    })
+  })
+
+  // "×" no pill: remove só esta ocorrência (a rota fixa e os clientes continuam intactos)
+  calendario.querySelectorAll('.calendario-rota-remover').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation()
+      const confirmar = confirm('Remover esta rota desta data? A rota e os clientes continuam salvos normalmente.')
+      if (!confirmar) return
+
+      const { error } = await supabase.from('rota_agendamentos').delete().eq('id', btn.dataset.agendamentoId)
+      if (error) {
+        console.error('Erro ao remover agendamento:', error)
+        alert(mensagemErro(error, 'remover a rota desta data'))
+        return
+      }
+      carregarRotas()
     })
   })
 }

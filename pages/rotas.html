@@ -33,7 +33,7 @@
     </div>
 
     <div class="visao-toggle">
-      <button id="btnVisaoLista" class="visao-btn ativo">📋 Lista</button>
+      <button id="btnVisaoLista" class="visao-btn ativo">📋 Rotas Salvas</button>
       <button id="btnVisaoCalendario" class="visao-btn">📅 Calendário</button>
     </div>
 
@@ -56,11 +56,11 @@
 
   </main>
 
-  <!-- Modal para definir data de visita -->
+  <!-- Modal para criar/editar uma rota fixa (sem data — datas ficam no Calendário) -->
   <div class="modal-overlay" id="modalOverlay">
     <div class="modal">
       <div class="modal-topo">
-        <h2 id="modalTitulo">Definir data de visita</h2>
+        <h2 id="modalTitulo">Nova rota</h2>
         <button class="modal-fechar" id="btnFecharModal">&times;</button>
       </div>
 
@@ -74,10 +74,6 @@
             <input type="text" id="nomeRota" placeholder="Ex: Rota 1" required>
           </div>
           <div class="field">
-            <label for="dataVisita">Data de visita (opcional)</label>
-            <input type="date" id="dataVisita">
-          </div>
-          <div class="field">
             <label for="obsRota">Observação (opcional)</label>
             <textarea id="obsRota" rows="2" placeholder="Ex: Priorizar lojas do centro..."></textarea>
           </div>
@@ -86,6 +82,34 @@
         <div class="modal-rodape">
           <button type="button" class="btn-secundario" id="btnCancelar">Cancelar</button>
           <button type="submit" class="btn-primario">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal para atribuir uma rota já criada a um dia do calendário -->
+  <div class="modal-overlay" id="modalAtribuirOverlay">
+    <div class="modal">
+      <div class="modal-topo">
+        <h2 id="modalAtribuirTitulo">Atribuir rota ao dia</h2>
+        <button class="modal-fechar" id="btnFecharAtribuir">&times;</button>
+      </div>
+
+      <form id="formAtribuir">
+        <div class="form-grid" style="grid-template-columns: 1fr">
+          <div class="field">
+            <label for="selectRotaAtribuir">Rota</label>
+            <select id="selectRotaAtribuir"></select>
+          </div>
+        </div>
+
+        <p class="dica-arrastar" id="msgSemRotas" style="display:none;padding:0 0 4px;">
+          Nenhuma rota salva ainda. Crie uma rota em Rotas Salvas primeiro.
+        </p>
+
+        <div class="modal-rodape">
+          <button type="button" class="btn-secundario" id="btnCancelarAtribuir">Cancelar</button>
+          <button type="submit" class="btn-primario" id="btnAtribuir">Atribuir</button>
         </div>
       </form>
     </div>

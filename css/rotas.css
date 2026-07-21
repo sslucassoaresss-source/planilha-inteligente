@@ -87,11 +87,18 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.calendario-dia:not(.vazio):hover {
+  background: var(--bg);
 }
 
 .calendario-dia.vazio {
   background: transparent;
   border: none;
+  cursor: default;
 }
 
 .calendario-dia-numero {
@@ -100,9 +107,16 @@
   color: var(--text-soft);
 }
 
+.calendario-rota-item {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
 .calendario-rota-pill {
   display: block;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   text-align: left;
   padding: 4px 6px;
   border: none;
@@ -121,6 +135,21 @@
 
 .calendario-rota-pill:hover {
   background: #D0E7F5;
+}
+
+.calendario-rota-remover {
+  border: none;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0 2px;
+}
+
+.calendario-rota-remover:hover {
+  color: #A85454;
 }
 
 /* ── Card de cidade ── */
@@ -180,6 +209,12 @@
   gap: 12px;
 }
 
+.rota-datas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .data-badge {
   font-size: 13px;
   color: var(--accent-deep);
@@ -187,11 +222,22 @@
   background: #E8F4FC;
   padding: 4px 10px;
   border-radius: 6px;
+  white-space: nowrap;
 }
 
 .data-badge.sem-data {
   color: var(--text-soft);
   background: var(--bg);
+}
+
+.data-badge.data-futura {
+  color: #2E7D5A;
+  background: #DFF5EC;
+}
+
+.data-badge.data-passada {
+  color: #A85454;
+  background: #FBEAEA;
 }
 
 .btn-definir {
@@ -252,6 +298,7 @@
 .rota-subcard-info {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -270,6 +317,23 @@
 .btn-editar-rota {
   padding: 5px 12px;
   font-size: 12px;
+}
+
+.btn-duplicar-rota {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: #E8F4FC;
+  color: var(--accent-deep);
+  font-size: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.btn-duplicar-rota:hover {
+  background: #D0E7F5;
 }
 
 .btn-excluir-rota-completa {
@@ -536,6 +600,11 @@
   }
 
   .cidade-direita {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .rota-subcard-header {
     flex-wrap: wrap;
     gap: 8px;
   }
