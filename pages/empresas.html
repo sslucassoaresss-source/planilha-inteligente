@@ -27,10 +27,15 @@
 
     <div class="pagina-topo">
       <h1>Empresas</h1>
-      <button class="btn-primario" id="btnNovaEmpresa">+ Nova Empresa</button>
+      <div class="pagina-topo-acoes">
+        <select id="selectMes" class="select-mes"></select>
+        <button class="btn-primario" id="btnNovaEmpresa">+ Nova Empresa</button>
+      </div>
     </div>
 
     <p class="pagina-desc">Cadastre as empresas que você representa. Cada uma pode ter sua própria comissão.</p>
+
+    <p class="resumo-comissao" id="resumoComissao"></p>
 
     <div class="vazio" id="msgVazio" style="display:none">
       <p>Nenhuma empresa cadastrada ainda.</p>
@@ -43,6 +48,9 @@
           <tr>
             <th>Empresa</th>
             <th>Comissão</th>
+            <th>Vendido no mês</th>
+            <th>Comissão do mês</th>
+            <th>Recebido</th>
             <th>Ações</th>
           </tr>
         </thead>
