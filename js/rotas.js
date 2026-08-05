@@ -191,10 +191,8 @@ function abrirModalAtribuir(dia, ano, mes, todasRotasFixas) {
     btnAtribuir.style.display = ''
     msgSemRotas.style.display = 'none'
 
-    todasRotasFixas
-      .slice()
-      .sort((a, b) => a.cidade.localeCompare(b.cidade) || a.nome.localeCompare(b.nome))
-      .forEach(r => {
+    // Já vem ordenada (mesma ordem de cidades usada em Rotas Salvas)
+    todasRotasFixas.forEach(r => {
         const opt = document.createElement('option')
         opt.value = r.id
         opt.textContent = `${r.nome} — ${r.cidade}`
@@ -295,6 +293,28 @@ async function carregarRotas(chavesParaAbrir = []) {
   const { data: rotas } = await supabase
     .from('rotas')
     .select('*')
+
+  // Ordem custom das cidades (definida arrastando os cards) — cidades nunca
+  // arrastadas ficam de fora e caem no fim, em ordem alfabética.
+  const { data: ordensSalvas, error: errOrdem } = await supabase
+    .from('cidades_ordem')
+    .select('cidade_chave, ordem')
+
+  if (errOrdem) console.error('Erro ao carregar ordem das cidades:', errOrdem)
+
+  const ordemPorCidade = {}
+  ordensSalvas?.forEach(o => { ordemPorCidade[o.cidade_chave] = o.ordem })
+
+  // Comparador único, reaproveitado pra ordenar os cards de cidade e o
+  // seletor do modal "Atribuir rota ao dia" — mesma lógica nos dois lugares.
+  function compararCidades(chaveA, chaveB) {
+    const oa = ordemPorCidade[chaveA]
+    const ob = ordemPorCidade[chaveB]
+    if (oa !== undefined && ob !== undefined) return oa - ob
+    if (oa !== undefined) return -1
+    if (ob !== undefined) return 1
+    return nomeExibicao[chaveA].localeCompare(nomeExibicao[chaveB])
+  }
 
   // Agendamentos (ocorrências no calendário) só do mês em exibição
   const { data: agendamentosDoMes, error: errAgendamentosMes } = await supabase
@@ -426,17 +446,20 @@ async function carregarRotas(chavesParaAbrir = []) {
     rotasPorDia[dia].push({ agendamentoId: a.id, chave: info.chave, nome: info.nome, cidade: info.cidade })
   })
 
-  const todasRotasFixas = (rotas || []).map(r => ({
-    id:     r.id,
-    nome:   infoPorRotaId[r.id].nome,
-    cidade: infoPorRotaId[r.id].cidade
-  }))
+  const todasRotasFixas = (rotas || [])
+    .map(r => ({
+      id:     r.id,
+      nome:   infoPorRotaId[r.id].nome,
+      cidade: infoPorRotaId[r.id].cidade,
+      chave:  infoPorRotaId[r.id].chave
+    }))
+    .sort((a, b) => compararCidades(a.chave, b.chave) || a.nome.localeCompare(b.nome))
 
   renderizarCalendario(parseInt(ano), parseInt(mes), rotasPorDia, todasRotasFixas)
 
   // ── Renderiza cada cidade ──
   Object.entries(grupos)
-    .sort(([a], [b]) => nomeExibicao[a].localeCompare(nomeExibicao[b]))
+    .sort(([a], [b]) => compararCidades(a, b))
     .forEach(([chave, listaClientesCidade]) => {
       const cidade = nomeExibicao[chave]
       const excede = listaClientesCidade.length > 40
@@ -452,6 +475,7 @@ async function carregarRotas(chavesParaAbrir = []) {
       card.innerHTML = `
         <div class="cidade-header">
           <div class="cidade-info">
+            <span class="cidade-drag-handle" title="Arraste para reordenar as cidades">⠿</span>
             <span class="cidade-nome">${cidade}</span>
             <span class="cidade-count ${excede ? 'alerta-count' : ''}">
               ${listaClientesCidade.length} cliente${listaClientesCidade.length !== 1 ? 's' : ''}${excede ? ' ⚠️' : ''}
@@ -473,7 +497,7 @@ async function carregarRotas(chavesParaAbrir = []) {
 
       // Abrir/fechar a cidade
       card.querySelector('.cidade-header').addEventListener('click', (e) => {
-        if (e.target.closest('.btn-nova-rota')) return
+        if (e.target.closest('.btn-nova-rota') || e.target.closest('.cidade-drag-handle')) return
         card.classList.toggle('aberto')
       })
 
@@ -662,6 +686,8 @@ async function carregarRotas(chavesParaAbrir = []) {
 
       listaCidades.appendChild(card)
     })
+
+  ativarDragDropCidades()
 }
 
 function renderizarRotaSubcard(rota, index, clientes, vinculosRota, datas) {
@@ -839,6 +865,38 @@ function ativarDragDrop(container, rotaId) {
       const novaOrdem = linhas.map((row, i) => ({ id: row.dataset.vinculoId, ordem: i }))
       for (const item of novaOrdem) {
         await supabase.from('rota_clientes').update({ ordem: item.ordem }).eq('id', item.id)
+      }
+    }
+  })
+}
+
+// Drag and drop dos cards de cidade, em Rotas Salvas — pedido do Caio pra
+// poder colocar as cidades na ordem que ele realmente dirige, em vez da
+// ordem alfabética. Handle diferente do usado pelos clientes (.drag-handle)
+// de propósito: os cards de cidade contêm, aninhados, as listas de cliente
+// de cada rota — se usasse a mesma classe, o Sortable daqui enxergaria
+// também aqueles handles internos.
+function ativarDragDropCidades() {
+  Sortable.create(listaCidades, {
+    handle: '.cidade-drag-handle',
+    draggable: '.cidade-card',
+    animation: 150,
+    ghostClass: 'arrastando',
+    onEnd: async () => {
+      const cards = Array.from(listaCidades.querySelectorAll('.cidade-card'))
+      const novaOrdem = cards.map((card, i) => ({
+        user_id:      userId,
+        cidade_chave: card.dataset.cidadeChave,
+        ordem:        i
+      }))
+
+      const { error } = await supabase
+        .from('cidades_ordem')
+        .upsert(novaOrdem, { onConflict: 'user_id,cidade_chave' })
+
+      if (error) {
+        console.error('Erro ao salvar ordem das cidades:', error)
+        alert(mensagemErro(error, 'salvar a ordem das cidades'))
       }
     }
   })

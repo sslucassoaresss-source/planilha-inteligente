@@ -358,8 +358,59 @@ async function carregarVisitas() {
 
   if (error) { console.error('Erro ao carregar visitas:', error); return }
 
+  await ordenarPelaRotaDoDia(visitas, inicio, fim)
+
   renderizarResumo(visitas)
   renderizarTabela(visitas)
+}
+
+// Reordena as visitas de cada dia pra bater com a ordem de clientes da(s)
+// rota(s) agendada(s) naquele dia — pedido do Caio: ele monta a rota, marca
+// comprou/não comprou indo loja por loja, e quer ver a lista aqui na mesma
+// sequência que rodou, em vez de uma ordem que parece aleatória. Dias sem
+// rota agendada (ou visitas de clientes fora da rota do dia) não mudam de
+// lugar — ficam no fim, na ordem que já vinham do banco (sort estável).
+async function ordenarPelaRotaDoDia(visitas, inicio, fim) {
+  const { data: agendamentos, error: errAg } = await supabase
+    .from('rota_agendamentos')
+    .select('rota_id, data')
+    .gte('data', inicio)
+    .lte('data', fim)
+    .order('created_at')
+
+  if (errAg) { console.error('Erro ao carregar rotas agendadas:', errAg); return }
+  if (!agendamentos || agendamentos.length === 0) return
+
+  const rotaIds = [...new Set(agendamentos.map(a => a.rota_id))]
+  const { data: vinculos, error: errVinc } = await supabase
+    .from('rota_clientes')
+    .select('rota_id, cliente_id, ordem')
+    .in('rota_id', rotaIds)
+
+  if (errVinc) { console.error('Erro ao carregar clientes das rotas agendadas:', errVinc); return }
+
+  // posicaoPorDia[data][cliente_id] = posição global naquele dia. Quando há
+  // mais de uma rota no mesmo dia, a 2ª rota recebe um offset grande pra
+  // sempre ficar depois da 1ª inteira, na ordem em que foram agendadas.
+  const posicaoPorDia = {}
+  agendamentos.forEach((ag, indiceRota) => {
+    if (!posicaoPorDia[ag.data]) posicaoPorDia[ag.data] = {}
+    vinculos
+      .filter(v => v.rota_id === ag.rota_id)
+      .sort((a, b) => a.ordem - b.ordem)
+      .forEach((v, i) => {
+        if (posicaoPorDia[ag.data][v.cliente_id] === undefined) {
+          posicaoPorDia[ag.data][v.cliente_id] = indiceRota * 100000 + i
+        }
+      })
+  })
+
+  visitas.sort((a, b) => {
+    if (a.data_visita !== b.data_visita) return a.data_visita < b.data_visita ? 1 : -1
+    const posA = posicaoPorDia[a.data_visita]?.[a.cliente_id] ?? Infinity
+    const posB = posicaoPorDia[b.data_visita]?.[b.cliente_id] ?? Infinity
+    return posA - posB
+  })
 }
 
 // ── Resumo do dia ─────────────────────────────────────────────

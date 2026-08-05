@@ -171,6 +171,18 @@
   transition: background 0.15s;
 }
 
+.cidade-drag-handle {
+  color: var(--text-soft);
+  font-size: 15px;
+  flex-shrink: 0;
+  cursor: grab;
+  user-select: none;
+}
+
+.cidade-card.arrastando {
+  opacity: 0.4;
+}
+
 .cidade-header:hover {
   background: var(--bg);
 }
