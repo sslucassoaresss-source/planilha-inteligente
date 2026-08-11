@@ -580,9 +580,12 @@ async function carregarRotas(chavesParaAbrir = []) {
         const btnAdd            = subcard.querySelector('.btn-add-cliente-rota')
 
         if (inputBuscaCliente && btnAdd) {
-          // Restrito aos clientes desta cidade — evita adicionar por engano
-          // um cliente de outra cidade dentro da rota errada.
-          const clientesDisponiveis = listaClientesCidade.filter(c => !vinculosRota.some(v => v.cliente_id === c.id))
+          // Busca em TODOS os clientes, não só nos da cidade da rota: cidades
+          // vizinhas (ex: Montemor e Hortolândia) são visitadas no mesmo dia,
+          // então limitar à cidade impedia montar a rota real. O nome da cidade
+          // aparece em cada sugestão, e as da própria cidade vêm primeiro, pra
+          // continuar difícil adicionar alguém por engano.
+          const clientesDisponiveis = clientes.filter(c => !vinculosRota.some(v => v.cliente_id === c.id))
           let clienteEscolhido = null
 
           // A caixa de sugestões é anexada direto no <body>, em vez de ficar
@@ -612,8 +615,16 @@ async function carregarRotas(chavesParaAbrir = []) {
               return
             }
 
+            // Clientes da cidade da rota primeiro — como a lista corta em 8,
+            // sem isso os de outras cidades poderiam empurrar pra fora quem
+            // é do caso mais comum.
             const resultados = clientesDisponiveis
               .filter(c => normalizarTexto(c.nome).includes(termo))
+              .sort((a, b) => {
+                const aDaCidade = normalizarCidade(a.cidade) === chave ? 0 : 1
+                const bDaCidade = normalizarCidade(b.cidade) === chave ? 0 : 1
+                return aDaCidade - bDaCidade || a.nome.localeCompare(b.nome)
+              })
               .slice(0, 8)
 
             if (resultados.length === 0) {
@@ -626,9 +637,25 @@ async function carregarRotas(chavesParaAbrir = []) {
             resultados.forEach(c => {
               const item = document.createElement('div')
               item.className = 'sugestao-item'
-              item.textContent = `${c.nome}${c.cidade ? ' — ' + c.cidade : ''}`
-              // mousedown (não click) pra disparar antes do blur do input
-              item.addEventListener('mousedown', (e) => {
+
+              // Cliente de outra cidade fica com a cidade destacada — é um uso
+              // legítimo (cidades vizinhas na mesma rota), mas precisa saltar
+              // aos olhos pra não passar batido por engano.
+              const deOutraCidade = normalizarCidade(c.cidade) !== chave
+              const nomeEl = document.createElement('span')
+              nomeEl.textContent = c.nome
+              item.appendChild(nomeEl)
+
+              if (c.cidade) {
+                const cidadeEl = document.createElement('span')
+                cidadeEl.className = deOutraCidade ? 'sugestao-cidade-outra' : 'sugestao-cidade'
+                cidadeEl.textContent = deOutraCidade ? c.cidade : ` — ${c.cidade}`
+                item.appendChild(cidadeEl)
+              }
+              // pointerdown (não click nem mousedown) pra disparar antes do blur
+              // do input. No celular o mousedown só é sintetizado depois do
+              // toque — o blur escondia a lista antes e o toque não selecionava.
+              item.addEventListener('pointerdown', (e) => {
                 e.preventDefault()
                 clienteEscolhido = c
                 inputBuscaCliente.value = c.nome

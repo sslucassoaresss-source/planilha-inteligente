@@ -590,6 +590,23 @@
   background: #E8F4FC;
 }
 
+/* Cidade do cliente na sugestão: discreta quando é a mesma cidade da rota,
+   destacada quando é de outra (uso legítimo — cidades vizinhas na mesma
+   rota — mas que precisa ser visível pra não passar batido). */
+.sugestao-cidade {
+  color: var(--text-soft);
+}
+
+.sugestao-cidade-outra {
+  color: #8A5A00;
+  background: #FFF3CD;
+  padding: 1px 6px;
+  margin-left: 6px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .sugestao-vazia {
   padding: 10px 13px;
   font-size: 13px;

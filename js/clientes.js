@@ -114,8 +114,10 @@ function renderizarSugestoesCidade() {
     const item = document.createElement('div')
     item.className = 'sugestao-item'
     item.textContent = cidade
-    // mousedown (n\u00e3o click) pra disparar antes do blur do input
-    item.addEventListener('mousedown', (e) => {
+    // pointerdown (n\u00e3o click nem mousedown) pra disparar antes do blur do
+    // input. No celular o mousedown s\u00f3 \u00e9 sintetizado depois do toque \u2014 o
+    // blur escondia a lista antes e o toque n\u00e3o selecionava.
+    item.addEventListener('pointerdown', (e) => {
       e.preventDefault()
       inputCidade.value = cidade
       esconderSugestoesCidade()
