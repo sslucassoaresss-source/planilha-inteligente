@@ -30,6 +30,7 @@ function fecharModal() {
   modalOverlay.classList.remove('aberto')
   formCliente.reset()
   document.getElementById('clienteId').value = ''
+  esconderSugestoesCidade()
 }
 
 document.getElementById('btnNovoCliente').addEventListener('click', () => abrirModal())
@@ -45,6 +46,94 @@ document.getElementById('btnSair').addEventListener('click', async () => {
 function normalizarTexto(txt) {
   return (txt || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 }
+
+// Mesma chave usada em Rotas pra agrupar cidades (sem acento, sem
+// mai\u00fascula, sem espa\u00e7o extra) \u2014 \u00e9 o que decide se duas grafias s\u00e3o a
+// mesma cidade.
+function chaveCidade(cidade) {
+  return normalizarTexto(cidade?.trim() || '').replace(/\s+/g, ' ')
+}
+
+// \u2500\u2500 Sugest\u00e3o de cidade no cadastro \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// Cidade \u00e9 campo livre, e cada grafia diferente ("Sao Paulo", "S\u00c3O PAULO")
+// vira um grupo separado na tela de Rotas. Sugerir as cidades j\u00e1 usadas
+// evita essa diverg\u00eancia na origem, sem impedir cadastrar uma cidade nova.
+const inputCidade = document.getElementById('cidade')
+
+// Caixa presa ao <body>: o modal tem "overflow-y: auto" e cortaria a
+// lista se ela ficasse dentro dele. z-index alto pra ficar acima do modal.
+const boxSugestoesCidade = document.createElement('div')
+boxSugestoesCidade.className = 'sugestoes-cidade'
+document.body.appendChild(boxSugestoesCidade)
+
+function esconderSugestoesCidade() {
+  boxSugestoesCidade.style.display = 'none'
+}
+
+// Cidades j\u00e1 cadastradas, uma por grafia can\u00f4nica (a mais usada entre as
+// varia\u00e7\u00f5es), em ordem alfab\u00e9tica.
+function cidadesConhecidas() {
+  const contagem = {}
+  todosClientes.forEach(c => {
+    const raw = c.cidade?.trim()
+    if (!raw) return
+    const chave = chaveCidade(raw)
+    if (!contagem[chave]) contagem[chave] = {}
+    contagem[chave][raw] = (contagem[chave][raw] || 0) + 1
+  })
+
+  return Object.values(contagem)
+    .map(variacoes => Object.entries(variacoes).sort((a, b) => b[1] - a[1])[0][0])
+    .sort((a, b) => a.localeCompare(b))
+}
+
+function posicionarSugestoesCidade() {
+  const rect = inputCidade.getBoundingClientRect()
+  boxSugestoesCidade.style.position = 'fixed'
+  boxSugestoesCidade.style.top   = `${rect.bottom + 4}px`
+  boxSugestoesCidade.style.left  = `${rect.left}px`
+  boxSugestoesCidade.style.width = `${rect.width}px`
+}
+
+function renderizarSugestoesCidade() {
+  const termo = chaveCidade(inputCidade.value)
+  const resultados = cidadesConhecidas()
+    .filter(cidade => !termo || chaveCidade(cidade).includes(termo))
+    .slice(0, 8)
+
+  // Nada a sugerir (nenhuma cidade cadastrada ainda, ou o que foi digitado
+  // j\u00e1 \u00e9 exatamente uma cidade conhecida) \u2014 some, em vez de atrapalhar.
+  const jaExato = resultados.length === 1 && chaveCidade(resultados[0]) === termo
+  if (resultados.length === 0 || jaExato) {
+    esconderSugestoesCidade()
+    return
+  }
+
+  boxSugestoesCidade.innerHTML = ''
+  resultados.forEach(cidade => {
+    const item = document.createElement('div')
+    item.className = 'sugestao-item'
+    item.textContent = cidade
+    // mousedown (n\u00e3o click) pra disparar antes do blur do input
+    item.addEventListener('mousedown', (e) => {
+      e.preventDefault()
+      inputCidade.value = cidade
+      esconderSugestoesCidade()
+    })
+    boxSugestoesCidade.appendChild(item)
+  })
+
+  posicionarSugestoesCidade()
+  boxSugestoesCidade.style.display = 'block'
+}
+
+inputCidade.addEventListener('focus', renderizarSugestoesCidade)
+inputCidade.addEventListener('input', renderizarSugestoesCidade)
+inputCidade.addEventListener('blur', () => setTimeout(esconderSugestoesCidade, 150))
+
+// O modal rola por dentro (overflow-y: auto), ent\u00e3o o scroll dele tamb\u00e9m
+// precisa esconder a caixa \u2014 da\u00ed o listener em fase de captura.
+window.addEventListener('scroll', esconderSugestoesCidade, true)
 
 async function carregarClientes() {
   const { data, error } = await supabase

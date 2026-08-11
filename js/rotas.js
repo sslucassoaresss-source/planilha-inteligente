@@ -256,15 +256,18 @@ function enderecoDe(c) {
   return [c.endereco, c.bairro, c.cidade, c.estado].filter(Boolean).join(', ') || '—'
 }
 
-// Normaliza o nome da cidade pra agrupar ignorando maiúscula/minúscula e espaços extras
-function normalizarCidade(cidade) {
-  return (cidade?.trim() || 'Sem cidade').toLowerCase().replace(/\s+/g, ' ')
-}
-
 // Remove acentos e ignora maiúscula/minúscula, pra buscar "sao paulo" e achar "São Paulo"
 // (mesmo helper usado na busca de cliente em Visitas)
 function normalizarTexto(txt) {
   return (txt || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
+}
+
+// Normaliza o nome da cidade pra agrupar ignorando maiúscula/minúscula,
+// espaços extras E acentos. Sem tirar o acento, "São Paulo" e "Sao Paulo"
+// viravam dois grupos separados: o cliente cadastrado com a grafia diferente
+// caía num card à parte e sumia da busca das rotas já criadas na cidade.
+function normalizarCidade(cidade) {
+  return normalizarTexto(cidade?.trim() || 'Sem cidade').replace(/\s+/g, ' ')
 }
 
 // ── Carregar e renderizar ─────────────────────────────────────
@@ -302,8 +305,11 @@ async function carregarRotas(chavesParaAbrir = []) {
 
   if (errOrdem) console.error('Erro ao carregar ordem das cidades:', errOrdem)
 
+  // As chaves antigas foram gravadas antes de normalizarCidade passar a tirar
+  // acento ("são paulo"). Normalizamos na leitura pra ordem manual já salva
+  // continuar valendo, em vez da cidade voltar pro fim da lista alfabética.
   const ordemPorCidade = {}
-  ordensSalvas?.forEach(o => { ordemPorCidade[o.cidade_chave] = o.ordem })
+  ordensSalvas?.forEach(o => { ordemPorCidade[normalizarCidade(o.cidade_chave)] = o.ordem })
 
   // Comparador único, reaproveitado pra ordenar os cards de cidade e o
   // seletor do modal "Atribuir rota ao dia" — mesma lógica nos dois lugares.

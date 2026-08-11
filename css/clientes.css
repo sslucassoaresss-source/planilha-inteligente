@@ -3,6 +3,36 @@
    Planilha Inteligente
 ═══════════════════════════════════════ */
 
+/* ── Sugestão de cidade no cadastro ──
+   Presa ao <body> e posicionada por JS (o modal tem overflow-y: auto e
+   cortaria a lista), por isso o z-index precisa passar do modal (200). */
+.sugestoes-cidade {
+  display: none;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(31, 59, 77, 0.12);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 300;
+}
+
+.sugestoes-cidade .sugestao-item {
+  padding: 10px 13px;
+  font-size: 14px;
+  color: var(--text-dark);
+  cursor: pointer;
+  border-bottom: 1px solid var(--bg);
+}
+
+.sugestoes-cidade .sugestao-item:last-child {
+  border-bottom: none;
+}
+
+.sugestoes-cidade .sugestao-item:hover {
+  background: #E8F4FC;
+}
+
 /* ── Busca ── */
 .filtros {
   margin-bottom: 20px;
