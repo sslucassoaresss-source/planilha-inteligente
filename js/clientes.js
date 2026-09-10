@@ -1,4 +1,4 @@
-import { supabase } from './supabase.js'
+import { supabase, buscarTodasLinhas } from './supabase.js'
 import { mensagemErro } from './erros.js'
 
 const { data: { session } } = await supabase.auth.getSession()
@@ -138,10 +138,7 @@ inputCidade.addEventListener('blur', () => setTimeout(esconderSugestoesCidade, 1
 window.addEventListener('scroll', esconderSugestoesCidade, true)
 
 async function carregarClientes() {
-  const { data, error } = await supabase
-    .from('clientes')
-    .select('*')
-    .order('nome')
+  const { data, error } = await buscarTodasLinhas('clientes', { order: 'nome' })
 
   if (error) { console.error('Erro ao carregar clientes:', error); return }
 

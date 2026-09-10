@@ -1,4 +1,4 @@
-import { supabase } from './supabase.js'
+import { supabase, buscarTodasLinhas } from './supabase.js'
 import { mensagemErro } from './erros.js'
 import Sortable from 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/+esm'
 
@@ -282,10 +282,7 @@ async function carregarRotas(chavesParaAbrir = []) {
   const ultimoDia   = `${ano}-${mes}-${String(diasNoMes).padStart(2, '0')}`
 
   // Todos os clientes (pra agrupar por cidade e alimentar o "+ adicionar")
-  const { data: clientes, error: errClientes } = await supabase
-    .from('clientes')
-    .select('*')
-    .order('nome')
+  const { data: clientes, error: errClientes } = await buscarTodasLinhas('clientes', { order: 'nome' })
 
   if (errClientes) {
     console.error('Erro ao carregar clientes:', errClientes)
