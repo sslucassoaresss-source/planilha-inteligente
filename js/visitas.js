@@ -1,4 +1,4 @@
-import { supabase } from './supabase.js'
+import { supabase, buscarTodasLinhas } from './supabase.js'
 import { mensagemErro } from './erros.js'
 
 const { data: { session } } = await supabase.auth.getSession()
@@ -43,10 +43,10 @@ let todosClientes = []
 let todasEmpresas = []
 
 async function carregarClientes() {
-  const { data, error } = await supabase
-    .from('clientes')
-    .select('id, nome, observacoes, desconto')
-    .order('nome')
+  const { data, error } = await buscarTodasLinhas('clientes', {
+    select: 'id, nome, observacoes, desconto',
+    order: 'nome'
+  })
 
   if (error) return
   todosClientes = data
