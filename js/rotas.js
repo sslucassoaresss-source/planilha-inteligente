@@ -358,11 +358,11 @@ async function carregarRotas(chavesParaAbrir = []) {
   let rotaClientesPorRota = {}
 
   if (rotaIds.length > 0) {
-    const { data: vinculos, error: errVinc } = await supabase
-      .from('rota_clientes')
-      .select('*, clientes(*)')
-      .in('rota_id', rotaIds)
-      .order('ordem')
+    const { data: vinculos, error: errVinc } = await buscarTodasLinhas('rota_clientes', {
+      select: '*, clientes(*)',
+      order: 'ordem',
+      filtro: (query) => query.in('rota_id', rotaIds)
+    })
 
     if (errVinc) {
       console.error('Erro ao carregar clientes da rota:', errVinc)
@@ -703,7 +703,13 @@ async function carregarRotas(chavesParaAbrir = []) {
 
             if (error) {
               console.error('Erro ao adicionar cliente à rota:', error)
-              alert(mensagemErro(error, 'adicionar cliente à rota'))
+              // code 23505 = violação de constraint única — nesse caso é a
+              // "rota_clientes_rota_id_cliente_id_key", que só existe pra
+              // impedir o mesmo cliente duas vezes na mesma rota. "Tente
+              // novamente" enganaria o usuário, já que repetir nunca resolve.
+              alert(error.code === '23505'
+                ? 'Esse cliente já está nessa rota.'
+                : mensagemErro(error, 'adicionar cliente à rota'))
               return
             }
             carregarRotas([chave])

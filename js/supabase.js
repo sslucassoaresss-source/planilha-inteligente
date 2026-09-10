@@ -13,7 +13,10 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 // Funciona buscando em "páginas" de `tamanhoPagina` em `tamanhoPagina`
 // linhas (usando .range()) até uma página voltar incompleta — sinal de
 // que chegou ao fim da tabela.
-export async function buscarTodasLinhas(tabela, { select = '*', order = null, tamanhoPagina = 1000 } = {}) {
+//
+// `filtro`, se passado, recebe a query antes do .range() e devolve ela
+// com filtros aplicados — ex: filtro: q => q.in('rota_id', ids)
+export async function buscarTodasLinhas(tabela, { select = '*', order = null, filtro = null, tamanhoPagina = 1000 } = {}) {
   let todasLinhas = []
   let pagina = 0
 
@@ -21,8 +24,10 @@ export async function buscarTodasLinhas(tabela, { select = '*', order = null, ta
     const inicio = pagina * tamanhoPagina
     const fim = inicio + tamanhoPagina - 1
 
-    let query = supabase.from(tabela).select(select).range(inicio, fim)
+    let query = supabase.from(tabela).select(select)
+    if (filtro) query = filtro(query)
     if (order) query = query.order(order)
+    query = query.range(inicio, fim)
 
     const { data, error } = await query
     if (error) return { data: null, error }
