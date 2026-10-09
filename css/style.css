@@ -395,6 +395,15 @@ body {
   }
 
   .pagina { padding: 24px 16px; }
+
+  /* Título + ações (mês, "+ Nova ...") quebram em duas linhas quando não
+     cabem numa só. Antes, em Empresas, o seletor de mês e o botão ficavam
+     na mesma linha do título e empurravam a página inteira pro lado. */
+  .pagina-topo {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
   .form-grid { grid-template-columns: 1fr; }
   .field.span-2 { grid-column: span 1; }
 }
