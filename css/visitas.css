@@ -235,6 +235,11 @@
   font-size: 13px;
   color: var(--text-dark);
   background: var(--card);
+  /* Campo de grid tem largura mínima "escondida" (o input quer ~20
+     caracteres; o select, o nome da empresa mais comprida). Sem isso as
+     colunas não encolhem e a linha estoura a largura do modal no celular. */
+  min-width: 0;
+  width: 100%;
 }
 
 .item-venda-row select:focus,
@@ -299,8 +304,14 @@
 
 /* ── Responsivo ── */
 @media (max-width: 600px) {
+  /* Celular: empresa sozinha na 1ª linha (os nomes são compridos);
+     valor, comissão e a lixeira na 2ª. minmax(0, 1fr) deixa as colunas
+     encolherem até caber, em vez de estourar o modal pro lado. */
   .item-venda-row {
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  }
+
+  .item-venda-row .item-empresa {
+    grid-column: 1 / -1;
   }
 }
