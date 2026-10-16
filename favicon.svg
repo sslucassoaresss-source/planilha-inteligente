@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Ícone da aba do navegador: o mesmo desenho do app, com cantos arredondados -->
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4C93C2"/><stop offset="1" stop-color="#2F6A93"/></linearGradient></defs>
+  <rect width="512" height="512" rx="112" fill="url(#g)"/>
+  <path d="M256 70c-82 0-144 60-144 140 0 104 144 242 144 242s144-138 144-242c0-80-62-140-144-140z" fill="#FFFFFF"/>
+  <g fill="#3D7EA6">
+    <rect x="192" y="146" width="56" height="56" rx="11"/>
+    <rect x="264" y="146" width="56" height="56" rx="11" opacity=".55"/>
+    <rect x="192" y="218" width="56" height="56" rx="11" opacity=".55"/>
+    <rect x="264" y="218" width="56" height="56" rx="11"/>
+  </g>
+</svg>

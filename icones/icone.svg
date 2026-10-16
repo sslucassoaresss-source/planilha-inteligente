@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Ícone do app instalado. Fundo azul cobrindo tudo e o desenho no
+       centro, com folga: alguns celulares cortam o ícone em círculo
+       ("maskable"). Os PNG desta pasta são gerados a partir deste arquivo. -->
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4C93C2"/><stop offset="1" stop-color="#2F6A93"/></linearGradient></defs>
+  <rect width="512" height="512" fill="url(#g)"/>
+  <!-- Pino de mapa com a grade de planilha dentro -->
+  <path d="M256 82c-76 0-134 56-134 130 0 96 134 224 134 224s134-128 134-224c0-74-58-130-134-130z" fill="#FFFFFF"/>
+  <g fill="#3D7EA6">
+    <rect x="198" y="156" width="52" height="52" rx="10"/>
+    <rect x="262" y="156" width="52" height="52" rx="10" opacity=".55"/>
+    <rect x="198" y="220" width="52" height="52" rx="10" opacity=".55"/>
+    <rect x="262" y="220" width="52" height="52" rx="10"/>
+  </g>
+</svg>

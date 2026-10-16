@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#FFFFFF">
+  <title>Sem conexão — Planilha Inteligente</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .offline {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 32px 24px;
+      gap: 14px;
+    }
+    .offline img { width: 88px; height: 88px; border-radius: 20px; box-shadow: 0 4px 14px rgba(31, 59, 77, 0.2); }
+    .offline h1 { font-family: 'Fraunces', serif; font-size: 24px; }
+    .offline p { color: var(--text-soft); max-width: 320px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <main class="offline">
+    <img src="icones/icone-192.png" alt="">
+    <h1>Sem conexão</h1>
+    <p>Não foi possível conectar à internet. Confira o sinal e tente de novo: seus dados continuam salvos e seguros.</p>
+    <button class="btn-primario" onclick="location.reload()">Tentar de novo</button>
+  </main>
+</body>
+</html>
