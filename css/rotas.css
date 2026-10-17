@@ -64,7 +64,10 @@
 /* ── Calendário do mês ── */
 .calendario-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  /* minmax(0, 1fr): cada coluna pode encolher abaixo do tamanho do texto.
+     Com só "1fr", um nome de rota comprido alargava a coluna e o
+     calendário passava da tela, cortando o sábado. */
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
 }
 
