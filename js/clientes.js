@@ -154,7 +154,10 @@ async function carregarClientes() {
   msgVazio.style.display = 'none'
   document.querySelector('.filtros').style.display = 'block'
 
-  renderizarTabela(todosClientes)
+  // Respeita a busca que estiver digitada: depois de salvar um desconto
+  // (ou editar/excluir um cliente) com a busca ativa, a lista continua
+  // filtrada, em vez de voltar a mostrar todos com o texto ainda na caixa.
+  aplicarBusca()
 }
 
 function renderizarTabela(lista) {
@@ -205,7 +208,9 @@ function renderizarTabela(lista) {
 }
 
 // ── Busca dinâmica (filtra por nome ou cidade, ignorando acentos/maiúsculas) ──
-inputBuscaCliente.addEventListener('input', () => {
+// Fica numa função própria porque também é usada por carregarClientes(),
+// para a lista continuar filtrada depois de qualquer recarga.
+function aplicarBusca() {
   const termo = normalizarTexto(inputBuscaCliente.value)
 
   if (!termo) {
@@ -218,7 +223,9 @@ inputBuscaCliente.addEventListener('input', () => {
   )
 
   renderizarTabela(filtrados)
-})
+}
+
+inputBuscaCliente.addEventListener('input', aplicarBusca)
 
 function abrirDescontoRapido(btn) {
   const celula = btn.closest('.celula-desconto')
