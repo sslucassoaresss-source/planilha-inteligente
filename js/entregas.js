@@ -20,6 +20,8 @@ function iniciar(userId) {
   const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
   const normalizar = (t) => (t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
   const fmtQtd = (v) => (Number(v) || 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 })
+  const fmt = (v) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  const arredonda2 = (v) => Math.round((Number(v) || 0) * 100) / 100
   const arredonda3 = (v) => Math.round((Number(v) || 0) * 1000) / 1000
 
   function dataLocalStr(d) {
@@ -34,6 +36,7 @@ function iniciar(userId) {
   // ── Dados ───────────────────────────────────────────────────
   let entregas = []
   let produtos = []      // produtos ativos (para escolher o que levar)
+  let todosProdutos = [] // todos (ativos e inativos), para preço e custo na "Entrega feita"
   let clientes = null    // carregados só quando o campo de cliente é usado (~1.300)
   let carregandoClientes = null
 
@@ -41,9 +44,9 @@ function iniciar(userId) {
     const [e, p] = await Promise.all([
       supabase
         .from('entregas')
-        .select('*, entrega_paradas(*, clientes(nome), entrega_itens(*, produtos(nome, unidade)))')
+        .select('*, entrega_paradas(*, clientes(nome), entrega_itens(*, produtos(nome, unidade)), vendas_estoque(venda_estoque_itens(quantidade, preco_unitario, produtos(nome, unidade)), pagamentos_venda(valor)))')
         .order('created_at', { ascending: true }),
-      supabase.from('produtos').select('*').eq('ativo', true).order('nome'),
+      supabase.from('produtos').select('*').order('nome'),
     ])
     if (e.error || p.error) {
       console.error('Erro ao carregar as entregas:', e.error || p.error)
@@ -56,7 +59,8 @@ function iniciar(userId) {
         .sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || String(a.created_at).localeCompare(String(b.created_at)))
         .map((par) => ({ ...par, itens: par.entrega_itens || [] })),
     }))
-    produtos = p.data
+    todosProdutos = p.data
+    produtos = p.data.filter((x) => x.ativo)
     return true
   }
 
@@ -116,11 +120,41 @@ function iniciar(userId) {
       </div>` : ''
 
     const levar = totalALevar(ent)
-    const paradas = ent.paradas.map((p) => `
-      <div class="ent-parada-lista ${p.feita ? 'ent-feita' : ''}">
-        <div><strong>${esc(p.clientes?.nome || '—')}</strong>${p.feita ? ' <span class="badge badge-sim">✓ Entregue</span>' : ''}</div>
-        <div class="est-sub">${esc(textoItens(p.itens)) || 'sem produtos'}</div>
-      </div>`).join('')
+    const paradas = ent.paradas.map((p) => {
+      if (!p.feita) {
+        return `
+          <div class="ent-parada-lista">
+            <div class="ent-parada-linha">
+              <div>
+                <strong>${esc(p.clientes?.nome || '—')}</strong>
+                <div class="est-sub">${esc(textoItens(p.itens)) || 'sem produtos'}</div>
+              </div>
+              <button type="button" class="est-btn-editar ent-btn-feita" data-ent="feita" data-parada="${p.id}" data-id="${ent.id}">✓ Entrega feita</button>
+            </div>
+          </div>`
+      }
+      // Já entregue: mostra o que foi vendido de verdade e o "Desfazer"
+      const v = p.vendas_estoque
+      let venda = ''
+      if (v) {
+        const total = arredonda2((v.venda_estoque_itens || []).reduce((s, i) => s + Number(i.quantidade) * Number(i.preco_unitario), 0))
+        const pago = arredonda2((v.pagamentos_venda || []).reduce((s, x) => s + Number(x.valor), 0))
+        const falta = arredonda2(total - pago)
+        venda = `Vendido: ${esc(textoItens((v.venda_estoque_itens || []).map((i) => ({ ...i, produtos: i.produtos }))))} · ${fmt(total)} · ${falta <= 0.004 ? 'pago' : `falta ${fmt(falta)}`}`
+      } else {
+        venda = 'A venda ligada a esta entrega não existe mais (foi apagada em Visitas).'
+      }
+      return `
+        <div class="ent-parada-lista ent-feita">
+          <div class="ent-parada-linha">
+            <div>
+              <strong>${esc(p.clientes?.nome || '—')}</strong> <span class="badge badge-sim">✓ Entregue</span>
+              <div class="est-sub">${venda}</div>
+            </div>
+            <button type="button" class="est-btn-excluir ent-btn-feita" data-ent="desfazer" data-parada="${p.id}" data-id="${ent.id}">Desfazer</button>
+          </div>
+        </div>`
+    }).join('')
 
     return `
       <div class="ent-card ${semDia(ent) ? 'ent-card-semdia' : atrasada(ent) ? 'ent-card-atrasada' : concluida ? 'ent-card-concluida' : ''}">
@@ -182,6 +216,13 @@ function iniciar(userId) {
       const { error } = await supabase.from('entregas').update({ data_entrega: dia }).eq('id', id)
       if (error) { console.error('Erro ao marcar o dia:', error); alert(mensagemErro(error, 'atualizar')); botao.disabled = false; return }
       await recarregar()
+    }
+
+    if (botao.dataset.ent === 'feita' && ent) abrirFeita(ent, ent.paradas.find((p) => p.id === botao.dataset.parada))
+    if (botao.dataset.ent === 'desfazer' && ent) {
+      botao.disabled = true
+      await desfazerEntrega(ent, ent.paradas.find((p) => p.id === botao.dataset.parada))
+      botao.disabled = false
     }
 
     if (botao.dataset.ent === 'editar' && ent) abrirModal(ent)
@@ -439,6 +480,219 @@ function iniciar(userId) {
     const { error } = await supabase.from('entregas').update(dados).eq('id', id)
     if (error) { console.error('Erro ao atualizar a entrega:', error); return { erro: mensagemErro(error) } }
     return {}
+  }
+
+  // ── Entrega feita: cria a venda de estoque (e baixa o estoque) ──
+  // A venda é a mesma das vendas de produtos da tela Visitas (mesmas tabelas), só que ligada à
+  // entrega em vez de a uma visita. O estoque nunca é "guardado": baixa porque a venda existe.
+  let estoque = {}       // produto_id -> quantidade em estoque (calculada)
+  let feitaAberta = null // { ent, parada } da janela aberta
+
+  const MODAL_FEITA = $('entModalFeita')
+  const abrirFeitaModal = () => MODAL_FEITA.classList.add('aberto')
+  const fecharFeitaModal = () => MODAL_FEITA.classList.remove('aberto')
+  MODAL_FEITA.addEventListener('click', (e) => { if (e.target === MODAL_FEITA) fecharFeitaModal() })
+  MODAL_FEITA.querySelectorAll('[data-fechar]').forEach((b) => b.addEventListener('click', fecharFeitaModal))
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fecharFeitaModal() })
+
+  const produtoDe = (id) => todosProdutos.find((p) => p.id === id)
+
+  async function atualizarEstoque() {
+    const [c, it] = await Promise.all([
+      buscarTodasLinhas('compras_estoque', { select: 'produto_id, quantidade', order: 'id' }),
+      buscarTodasLinhas('venda_estoque_itens', { select: 'produto_id, quantidade', order: 'id' }),
+    ])
+    if (c.error || it.error) { console.error('Erro ao carregar o estoque:', c.error || it.error); return }
+    estoque = {}
+    c.data.forEach((x) => { estoque[x.produto_id] = (estoque[x.produto_id] || 0) + Number(x.quantidade) })
+    it.data.forEach((x) => { estoque[x.produto_id] = (estoque[x.produto_id] || 0) - Number(x.quantidade) })
+    atualizarTotaisFeita()
+  }
+
+  function opcoesProdutosFeita(selecionado) {
+    return '<option value="">Produto...</option>' +
+      todosProdutos.filter((p) => p.ativo || p.id === selecionado)
+        .map((p) => `<option value="${p.id}" ${p.id === selecionado ? 'selected' : ''}>${esc(p.nome)}${p.ativo ? '' : ' (inativo)'}</option>`).join('')
+  }
+
+  function adicionarLinhaFeita({ produtoId = '', quantidade = '', preco = '' } = {}) {
+    const linha = document.createElement('div')
+    linha.className = 'est-linha'
+    linha.innerHTML = `
+      <select class="est-produto">${opcoesProdutosFeita(produtoId)}</select>
+      <input type="number" class="est-qtd" step="0.001" min="0.001" placeholder="Quantidade" value="${quantidade}">
+      <input type="number" class="est-preco" step="0.01" min="0" placeholder="Preço (R$)" value="${preco}">
+      <button type="button" class="est-btn-remover" title="Remover">🗑️</button>
+      <div class="est-linha-info"></div>`
+    const select = linha.querySelector('.est-produto')
+    select.addEventListener('change', () => {
+      // Ao escolher o produto, sugere o preço de venda dele (dá para mudar)
+      const p = produtoDe(select.value)
+      linha.querySelector('.est-preco').value = p ? p.preco_venda : ''
+      atualizarTotaisFeita()
+    })
+    linha.querySelector('.est-qtd').addEventListener('input', atualizarTotaisFeita)
+    linha.querySelector('.est-preco').addEventListener('input', atualizarTotaisFeita)
+    linha.querySelector('.est-btn-remover').addEventListener('click', () => { linha.remove(); atualizarTotaisFeita() })
+    $('entFeitaLinhas').appendChild(linha)
+    atualizarTotaisFeita()
+  }
+
+  const lerLinhasFeita = () => [...document.querySelectorAll('#entFeitaLinhas .est-linha')].map((linha) => ({
+    el: linha,
+    produtoId: linha.querySelector('.est-produto').value,
+    quantidade: arredonda3(linha.querySelector('.est-qtd').value),
+    preco: arredonda2(linha.querySelector('.est-preco').value),
+    precoVazio: linha.querySelector('.est-preco').value === '',
+    mexeu: !!(linha.querySelector('.est-produto').value || linha.querySelector('.est-qtd').value || linha.querySelector('.est-preco').value),
+  }))
+
+  function atualizarTotaisFeita() {
+    const linhas = lerLinhasFeita()
+    const soma = {}
+    linhas.forEach((l) => { if (l.produtoId) soma[l.produtoId] = (soma[l.produtoId] || 0) + l.quantidade })
+    let total = 0
+    linhas.forEach((l) => {
+      const info = l.el.querySelector('.est-linha-info')
+      const p = produtoDe(l.produtoId)
+      if (!p) { info.textContent = ''; info.classList.remove('est-excede'); return }
+      const disponivel = arredonda3(estoque[p.id] || 0)
+      const valorLinha = arredonda2(l.quantidade * l.preco)
+      if (l.quantidade > 0) total += valorLinha
+      const passa = (soma[p.id] || 0) > disponivel
+      info.classList.toggle('est-excede', passa)
+      info.textContent = `Em estoque: ${fmtQtd(disponivel)} ${p.unidade}` +
+        (l.quantidade > 0 ? ` · Total da linha: ${fmt(valorLinha)}` : '') +
+        (passa ? ' · atenção: passa do que você tem em estoque' : '')
+    })
+    $('entFeitaTotal').innerHTML = `Total da entrega: <strong>${fmt(total)}</strong>`
+    const tipo = $('entFeitaPagamento').value
+    $('entFeitaCampoValorPago').style.display = tipo === 'parte' ? 'flex' : 'none'
+    $('entFeitaCampoForma').style.display = tipo === 'fiado' ? 'none' : 'flex'
+    $('entFeitaCampoPrazo').style.display = tipo === 'pago' ? 'none' : 'flex'
+  }
+
+  $('entFeitaPagamento').addEventListener('change', atualizarTotaisFeita)
+  $('entFeitaAddLinha').addEventListener('click', () => adicionarLinhaFeita())
+
+  function abrirFeita(ent, parada) {
+    if (!parada) return
+    feitaAberta = { ent, parada }
+    $('entFeitaInfo').innerHTML = `<strong>${esc(parada.clientes?.nome || '')}</strong> · ${esc(ent.nome || 'Entrega')}`
+    $('entFeitaLinhas').innerHTML = ''
+    parada.itens.forEach((i) => {
+      const p = produtoDe(i.produto_id)
+      adicionarLinhaFeita({ produtoId: i.produto_id, quantidade: Number(i.quantidade), preco: i.preco_unitario ?? p?.preco_venda ?? '' })
+    })
+    // Dia da venda: o dia da entrega, se já chegou; senão hoje
+    const hoje = dataLocalStr(new Date())
+    $('entFeitaData').value = ent.data_entrega && ent.data_entrega <= hoje ? ent.data_entrega : hoje
+    $('entFeitaPagamento').value = 'pago'
+    $('entFeitaValorPago').value = ''
+    $('entFeitaForma').value = ''
+    $('entFeitaPrazo').value = ''
+    atualizarTotaisFeita()
+    abrirFeitaModal()
+    atualizarEstoque()
+  }
+
+  // "AAAA-MM-DD" + N dias, sem passar por UTC (toISOString viraria o dia à noite)
+  function somarDias(dataStr, dias) {
+    const [a, m, d] = dataStr.split('-').map(Number)
+    return dataLocalStr(new Date(a, m - 1, d + Number(dias)))
+  }
+
+  $('entFormFeita').addEventListener('submit', async (e) => {
+    e.preventDefault()
+    if (!feitaAberta) return
+    const { parada } = feitaAberta
+
+    // ── valida o que foi digitado ──
+    const linhas = lerLinhasFeita().filter((l) => l.mexeu)
+    if (linhas.length === 0) { alert('Informe pelo menos um produto entregue.'); return }
+    for (const l of linhas) {
+      if (!l.produtoId || !(l.quantidade > 0)) { alert('Em todas as linhas, escolha o produto e a quantidade (ou remova a linha).'); return }
+      if (l.precoVazio) { alert('Informe o preço em todas as linhas (se for brinde, coloque 0).'); return }
+    }
+    const data = $('entFeitaData').value
+    if (!data) { alert('Informe o dia da entrega.'); return }
+
+    const total = arredonda2(linhas.reduce((s, l) => s + l.quantidade * l.preco, 0))
+    const tipo = $('entFeitaPagamento').value
+    const prazoTexto = $('entFeitaPrazo').value
+    const prazo = tipo === 'pago' || prazoTexto === '' ? null : Math.round(Number($('entFeitaPrazo').value))
+    if (prazo !== null && !(prazo >= 0)) { alert('O prazo para pagar precisa ser um número de dias (0 ou mais).'); return }
+    let valorPago = total
+    if (tipo === 'fiado') valorPago = 0
+    if (tipo === 'parte') {
+      valorPago = arredonda2($('entFeitaValorPago').value)
+      if (!(valorPago > 0)) { alert('Informe quanto o cliente pagou agora.'); return }
+      if (valorPago >= total) { alert('O valor pago é igual ou maior que o total. Escolha "Pago agora".'); return }
+    }
+    const forma = $('entFeitaForma').value || null
+
+    // ── grava: se qualquer passo falhar, a venda criada é desfeita (nada fica pela metade) ──
+    const botao = $('entFeitaBtn')
+    botao.disabled = true
+    botao.textContent = 'Salvando...'
+    let vendaId = null
+    try {
+      const { data: venda, error } = await supabase.from('vendas_estoque').insert({
+        user_id: userId,
+        cliente_id: parada.cliente_id,
+        visita_id: null,
+        data_venda: data,
+        prazo_dias: prazo,
+        vencimento: prazo !== null ? somarDias(data, prazo) : null,
+      }).select().single()
+      if (error) { console.error('Erro ao criar a venda da entrega:', error); alert(mensagemErro(error)); return }
+      vendaId = venda.id
+
+      const itens = linhas.map((l) => ({
+        user_id: userId, venda_id: vendaId, produto_id: l.produtoId, quantidade: l.quantidade,
+        preco_unitario: l.preco, custo_unitario: Number(produtoDe(l.produtoId)?.preco_custo) || 0, // custo do dia
+      }))
+      const resItens = await supabase.from('venda_estoque_itens').insert(itens)
+      if (resItens.error) throw resItens.error
+
+      if (valorPago > 0) {
+        const resPag = await supabase.from('pagamentos_venda').insert({ user_id: userId, venda_id: vendaId, valor: valorPago, data_pagamento: data, forma })
+        if (resPag.error) throw resPag.error
+      }
+
+      const resParada = await supabase.from('entrega_paradas').update({ feita: true, venda_id: vendaId }).eq('id', parada.id)
+      if (resParada.error) throw resParada.error
+
+      vendaId = null // tudo certo: nada a desfazer
+      fecharFeitaModal()
+      await recarregar()
+    } catch (err) {
+      console.error('Erro ao registrar a entrega feita:', err)
+      if (vendaId) await supabase.from('vendas_estoque').delete().eq('id', vendaId) // desfaz a venda criada
+      alert(`${mensagemErro(err)}\n\nNada foi registrado: a entrega continua pendente.`)
+    } finally {
+      botao.disabled = false
+      botao.textContent = 'Confirmar entrega'
+    }
+  })
+
+  // Desfazer: apaga a venda (itens e pagamentos vão junto) e reabre a parada
+  async function desfazerEntrega(ent, parada) {
+    if (!parada) return
+    const nome = parada.clientes?.nome || ''
+    const temVenda = !!parada.vendas_estoque
+    const pergunta = temVenda
+      ? `Desfazer a entrega de "${nome}"?\nA venda ligada a ela (e os pagamentos dela) será apagada, o estoque volta e a entrega volta a ficar pendente.`
+      : `Reabrir a entrega de "${nome}"?\n(A venda ligada a ela já não existe: foi apagada em Visitas.)`
+    if (!confirm(pergunta)) return
+
+    if (parada.venda_id) {
+      const { error } = await supabase.from('vendas_estoque').delete().eq('id', parada.venda_id)
+      if (error) { console.error('Erro ao apagar a venda da entrega:', error); alert(mensagemErro(error, 'desfazer')); return }
+    }
+    const { error } = await supabase.from('entrega_paradas').update({ feita: false, venda_id: null }).eq('id', parada.id)
+    if (error) { console.error('Erro ao reabrir a parada:', error); alert(mensagemErro(error, 'desfazer')) }
+    await recarregar()
   }
 
   recarregar()

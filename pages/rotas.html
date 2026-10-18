@@ -184,6 +184,60 @@
     </div>
   </div>
 
+  <!-- "Entrega feita": confirma o que foi entregue e cria a venda de estoque (js/entregas.js) -->
+  <div class="modal-overlay" id="entModalFeita">
+    <div class="modal">
+      <div class="modal-topo">
+        <h2>Entrega feita</h2>
+        <button type="button" class="modal-fechar" data-fechar>&times;</button>
+      </div>
+      <form id="entFormFeita">
+        <p class="est-total" id="entFeitaInfo" style="margin-bottom: 14px"></p>
+
+        <div class="ent-secao-titulo">O que foi entregue (entregou menos? é só mudar o número)</div>
+        <div id="entFeitaLinhas"></div>
+        <button type="button" class="est-btn-card" id="entFeitaAddLinha" style="margin-top: 0">+ Produto</button>
+        <div class="est-total" id="entFeitaTotal" style="margin: 14px 0 16px"></div>
+
+        <div class="form-grid">
+          <div class="field span-2">
+            <label for="entFeitaData">Dia da entrega</label>
+            <input type="date" id="entFeitaData" required>
+          </div>
+          <div class="field span-2">
+            <label for="entFeitaPagamento">Pagamento</label>
+            <select id="entFeitaPagamento">
+              <option value="pago">Pago agora</option>
+              <option value="fiado">Fiado (pagar depois)</option>
+              <option value="parte">Pagou uma parte</option>
+            </select>
+          </div>
+          <div class="field" id="entFeitaCampoValorPago" style="display:none">
+            <label for="entFeitaValorPago">Valor pago agora (R$)</label>
+            <input type="number" id="entFeitaValorPago" step="0.01" min="0.01" placeholder="0,00">
+          </div>
+          <div class="field" id="entFeitaCampoForma">
+            <label for="entFeitaForma">Forma de pagamento</label>
+            <select id="entFeitaForma">
+              <option value="">—</option>
+              <option value="pix">Pix</option>
+              <option value="dinheiro">Dinheiro</option>
+            </select>
+          </div>
+          <div class="field" id="entFeitaCampoPrazo" style="display:none">
+            <label for="entFeitaPrazo">Prazo para pagar o resto (dias)</label>
+            <input type="number" id="entFeitaPrazo" step="1" min="0" placeholder="Ex: 10">
+          </div>
+        </div>
+
+        <div class="modal-rodape">
+          <button type="button" class="btn-secundario" data-fechar>Cancelar</button>
+          <button type="submit" class="btn-primario" id="entFeitaBtn">Confirmar entrega</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script type="module" src="../js/rotas.js"></script>
   <script type="module" src="../js/entregas.js"></script>
 

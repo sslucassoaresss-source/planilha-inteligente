@@ -943,3 +943,21 @@
   .ent-item { grid-template-columns: minmax(0, 1fr) auto; }
   .ent-item .ent-produto { grid-column: 1 / -1; }
 }
+
+/* Entregas: botão "Entrega feita" / "Desfazer" em cada cliente */
+.ent-parada-linha {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ent-btn-feita { flex-shrink: 0; }
+
+.ent-feita .ent-btn-feita { opacity: 1; }
+.ent-parada-lista.ent-feita { opacity: 1; background: #F1FAF5; }
+
+@media (max-width: 600px) {
+  .ent-parada-linha { flex-direction: column; align-items: stretch; }
+  .ent-btn-feita { align-self: flex-start; }
+}
