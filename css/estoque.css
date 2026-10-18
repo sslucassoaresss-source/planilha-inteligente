@@ -389,19 +389,22 @@
 .grafico-ponto-azul  { background: var(--accent); }
 .grafico-ponto-verde { background: #2E8B6A; }
 
-/* Parte de cima da barra, com a venda de estoque (o azul das empresas fica embaixo) */
-.barra-estoque {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  background: #2E8B6A;
-  border-radius: 4px 4px 0 0;
+/* Dia com venda de estoque: duas barras lado a lado (azul = empresas, verde = estoque) */
+.barra-par {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
 }
 
-/* Dica com duas linhas (empresas + estoque) */
-.barra-tooltip.barra-tooltip-duplo {
-  white-space: pre;
-  text-align: left;
-  line-height: 1.5;
+.barra-par .barra,
+.barra-par .barra-vazio {
+  flex: 1;
+  min-width: 0;
+  width: auto;
 }
+
+.barra.barra-estoque { background: #2E8B6A; }
+.barra.barra-estoque:hover { background: #226B51; }

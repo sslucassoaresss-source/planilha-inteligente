@@ -122,47 +122,56 @@ function renderizarGrafico(visitas, ano, mes, estoquePorDia = {}) {
     }
   })
 
-  // A altura de cada barra é a soma da parte azul (empresas representadas) com a verde (estoque)
-  const totalDoDia = (d) => (vendasPorDia[d] || 0) + (estoquePorDia[d] || 0)
-  const maxValor = Math.max(...Array.from({ length: diasNoMes }, (_, i) => totalDoDia(i + 1)), 1)
+  // Sem nenhuma venda de estoque no mês, o gráfico é exatamente o de sempre: uma barra azul
+  // por dia. Com estoque, cada dia com venda ganha DUAS barras lado a lado: azul (empresas
+  // representadas) à esquerda e verde (estoque) à direita, ambas na mesma escala.
+  const temEstoqueNoMes = Object.values(estoquePorDia).some(v => v > 0)
+  const maxValor = Math.max(
+    ...Object.values(vendasPorDia),
+    ...(temEstoqueNoMes ? Object.values(estoquePorDia) : []),
+    1
+  )
+  const moeda = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
-  for (let dia = 1; dia <= diasNoMes; dia++) {
-    const valorEmpresas = vendasPorDia[dia] || 0
-    const valorEstoque = estoquePorDia[dia] || 0
-    const valor = valorEmpresas + valorEstoque
-    const altura = Math.max((valor / maxValor) * 100, valor > 0 ? 8 : 2)
-
-    const wrap = document.createElement('div')
-    wrap.className = 'barra-wrap'
-
+  // Uma barra, com a dica que aparece ao passar o mouse
+  const criarBarra = (valor, classe, prefixoDica) => {
     const barra = document.createElement('div')
-    barra.className = 'barra'
-    barra.style.height = `${altura}%`
+    barra.className = classe
+    barra.style.height = `${Math.max((valor / maxValor) * 100, valor > 0 ? 8 : 2)}%`
     barra.style.opacity = valor > 0 ? '1' : '0.2'
 
     if (valor > 0) {
       const tooltip = document.createElement('div')
       tooltip.className = 'barra-tooltip'
-      const moeda = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-      if (valorEstoque > 0) {
-        // Dia com venda de estoque: mostra os dois valores e pinta a parte de cima de verde
-        tooltip.classList.add('barra-tooltip-duplo')
-        tooltip.textContent = `Empresas: ${moeda(valorEmpresas)}\nEstoque: ${moeda(valorEstoque)}`
-        const verde = document.createElement('div')
-        verde.className = 'barra-estoque'
-        verde.style.height = `${(valorEstoque / valor) * 100}%`
-        barra.appendChild(verde)
-      } else {
-        tooltip.textContent = moeda(valor)
-      }
+      tooltip.textContent = `${prefixoDica}${moeda(valor)}`
       barra.appendChild(tooltip)
+    }
+    return barra
+  }
+
+  for (let dia = 1; dia <= diasNoMes; dia++) {
+    const valorEmpresas = vendasPorDia[dia] || 0
+    const valorEstoque = estoquePorDia[dia] || 0
+
+    const wrap = document.createElement('div')
+    wrap.className = 'barra-wrap'
+
+    if (temEstoqueNoMes && valorEmpresas + valorEstoque > 0) {
+      const par = document.createElement('div')
+      par.className = 'barra-par'
+      // Espaço vazio no lugar da barra que não existe, para as duas ficarem sempre alinhadas
+      const vazio = () => Object.assign(document.createElement('div'), { className: 'barra-vazio' })
+      par.appendChild(valorEmpresas > 0 ? criarBarra(valorEmpresas, 'barra', 'Empresas: ') : vazio())
+      par.appendChild(valorEstoque > 0 ? criarBarra(valorEstoque, 'barra barra-estoque', 'Estoque: ') : vazio())
+      wrap.appendChild(par)
+    } else {
+      wrap.appendChild(criarBarra(valorEmpresas, 'barra', ''))
     }
 
     const label = document.createElement('div')
     label.className = 'barra-label'
     label.textContent = dia % 5 === 0 || dia === 1 ? dia : ''
 
-    wrap.appendChild(barra)
     wrap.appendChild(label)
     grafico.appendChild(wrap)
   }
