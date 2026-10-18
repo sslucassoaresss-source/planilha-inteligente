@@ -56,10 +56,13 @@ function iniciar(userId) {
     const [p, v, c, r, m] = await Promise.all([
       supabase.from('produtos').select('*').order('nome'),
       buscarTodasLinhas('vendas_estoque', {
-        select: '*, venda_estoque_itens(produto_id, quantidade, preco_unitario, custo_unitario), pagamentos_venda(valor, data_pagamento, created_at)',
+        select: '*, clientes(nome), venda_estoque_itens(produto_id, quantidade, preco_unitario, custo_unitario, produtos(nome, unidade)), pagamentos_venda(valor, data_pagamento, created_at)',
         order: 'id',
       }),
-      buscarTodasLinhas('compras_estoque', { select: 'produto_id, quantidade', order: 'id' }),
+      buscarTodasLinhas('compras_estoque', {
+        select: '*, fornecedores(nome), produtos(nome, unidade), pagamentos_compra(valor)',
+        order: 'id',
+      }),
       supabase.from('retiradas_lucro').select('*').order('data_retirada', { ascending: false }),
       supabase.from('metas_estoque').select('*').order('created_at'),
     ])
@@ -180,6 +183,7 @@ function iniciar(userId) {
       const resto = metas.length - resumo.length
       $('estSubMeta').textContent = resumo.join(' + ') + (resto > 0 ? ` + ${resto} mais` : '')
     }
+    desenharCobrancas()
     return c
   }
 
@@ -202,8 +206,206 @@ function iniciar(userId) {
 
   $('selectMes').addEventListener('change', desenhar)
 
+  // ── Quem me deve / Quem eu devo (e a faixa de alerta) ────────
+  // Só a revenda: vendas de produtos ainda não pagas por completo (clientes) e compras
+  // ainda não pagas por completo (fornecedores). A comissão das empresas representadas
+  // continua na tela Empresas.
+  function diasAte(dataStr) { // negativo = já passou
+    const [a, m, d] = String(dataStr).slice(0, 10).split('-').map(Number)
+    const [ha, hm, hd] = dataLocalStr(new Date()).split('-').map(Number)
+    return Math.round((Date.UTC(a, m - 1, d) - Date.UTC(ha, hm - 1, hd)) / 86400000)
+  }
+
+  function situacaoDoPrazo(vencimento) {
+    if (!vencimento) return { tipo: 'semprazo', ordem: 3, texto: 'sem prazo' }
+    const dias = diasAte(vencimento)
+    if (dias < 0) return { tipo: 'atraso', ordem: 0, texto: dias === -1 ? 'venceu ontem' : `venceu há ${-dias} dias` }
+    if (dias === 0) return { tipo: 'hoje', ordem: 1, texto: 'vence hoje' }
+    if (dias <= 3) return { tipo: 'breve', ordem: 2, texto: dias === 1 ? 'vence amanhã' : `vence em ${dias} dias` }
+    return { tipo: 'futuro', ordem: 2, texto: `vence em ${dias} dias` }
+  }
+
+  // Vencidas primeiro, depois as de hoje, as próximas e, por último, as sem prazo
+  const ordenarCobrancas = (lista) => lista.sort((a, b) =>
+    a.situacao.ordem - b.situacao.ordem ||
+    String(a.vencimento || '9999').localeCompare(String(b.vencimento || '9999')) ||
+    String(a.data).localeCompare(String(b.data)))
+
+  function quemMeDeve() {
+    return ordenarCobrancas(vendas.map((v) => {
+      const itens = v.venda_estoque_itens || []
+      const total = arredonda2(itens.reduce((s, i) => s + Number(i.quantidade) * Number(i.preco_unitario), 0))
+      const pago = arredonda2((v.pagamentos_venda || []).reduce((s, p) => s + Number(p.valor), 0))
+      return {
+        tipo: 'venda',
+        id: v.id,
+        nome: v.clientes?.nome || '—',
+        descricao: itens.map((i) => `${i.produtos?.nome || 'produto'} × ${fmtQtd(i.quantidade)}`).join(' · '),
+        data: v.data_venda,
+        vencimento: v.vencimento,
+        total,
+        pago,
+        falta: arredonda2(total - pago),
+        obs: v.observacao_cobranca,
+        situacao: situacaoDoPrazo(v.vencimento),
+      }
+    }).filter((x) => x.falta > 0.004))
+  }
+
+  function quemEuDevo() {
+    return ordenarCobrancas(compras.map((c) => {
+      const total = arredonda2(Number(c.quantidade) * Number(c.custo_unitario))
+      const pago = arredonda2((c.pagamentos_compra || []).reduce((s, p) => s + Number(p.valor), 0))
+      return {
+        tipo: 'compra',
+        id: c.id,
+        nome: c.fornecedores?.nome || 'Sem fornecedor',
+        descricao: `${c.produtos?.nome || 'produto'} × ${fmtQtd(c.quantidade)}`,
+        data: c.data_compra,
+        vencimento: c.vencimento,
+        total,
+        pago,
+        falta: arredonda2(total - pago),
+        obs: c.observacao_cobranca,
+        situacao: situacaoDoPrazo(c.vencimento),
+      }
+    }).filter((x) => x.falta > 0.004))
+  }
+
+  function htmlCobranca(x) {
+    const pct = x.total > 0 ? Math.min(100, Math.round((x.pago / x.total) * 100)) : 0
+    const classeSelo = { atraso: 'badge-nao', hoje: 'badge-parcial', breve: 'badge-parcial', futuro: 'est-selo-neutro', semprazo: 'est-selo-neutro' }[x.situacao.tipo]
+    const verbo = x.tipo === 'venda' ? 'Receber' : 'Pagar'
+    return `
+      <div class="est-cob est-cob-${x.situacao.tipo}">
+        <div class="est-cob-topo"><strong>${esc(x.nome)}</strong><span class="est-cob-falta">${fmt(x.falta)}</span></div>
+        <div class="est-cob-sub">${esc(x.descricao)} · ${dataBR(x.data)}</div>
+        <div class="est-progresso" title="${pct}% pago"><span style="width:${pct}%"></span></div>
+        <div class="est-cob-meta">
+          <span class="badge ${classeSelo}">${x.situacao.texto}</span>
+          ${x.vencimento ? `<span class="est-sub">${dataBR(x.vencimento)}</span>` : ''}
+          <span class="est-sub">pago ${fmt(x.pago)} de ${fmt(x.total)}</span>
+        </div>
+        ${x.obs ? `<div class="est-cob-obs">📝 ${esc(x.obs)}</div>` : ''}
+        <div class="est-cob-acoes">
+          <button type="button" class="est-btn-editar" data-est-cob="pagar" data-tipo="${x.tipo}" data-id="${x.id}">${verbo}</button>
+          <button type="button" class="est-btn-card est-btn-obs" data-est-cob="obs" data-tipo="${x.tipo}" data-id="${x.id}">${x.obs ? 'Editar observação' : '+ Observação'}</button>
+        </div>
+      </div>`
+  }
+
+  function desenharCobrancas() {
+    const deve = quemMeDeve()
+    const devo = quemEuDevo()
+    const soma = (lista) => arredonda2(lista.reduce((s, x) => s + x.falta, 0))
+
+    $('estTotalDeve').textContent = deve.length ? `${fmt(soma(deve))} em aberto` : ''
+    $('estListaDeve').innerHTML = deve.length
+      ? deve.map(htmlCobranca).join('')
+      : '<p class="est-cob-vazio">Ninguém está devendo nada para você agora.</p>'
+
+    $('estTotalDevo').textContent = devo.length ? `${fmt(soma(devo))} em aberto` : ''
+    $('estListaDevo').innerHTML = devo.length
+      ? devo.map(htmlCobranca).join('')
+      : '<p class="est-cob-vazio">Você não deve nada aos fornecedores agora.</p>'
+
+    // Faixa amarela: só o que já venceu ou vence hoje
+    const conta = (lista, tipo) => lista.filter((x) => x.situacao.tipo === tipo).length
+    const partes = []
+    const adiciona = (n, singular, plural) => { if (n > 0) partes.push(`${n} ${n === 1 ? singular : plural}`) }
+    adiciona(conta(deve, 'atraso'), 'cobrança vencida', 'cobranças vencidas')
+    adiciona(conta(deve, 'hoje'), 'cobrança vence hoje', 'cobranças vencem hoje')
+    adiciona(conta(devo, 'atraso'), 'conta a pagar vencida', 'contas a pagar vencidas')
+    adiciona(conta(devo, 'hoje'), 'conta a pagar vence hoje', 'contas a pagar vencem hoje')
+    $('estFaixa').style.display = partes.length ? 'flex' : 'none'
+    $('estFaixaTexto').textContent = partes.join(' · ')
+  }
+
+  const achar = (tipo, id) => (tipo === 'venda' ? quemMeDeve() : quemEuDevo()).find((x) => x.id === id)
+
+  // Receber / Pagar (em partes)
+  let cobrancaAberta = null
+
+  function abrirPagamento(tipo, id) {
+    const x = achar(tipo, id)
+    if (!x) return
+    cobrancaAberta = x
+    $('estPagTitulo').textContent = tipo === 'venda' ? 'Receber pagamento' : 'Pagar fornecedor'
+    $('estPagInfo').innerHTML = `<strong>${esc(x.nome)}</strong> · total ${fmt(x.total)} · já pago ${fmt(x.pago)} · <strong>falta ${fmt(x.falta)}</strong>`
+    $('estPagValor').value = x.falta
+    $('estPagData').value = dataLocalStr(new Date())
+    $('estPagForma').value = ''
+    $('estBtnSalvarPag').textContent = tipo === 'venda' ? 'Salvar recebimento' : 'Salvar pagamento'
+    abrir('estModalPag')
+    $('estPagValor').focus()
+  }
+
+  $('estFormPag').addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const x = cobrancaAberta
+    if (!x) return
+    const valor = arredonda2($('estPagValor').value)
+    if (!(valor > 0)) return
+    if (valor > x.falta + 0.004) {
+      alert(`O valor é maior do que falta (${fmt(x.falta)}).`)
+      return
+    }
+    const botao = $('estBtnSalvarPag')
+    const rotulo = botao.textContent
+    botao.disabled = true
+    botao.textContent = 'Salvando...'
+    const tabela = x.tipo === 'venda' ? 'pagamentos_venda' : 'pagamentos_compra'
+    const coluna = x.tipo === 'venda' ? 'venda_id' : 'compra_id'
+    const { error } = await supabase.from(tabela).insert({
+      user_id: userId,
+      [coluna]: x.id,
+      valor,
+      data_pagamento: $('estPagData').value || dataLocalStr(new Date()),
+      forma: $('estPagForma').value || null,
+    })
+    botao.disabled = false
+    botao.textContent = rotulo
+    if (error) { console.error('Erro ao registrar pagamento:', error); alert(mensagemErro(error)); return }
+    fechar('estModalPag')
+    await recarregar()
+  })
+
+  // Observação dentro da cobrança ("cobrar por Pix na sexta")
+  function abrirObservacao(tipo, id) {
+    const x = achar(tipo, id)
+    if (!x) return
+    cobrancaAberta = x
+    $('estObsInfo').innerHTML = `<strong>${esc(x.nome)}</strong> · falta ${fmt(x.falta)}`
+    $('estObsTexto').value = x.obs || ''
+    abrir('estModalObs')
+    $('estObsTexto').focus()
+  }
+
+  $('estFormObs').addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const x = cobrancaAberta
+    if (!x) return
+    const botao = $('estBtnSalvarObs')
+    botao.disabled = true
+    botao.textContent = 'Salvando...'
+    const tabela = x.tipo === 'venda' ? 'vendas_estoque' : 'compras_estoque'
+    const { error } = await supabase.from(tabela).update({ observacao_cobranca: $('estObsTexto').value.trim() || null }).eq('id', x.id)
+    botao.disabled = false
+    botao.textContent = 'Salvar'
+    if (error) { console.error('Erro ao salvar a observação:', error); alert(mensagemErro(error)); return }
+    fechar('estModalObs')
+    await recarregar()
+  })
+
+  $('estCobrancas').addEventListener('click', (e) => {
+    const botao = e.target.closest('[data-est-cob]')
+    if (!botao) return
+    if (botao.dataset.estCob === 'pagar') abrirPagamento(botao.dataset.tipo, botao.dataset.id)
+    if (botao.dataset.estCob === 'obs') abrirObservacao(botao.dataset.tipo, botao.dataset.id)
+  })
+
   // ── Janelinhas ──────────────────────────────────────────────
-  const MODAIS = ['estModalRetirada', 'estModalMeta']
+  const MODAIS = ['estModalRetirada', 'estModalMeta', 'estModalPag', 'estModalObs']
   const abrir = (id) => $(id).classList.add('aberto')
   const fechar = (id) => $(id).classList.remove('aberto')
   MODAIS.forEach((id) => {

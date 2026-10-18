@@ -161,6 +161,7 @@ function iniciar(userId) {
       if (falta <= 0) pagamento = '<span class="badge badge-sim">Pago</span>'
       else if (pago > 0) pagamento = `<span class="badge badge-parcial">Falta ${fmt(falta)}</span>`
       else pagamento = `<span class="badge badge-nao">A pagar ${fmt(falta)}</span>`
+      if (falta > 0 && c.vencimento) pagamento += `<span class="est-sub">vence em ${dataBR(c.vencimento)}</span>`
 
       return `
         <tr>
@@ -334,6 +335,8 @@ function iniciar(userId) {
     $('estCompQtd').value = ''
     $('estCompObs').value = ''
     $('estCompPago').checked = true
+    $('estCompVenc').value = ''
+    $('estCampoVenc').style.display = 'none'
     $('estCompAtualizaCusto').checked = true
     aoMudarProdutoDaCompra()
     abrir('estModalCompra')
@@ -347,6 +350,11 @@ function iniciar(userId) {
     $('estCompCusto').value = p ? p.preco_custo : ''
     atualizarTotalCompra()
   }
+
+  // O vencimento só faz sentido quando a compra ficou "a pagar"
+  $('estCompPago').addEventListener('change', () => {
+    $('estCampoVenc').style.display = $('estCompPago').checked ? 'none' : 'flex'
+  })
 
   $('estBtnNovaCompra').addEventListener('click', abrirCompra)
   $('estCompProduto').addEventListener('change', aoMudarProdutoDaCompra)
@@ -369,6 +377,8 @@ function iniciar(userId) {
       custo_unitario: custo,
       data_compra: $('estCompData').value || hojeLocal(),
       observacao: $('estCompObs').value.trim() || null,
+      // Compra "a pagar" pode ter data de vencimento (às vezes tem boleto, às vezes não)
+      vencimento: (!$('estCompPago').checked && $('estCompVenc').value) ? $('estCompVenc').value : null,
     }
 
     await comBotaoTravado($('estBtnSalvarCompra'), 'Salvando...', async () => {

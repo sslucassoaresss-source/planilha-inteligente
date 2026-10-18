@@ -70,6 +70,13 @@
         <h2>Estoque</h2>
         <span class="est-dash-sub">sua revenda · vendido e lucro seguem o mês escolhido acima</span>
       </div>
+
+      <!-- Faixa de alerta: cobranças e contas vencidas ou que vencem hoje -->
+      <a href="#estCobrancas" class="est-faixa" id="estFaixa" style="display:none">
+        <span aria-hidden="true">⚠</span>
+        <span id="estFaixaTexto"></span>
+      </a>
+
       <div class="cards">
         <div class="card card-acento">
           <div class="est-card-topo"><div class="card-label">Mercadoria em estoque</div></div>
@@ -97,6 +104,24 @@
           </div>
           <div class="card-valor" id="estMeta">—</div>
           <div class="card-sub" id="estSubMeta">dinheiro para a próxima compra</div>
+        </div>
+      </div>
+
+      <!-- Quem me deve / Quem eu devo (só a revenda; a comissão das empresas fica em Empresas) -->
+      <div class="est-cobrancas" id="estCobrancas">
+        <div class="painel">
+          <div class="est-painel-topo">
+            <div class="painel-titulo">Quem me deve</div>
+            <span class="est-painel-total" id="estTotalDeve"></span>
+          </div>
+          <div class="est-cob-lista" id="estListaDeve"></div>
+        </div>
+        <div class="painel">
+          <div class="est-painel-topo">
+            <div class="painel-titulo">Quem eu devo</div>
+            <span class="est-painel-total" id="estTotalDevo"></span>
+          </div>
+          <div class="est-cob-lista" id="estListaDevo"></div>
         </div>
       </div>
     </section>
@@ -183,6 +208,64 @@
         <div class="modal-rodape">
           <button type="button" class="btn-secundario" data-fechar>Cancelar</button>
           <button type="submit" class="btn-primario" id="estBtnSalvarMeta">Salvar meta</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Receber (cliente) / Pagar (fornecedor), em partes -->
+  <div class="modal-overlay" id="estModalPag">
+    <div class="modal">
+      <div class="modal-topo">
+        <h2 id="estPagTitulo">Receber pagamento</h2>
+        <button type="button" class="modal-fechar" data-fechar>&times;</button>
+      </div>
+      <form id="estFormPag">
+        <p class="est-total" id="estPagInfo" style="margin-bottom: 16px"></p>
+        <div class="form-grid">
+          <div class="field">
+            <label for="estPagValor">Valor (R$) *</label>
+            <input type="number" id="estPagValor" step="0.01" min="0.01" required>
+          </div>
+          <div class="field">
+            <label for="estPagData">Dia</label>
+            <input type="date" id="estPagData" required>
+          </div>
+          <div class="field span-2">
+            <label for="estPagForma">Forma (opcional)</label>
+            <select id="estPagForma">
+              <option value="">—</option>
+              <option value="pix">Pix</option>
+              <option value="dinheiro">Dinheiro</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-rodape">
+          <button type="button" class="btn-secundario" data-fechar>Cancelar</button>
+          <button type="submit" class="btn-primario" id="estBtnSalvarPag">Salvar pagamento</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Observação dentro da cobrança -->
+  <div class="modal-overlay" id="estModalObs">
+    <div class="modal">
+      <div class="modal-topo">
+        <h2>Observação da cobrança</h2>
+        <button type="button" class="modal-fechar" data-fechar>&times;</button>
+      </div>
+      <form id="estFormObs">
+        <p class="est-total" id="estObsInfo" style="margin-bottom: 16px"></p>
+        <div class="form-grid" style="grid-template-columns: 1fr">
+          <div class="field">
+            <label for="estObsTexto">Observação</label>
+            <textarea id="estObsTexto" rows="3" placeholder="Ex: cobrar por Pix na sexta"></textarea>
+          </div>
+        </div>
+        <div class="modal-rodape">
+          <button type="button" class="btn-secundario" data-fechar>Cancelar</button>
+          <button type="submit" class="btn-primario" id="estBtnSalvarObs">Salvar</button>
         </div>
       </form>
     </div>
