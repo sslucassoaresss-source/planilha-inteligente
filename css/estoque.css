@@ -408,3 +408,22 @@
 
 .barra.barra-estoque { background: #2E8B6A; }
 .barra.barra-estoque:hover { background: #226B51; }
+
+/* ═══════════════════════════════════════
+   Clientes: coluna "Última compra"
+═══════════════════════════════════════ */
+
+.est-ultima {
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.est-ultima-origem {
+  display: block;
+  margin-top: 1px;
+  font-size: 11px;
+}
+
+.est-origem-empresas { color: var(--accent-deep); }
+.est-origem-estoque  { color: #2E7D5A; }
+.est-origem-ambos    { color: var(--text-soft); }
