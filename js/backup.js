@@ -1,23 +1,21 @@
-// Relatório do mês e backup completo em Excel (.xlsx), pelos botões do Dashboard.
+// Relatório do mês e cópia de segurança em Excel (.xlsx), pelos botões do Dashboard.
 //
 // SÓ LEITURA: este arquivo apenas consulta o Supabase e monta a planilha no
 // navegador. Não grava, altera nem apaga nada no banco.
 //
-// A biblioteca que gera o .xlsx (SheetJS) só é baixada quando alguém clica num
-// dos botões, então não pesa no carregamento do app.
+// A biblioteca que gera o .xlsx (ExcelJS) só é baixada quando alguém clica num dos
+// botões, então não pesa no carregamento do app.
+//
+// Os dois arquivos são feitos para SEREM LIDOS por uma pessoa:
+//   • Relatório do mês: resumo claro + vendas, recebimentos, compras e o que está em aberto.
+//   • Cópia de segurança: tudo o que está cadastrado, com nomes em português, datas
+//     dd/mm/aaaa e sem códigos técnicos, com uma aba "Leia-me" explicando cada aba.
+// Cores das abas: azul = empresas que ele representa · verde = estoque (revenda) · cinza = clientes e rotas.
 
 import { buscarTodasLinhas } from './supabase.js'
 
-const URL_XLSX = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
-const SRI_XLSX = 'sha512-r22gChDnGvBylk90+2e/ycr3RVrDi8DIOkIGNhJlKfuyQM4tIRAI062MaV8sfjQKYVGjOBaZBOA87z+IhZE9DA=='
-
-const FORMATO_MOEDA = '"R$" #,##0.00'
-// Colunas do banco que guardam dinheiro (ganham formato de moeda no backup completo)
-const COLUNAS_MOEDA = new Set([
-  'valor', 'desconto', 'desconto_aplicado', 'comissao_manual',
-  // Estoque
-  'preco_custo', 'preco_venda', 'custo_unitario', 'preco_unitario',
-])
+const URL_EXCELJS = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js'
+const SRI_EXCELJS = 'sha512-dlPw+ytv/6JyepmelABrgeYgHI0O+frEwgfnPdXDTOIZz+eDgfW07QXG02/O8COfivBdGNINy+Vex+lYmJ5rxw=='
 
 const btnMes = document.getElementById('btnExcelMes')
 const btnBackup = document.getElementById('btnBackupCompleto')
@@ -25,32 +23,32 @@ const selectMes = document.getElementById('selectMes')
 
 // ── Biblioteca ────────────────────────────────────────────────
 
-let promessaXlsx = null
+let promessaExcelJS = null
 
 function carregarBiblioteca() {
-  if (window.XLSX) return Promise.resolve(window.XLSX)
-  if (!promessaXlsx) {
-    promessaXlsx = new Promise((resolve, reject) => {
+  if (window.ExcelJS) return Promise.resolve(window.ExcelJS)
+  if (!promessaExcelJS) {
+    promessaExcelJS = new Promise((resolve, reject) => {
       const s = document.createElement('script')
-      s.src = URL_XLSX
-      s.integrity = SRI_XLSX
+      s.src = URL_EXCELJS
+      s.integrity = SRI_EXCELJS
       s.crossOrigin = 'anonymous'
-      s.onload = () => resolve(window.XLSX)
+      s.onload = () => resolve(window.ExcelJS)
       s.onerror = () => {
-        promessaXlsx = null // permite tentar de novo no próximo clique
+        promessaExcelJS = null // permite tentar de novo no próximo clique
         reject(new Error('Não foi possível carregar a biblioteca do Excel (sem internet?).'))
       }
       document.head.appendChild(s)
     })
   }
-  return promessaXlsx
+  return promessaExcelJS
 }
 
 // ── Leitura do banco ──────────────────────────────────────────
 
 // Ordena por "id" (único), porque ordenar por uma coluna que repete (ex.: nome)
 // pode duplicar ou pular linhas entre uma página e outra. Se a tabela não tiver
-// "id" (erro 42703), busca sem ordem; as telas ordenam depois, em JavaScript.
+// "id" (erro 42703), busca sem ordem; as abas ordenam depois, em JavaScript.
 async function ler(tabela, opcoes = {}) {
   let r = await buscarTodasLinhas(tabela, { order: 'id', ...opcoes })
   if (r.error?.code === '42703') r = await buscarTodasLinhas(tabela, opcoes)
@@ -61,13 +59,15 @@ async function ler(tabela, opcoes = {}) {
   return r.data
 }
 
-// ── Formatação ────────────────────────────────────────────────
+// ── Utilidades ────────────────────────────────────────────────
 
-// "2026-10-18" -> "18/10/2026", cortando o texto (sem Date, para o fuso não "virar o dia")
-const dataBR = (s) => (s ? String(s).slice(0, 10).split('-').reverse().join('/') : '')
-const dataHoraBR = (iso) => (iso ? new Date(iso).toLocaleString('pt-BR') : '')
-const simNao = (b) => (b ? 'Sim' : 'Não')
 const comparaTexto = (a, b) => String(a || '').localeCompare(String(b || ''), 'pt-BR')
+const arredonda2 = (v) => Math.round((Number(v) || 0) * 100) / 100
+const somar = (lista, f) => lista.reduce((s, x) => s + f(x), 0)
+const agrupar = (lista, chave) => lista.reduce((m, x) => { (m[x[chave]] = m[x[chave]] || []).push(x); return m }, {})
+const porId = (lista) => Object.fromEntries(lista.map((x) => [x.id, x]))
+const FORMA = { pix: 'Pix', dinheiro: 'Dinheiro' }
+const dataBR = (s) => (s ? String(s).slice(0, 10).split('-').reverse().join('/') : '')
 
 function dataLocalStr(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -80,59 +80,268 @@ function comissaoDoItem(item, percentual) {
   return (item.valor || 0) * ((percentual || 0) / 100)
 }
 
-// ── Montagem das abas ─────────────────────────────────────────
-
-// Uma célula do Excel: número de verdade (para somar/filtrar) com formato, ou texto.
-function celula(valor, tipo) {
-  if (valor === null || valor === undefined || valor === '') return null
-  if (tipo === 'moeda') return { t: 'n', v: Number(valor) || 0, z: FORMATO_MOEDA }
-  // Porcentagem: o Excel guarda 10% como 0,10 e mostra com o formato "0.0%"
-  if (tipo === 'percentual') return { t: 'n', v: (Number(valor) || 0) / 100, z: '0.0%' }
-  if (tipo === 'numero' || typeof valor === 'number') return { t: 'n', v: Number(valor) }
-  if (typeof valor === 'boolean') return { t: 's', v: simNao(valor) }
-  if (typeof valor === 'object') return { t: 's', v: JSON.stringify(valor) }
-  return { t: 's', v: String(valor) }
+// Dias até uma data "AAAA-MM-DD" (negativo = já passou), sem passar por UTC/fuso
+function diasAte(dataStr) {
+  const [a, m, d] = String(dataStr).slice(0, 10).split('-').map(Number)
+  const [ha, hm, hd] = dataLocalStr(new Date()).split('-').map(Number)
+  return Math.round((Date.UTC(a, m - 1, d) - Date.UTC(ha, hm - 1, hd)) / 86400000)
 }
 
-// colunas: [{ titulo, tipo?, valor: (linha) => ... }]
-function montarAba(colunas, linhas) {
-  const XLSX = window.XLSX
-  const celulas = linhas.map((l) => colunas.map((c) => celula(c.valor(l), c.tipo)))
-  const ws = XLSX.utils.aoa_to_sheet([colunas.map((c) => c.titulo), ...celulas])
-  ws['!cols'] = colunas.map((c, i) => {
-    const maior = celulas.reduce((m, linha) => {
-      const v = linha[i]
-      const tamanho = v ? (v.z ? 14 : String(v.v).length) : 0
-      return Math.max(m, tamanho)
-    }, c.titulo.length)
-    return { wch: Math.min(60, maior + 2) }
+function situacaoDoPrazo(vencimento) {
+  if (!vencimento) return 'Sem prazo'
+  const dias = diasAte(vencimento)
+  if (dias < 0) return dias === -1 ? 'Venceu ontem' : `Venceu há ${-dias} dias`
+  if (dias === 0) return 'Vence hoje'
+  return dias === 1 ? 'Vence amanhã' : `Vence em ${dias} dias`
+}
+
+// ── Visual do Excel ───────────────────────────────────────────
+
+const COR = { azul: 'FF3D7EA6', verde: 'FF2E8B6A', cinza: 'FF6C8A9C' }
+const TEXTO_ESCURO = 'FF1F3B4D'
+const TEXTO_SUAVE = 'FF6C8A9C'
+const LINHA_ZEBRA = 'FFF5FAFD'
+const BORDA = { style: 'thin', color: { argb: 'FFD5E3EE' } }
+const FORMATO_MOEDA = '"R$" #,##0.00'
+
+// Data "AAAA-MM-DD" (ou um carimbo de data/hora) -> Date em UTC à meia-noite, para o Excel
+// mostrar exatamente o mesmo dia (sem "virar o dia" por fuso) e poder ordenar/filtrar por data.
+function paraDataExcel(valor) {
+  const texto = String(valor)
+  const m = texto.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (m) return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])))
+  const d = new Date(texto)
+  if (Number.isNaN(d.getTime())) return null
+  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())) // dia no fuso local
+}
+
+// Escreve um valor numa célula, conforme o tipo da coluna
+function escreverCelula(cell, tipo, valor) {
+  if (valor === null || valor === undefined || valor === '') { cell.value = null; return }
+  switch (tipo) {
+    case 'moeda':
+      cell.value = Number(valor) || 0
+      cell.numFmt = FORMATO_MOEDA
+      break
+    case 'percentual':
+      cell.value = (Number(valor) || 0) / 100 // o Excel guarda 10% como 0,10
+      cell.numFmt = '0.0%'
+      break
+    case 'data': {
+      const d = paraDataExcel(valor)
+      if (d) { cell.value = d; cell.numFmt = 'dd/mm/yyyy' } else cell.value = String(valor)
+      cell.alignment = { vertical: 'top', horizontal: 'left' }
+      break
+    }
+    case 'numero':
+      cell.value = Number(valor)
+      break
+    case 'simnao':
+      cell.value = valor ? 'Sim' : 'Não'
+      cell.alignment = { vertical: 'top', horizontal: 'center' }
+      break
+    default:
+      cell.value = String(valor)
+      cell.alignment = { vertical: 'top', wrapText: true }
+  }
+}
+
+function larguraDoTexto(tipo, valor) {
+  if (valor === null || valor === undefined || valor === '') return 0
+  if (tipo === 'moeda') return 14
+  if (tipo === 'data') return 11
+  if (tipo === 'simnao') return 5
+  if (tipo === 'percentual') return 8
+  return String(valor).length
+}
+
+function letraDaColuna(n) { // 1 -> A, 27 -> AA
+  let s = ''
+  while (n > 0) { const r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = Math.floor((n - 1) / 26) }
+  return s
+}
+
+// Uma aba de tabela: título, descrição, cabeçalho colorido, linhas com listras, linha fixa
+// no topo, filtro, larguras certas e (opcional) linha de total.
+// colunas: [{ titulo, valor: (linha) => ..., tipo?, soma?, opcional? }]
+//   tipo: 'moeda' | 'percentual' | 'data' | 'numero' | 'simnao' | texto (padrão)
+//   soma: mostra o total da coluna no fim (com SUBTOTAL, que respeita o filtro)
+//   opcional: a coluna some se estiver vazia em todas as linhas
+function adicionarAba(wb, { nome, cor, titulo, descricao, colunas, linhas, aposLinha }) {
+  const todas = colunas
+  colunas = todas.filter((c) => !c.opcional || linhas.some((l) => {
+    const v = c.valor(l)
+    return v !== null && v !== undefined && v !== ''
+  }))
+  const nCol = Math.max(colunas.length, 1)
+  const ws = wb.addWorksheet(nome, {
+    properties: { tabColor: { argb: COR[cor] } },
+    views: [{ state: 'frozen', ySplit: 3, showGridLines: false }],
   })
+
+  // Título e descrição (linhas 1 e 2)
+  const largura = Math.max(nCol, 4)
+  ws.mergeCells(1, 1, 1, largura)
+  ws.getCell(1, 1).value = titulo
+  ws.getCell(1, 1).font = { bold: true, size: 15, color: { argb: TEXTO_ESCURO } }
+  ws.getCell(1, 1).alignment = { vertical: 'middle' }
+  ws.getRow(1).height = 26
+  ws.mergeCells(2, 1, 2, largura)
+  ws.getCell(2, 1).value = descricao || ''
+  ws.getCell(2, 1).font = { italic: true, size: 10, color: { argb: TEXTO_SUAVE } }
+  ws.getCell(2, 1).alignment = { vertical: 'top', wrapText: true }
+  ws.getRow(2).height = 30
+
+  // Cabeçalho (linha 3)
+  const cab = ws.getRow(3)
+  cab.height = 32
+  colunas.forEach((c, i) => {
+    const cell = cab.getCell(i + 1)
+    cell.value = c.titulo
+    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COR[cor] } }
+    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }
+    cell.border = { bottom: BORDA }
+  })
+
+  // Linhas
+  const maiores = colunas.map((c) => c.titulo.length)
+  linhas.forEach((l, idx) => {
+    const row = ws.getRow(4 + idx)
+    colunas.forEach((c, i) => {
+      const valor = c.valor(l)
+      const cell = row.getCell(i + 1)
+      escreverCelula(cell, c.tipo, valor)
+      cell.border = { bottom: BORDA }
+      if (idx % 2 === 1) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LINHA_ZEBRA } }
+      maiores[i] = Math.max(maiores[i], larguraDoTexto(c.tipo, valor))
+    })
+    if (aposLinha) aposLinha(row, l, colunas)
+  })
+
+  const primeira = 4
+  const ultima = 3 + linhas.length
+
+  if (linhas.length === 0) {
+    ws.mergeCells(4, 1, 4, largura)
+    ws.getCell(4, 1).value = 'Nenhum registro.'
+    ws.getCell(4, 1).font = { italic: true, color: { argb: TEXTO_SUAVE } }
+  } else {
+    // Total no fim (SUBTOTAL 109 = soma só do que está visível depois de filtrar)
+    if (colunas.some((c) => c.soma)) {
+      const linhaTotal = ws.getRow(ultima + 1)
+      const rotulo = linhaTotal.getCell(1)
+      rotulo.value = 'Total'
+      rotulo.font = { bold: true }
+      colunas.forEach((c, i) => {
+        const cell = linhaTotal.getCell(i + 1)
+        cell.border = { top: { style: 'medium', color: { argb: COR[cor] } } }
+        if (!c.soma) return
+        const letra = letraDaColuna(i + 1)
+        cell.value = { formula: `SUBTOTAL(109,${letra}${primeira}:${letra}${ultima})`, result: arredonda2(somar(linhas, (l) => Number(c.valor(l)) || 0)) }
+        cell.numFmt = FORMATO_MOEDA
+        cell.font = { bold: true }
+      })
+    }
+    // Filtro em cada coluna do cabeçalho
+    ws.autoFilter = { from: { row: 3, column: 1 }, to: { row: 3, column: colunas.length } }
+  }
+
+  // Larguras (com limite, para colunas de texto comprido quebrarem a linha)
+  colunas.forEach((c, i) => { ws.getColumn(i + 1).width = Math.min(48, Math.max(11, maiores[i] + 3)) })
+
+  // Impressão: paisagem, cabendo na largura da folha, cabeçalho repetido em cada página
+  ws.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: '3:3' }
   return ws
 }
 
-// Backup completo: uma coluna para cada coluna do banco (menos o user_id),
-// precedidas de colunas "amigáveis" (nome do cliente, da empresa, etc.).
-function colunasCruas(linhas, extras = []) {
-  const chaves = []
-  linhas.forEach((l) => Object.keys(l).forEach((k) => {
-    if (k !== 'user_id' && !chaves.includes(k)) chaves.push(k)
-  }))
-  return [
-    ...extras,
-    ...chaves.map((k) => ({
-      titulo: k,
-      tipo: COLUNAS_MOEDA.has(k) ? 'moeda' : undefined,
-      valor: (l) => l[k],
-    })),
-  ]
+// Aba de resumo: blocos coloridos com "rótulo · valor · explicação"
+// blocos: [{ titulo, cor, linhas: [{ rotulo, valor?, tipo?, nota? }] }]
+function adicionarResumo(wb, { nome, titulo, subtitulo, blocos, rodape, cor = 'azul' }) {
+  const ws = wb.addWorksheet(nome, {
+    properties: { tabColor: { argb: COR[cor] } },
+    views: [{ showGridLines: false }],
+  })
+  ws.getColumn(1).width = 44
+  ws.getColumn(2).width = 22
+  ws.getColumn(3).width = 70
+
+  ws.mergeCells(1, 1, 1, 3)
+  ws.getCell(1, 1).value = titulo
+  ws.getCell(1, 1).font = { bold: true, size: 18, color: { argb: TEXTO_ESCURO } }
+  ws.getRow(1).height = 32
+  if (subtitulo) {
+    ws.mergeCells(2, 1, 2, 3)
+    ws.getCell(2, 1).value = subtitulo
+    ws.getCell(2, 1).font = { italic: true, size: 10, color: { argb: TEXTO_SUAVE } }
+  }
+
+  let linha = 4
+  blocos.forEach((bloco) => {
+    ws.mergeCells(linha, 1, linha, 3)
+    const faixa = ws.getCell(linha, 1)
+    faixa.value = bloco.titulo
+    faixa.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } }
+    faixa.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COR[bloco.cor] } }
+    faixa.alignment = { vertical: 'middle', indent: 1 }
+    ws.getRow(linha).height = 24
+    linha += 1
+
+    bloco.linhas.forEach((l, idx) => {
+      const rotulo = ws.getCell(linha, 1)
+      rotulo.value = l.rotulo
+      rotulo.alignment = { vertical: 'middle', indent: 1, wrapText: true }
+      // Linha só de explicação (sem valor): o texto ocupa as colunas 2 e 3
+      const soExplicacao = l.valor === undefined && !l.tipo
+      if (soExplicacao) {
+        ws.mergeCells(linha, 2, linha, 3)
+        const texto = ws.getCell(linha, 2)
+        texto.value = l.nota || ''
+        texto.font = { size: 10, color: { argb: TEXTO_ESCURO } }
+        texto.alignment = { vertical: 'middle', wrapText: true, indent: 1 }
+      } else {
+        const valor = ws.getCell(linha, 2)
+        escreverCelula(valor, l.tipo, l.valor)
+        valor.font = { bold: true, size: 12, color: { argb: TEXTO_ESCURO } }
+        valor.alignment = { vertical: 'middle', horizontal: 'right' }
+        const nota = ws.getCell(linha, 3)
+        nota.value = l.nota || ''
+        nota.font = { italic: true, size: 10, color: { argb: TEXTO_SUAVE } }
+        nota.alignment = { vertical: 'middle', wrapText: true, indent: 1 }
+      }
+      for (let c = 1; c <= 3; c++) {
+        const cell = ws.getCell(linha, c)
+        cell.border = { bottom: BORDA }
+        if (idx % 2 === 1) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LINHA_ZEBRA } }
+      }
+      const limite = soExplicacao ? 100 : 75
+      ws.getRow(linha).height = l.nota && l.nota.length > limite ? 32 : 22
+      linha += 1
+    })
+    linha += 1 // linha em branco entre os blocos
+  })
+
+  if (rodape) {
+    ws.mergeCells(linha, 1, linha, 3)
+    ws.getCell(linha, 1).value = rodape
+    ws.getCell(linha, 1).font = { italic: true, size: 10, color: { argb: TEXTO_SUAVE } }
+  }
+  ws.pageSetup = { orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
+  return ws
 }
 
-function abaCrua(linhas, extras = []) {
-  return montarAba(colunasCruas(linhas, extras), linhas)
-}
-
-function baixar(wb, nomeArquivo) {
-  window.XLSX.writeFile(wb, nomeArquivo)
+async function baixar(wb, nomeArquivo) {
+  const buffer = await wb.xlsx.writeBuffer()
+  if (window.__salvarArquivo) { window.__salvarArquivo(buffer, nomeArquivo); return } // gancho dos testes
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = nomeArquivo
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 2000)
 }
 
 // ── Estoque (revenda) e Lembretes ─────────────────────────────
@@ -157,26 +366,6 @@ async function lerEstoque() {
   const falhas = Object.keys(dados).filter((t) => dados[t] === null)
   if (falhas.length) avisoFinal = `As abas do Estoque não foram incluídas porque não consegui ler: ${falhas.join(', ')}. O restante do arquivo está completo.`
   return { ...dados, falhas, ok: falhas.length === 0 }
-}
-
-const arredonda2 = (v) => Math.round((Number(v) || 0) * 100) / 100
-const somar = (lista, f) => lista.reduce((s, x) => s + f(x), 0)
-const agrupar = (lista, chave) => lista.reduce((m, x) => { (m[x[chave]] = m[x[chave]] || []).push(x); return m }, {})
-const porId = (lista) => Object.fromEntries(lista.map((x) => [x.id, x]))
-
-// Dias até uma data "AAAA-MM-DD" (negativo = já passou), sem passar por UTC/fuso
-function diasAte(dataStr) {
-  const [a, m, d] = String(dataStr).slice(0, 10).split('-').map(Number)
-  const [ha, hm, hd] = dataLocalStr(new Date()).split('-').map(Number)
-  return Math.round((Date.UTC(a, m - 1, d) - Date.UTC(ha, hm - 1, hd)) / 86400000)
-}
-
-function situacaoDoPrazo(vencimento) {
-  if (!vencimento) return 'Sem prazo'
-  const dias = diasAte(vencimento)
-  if (dias < 0) return dias === -1 ? 'Venceu ontem' : `Venceu há ${-dias} dias`
-  if (dias === 0) return 'Vence hoje'
-  return dias === 1 ? 'Vence amanhã' : `Vence em ${dias} dias`
 }
 
 // Lucro que cada pagamento "liberou" numa venda, pela regra "primeiro o custo" (a mesma do
@@ -232,8 +421,8 @@ function organizarEstoque(est) {
 const textoDosProdutos = (itens, produtoPorId) =>
   itens.map((i) => `${produtoPorId[i.produto_id]?.nome || 'produto'} × ${Number(i.quantidade)}`).join('; ')
 
-// Linhas do Resumo do mês sobre o Estoque (mesmos números dos cards do Dashboard)
-function linhasResumoEstoque(est, org, inicio, fim) {
+// Números do Estoque no mês (os mesmos dos cards do Dashboard)
+function numerosDoEstoque(est, org, inicio, fim) {
   const vendidoNoMes = somar(org.vendas.filter((v) => v.data_venda >= inicio && v.data_venda <= fim), (v) => v.total)
   let lucroDoMes = 0
   let lucroTotal = 0
@@ -244,182 +433,35 @@ function linhasResumoEstoque(est, org, inicio, fim) {
   }))
   const retirado = somar(est.retiradas_lucro, (r) => Number(r.valor))
   const retiradoNoMes = somar(est.retiradas_lucro.filter((r) => r.data_retirada >= inicio && r.data_retirada <= fim), (r) => Number(r.valor))
-  const valorEstoque = somar(est.produtos, (p) => Math.max(0, org.saldo[p.id] || 0) * Number(p.preco_custo))
-
-  return [
-    [],
-    ['Estoque (revenda)'],
-    ['Mercadoria em estoque (pelo custo)', celula(arredonda2(valorEstoque), 'moeda')],
-    ['Vendido de produtos no mês', celula(arredonda2(vendidoNoMes), 'moeda')],
-    ['Lucro recebido no mês', celula(arredonda2(lucroDoMes), 'moeda')],
-    ['Retirado no mês', celula(arredonda2(retiradoNoMes), 'moeda')],
-    ['Pode retirar agora (acumulado)', celula(Math.max(0, arredonda2(lucroTotal - retirado)), 'moeda')],
-    ['A receber de clientes (em aberto hoje)', celula(arredonda2(somar(org.vendas.filter((v) => v.falta > 0.004), (v) => v.falta)), 'moeda')],
-    ['A pagar a fornecedores (em aberto hoje)', celula(arredonda2(somar(org.compras.filter((c) => c.falta > 0.004), (c) => c.falta)), 'moeda')],
-  ]
+  return {
+    valorEstoque: arredonda2(somar(est.produtos, (p) => Math.max(0, org.saldo[p.id] || 0) * Number(p.preco_custo))),
+    vendidoNoMes: arredonda2(vendidoNoMes),
+    lucroDoMes: arredonda2(lucroDoMes),
+    retiradoNoMes: arredonda2(retiradoNoMes),
+    podeRetirar: Math.max(0, arredonda2(lucroTotal - retirado)),
+    aReceber: arredonda2(somar(org.vendas.filter((v) => v.falta > 0.004), (v) => v.falta)),
+    aPagar: arredonda2(somar(org.compras.filter((c) => c.falta > 0.004), (c) => c.falta)),
+  }
 }
 
-// Abas do Estoque no relatório do mês
-function abasEstoqueDoMes(est, org, inicio, fim) {
-  const noMes = (d) => d >= inicio && d <= fim
-  const vendasDoMes = org.vendas.filter((v) => noMes(v.data_venda)).sort((a, b) => comparaTexto(a.data_venda, b.data_venda))
-  const comprasDoMes = org.compras.filter((c) => noMes(c.data_compra)).sort((a, b) => comparaTexto(a.data_compra, b.data_compra))
-
-  const wsVendas = montarAba([
-    { titulo: 'Data', valor: (v) => dataBR(v.data_venda) },
-    { titulo: 'Cliente', valor: (v) => v.cliente },
-    { titulo: 'Produtos', valor: (v) => textoDosProdutos(v.itens, org.produtoPorId) },
-    { titulo: 'Total', tipo: 'moeda', valor: (v) => v.total },
-    { titulo: 'Custo da mercadoria', tipo: 'moeda', valor: (v) => v.custo },
-    { titulo: 'Lucro máximo (total − custo)', tipo: 'moeda', valor: (v) => Math.max(0, v.total - v.custo) },
-    { titulo: 'Pago até hoje', tipo: 'moeda', valor: (v) => v.pago },
-    { titulo: 'Falta receber', tipo: 'moeda', valor: (v) => Math.max(0, v.falta) },
-    { titulo: 'Vencimento', valor: (v) => dataBR(v.vencimento) },
-    { titulo: 'Observação da cobrança', valor: (v) => v.observacao_cobranca },
-  ], vendasDoMes)
-
-  const itens = []
-  vendasDoMes.forEach((v) => v.itens.forEach((i) => itens.push({ v, i })))
-  const wsItens = montarAba([
-    { titulo: 'Data', valor: (x) => dataBR(x.v.data_venda) },
-    { titulo: 'Cliente', valor: (x) => x.v.cliente },
-    { titulo: 'Produto', valor: (x) => org.produtoPorId[x.i.produto_id]?.nome },
-    { titulo: 'Quantidade', valor: (x) => Number(x.i.quantidade) },
-    { titulo: 'Preço unitário', tipo: 'moeda', valor: (x) => Number(x.i.preco_unitario) },
-    { titulo: 'Total', tipo: 'moeda', valor: (x) => arredonda2(Number(x.i.quantidade) * Number(x.i.preco_unitario)) },
-    { titulo: 'Custo unitário (do dia da venda)', tipo: 'moeda', valor: (x) => Number(x.i.custo_unitario) },
-    { titulo: 'Lucro bruto', tipo: 'moeda', valor: (x) => arredonda2(Number(x.i.quantidade) * (Number(x.i.preco_unitario) - Number(x.i.custo_unitario))) },
-  ], itens)
-
-  // Dinheiro recebido no mês (qualquer venda) e o lucro que cada recebimento liberou
-  const recebimentos = []
-  org.vendas.forEach((v) => lucroPorPagamento(v).forEach((x) => {
-    if (noMes(String(x.pagamento.data_pagamento).slice(0, 10))) recebimentos.push({ v, p: x.pagamento, lucro: x.lucro })
-  }))
-  recebimentos.sort((a, b) => comparaTexto(a.p.data_pagamento, b.p.data_pagamento))
-  const wsRecebimentos = montarAba([
-    { titulo: 'Dia do recebimento', valor: (x) => dataBR(x.p.data_pagamento) },
-    { titulo: 'Cliente', valor: (x) => x.v.cliente },
-    { titulo: 'Valor recebido', tipo: 'moeda', valor: (x) => Number(x.p.valor) },
-    { titulo: 'Forma', valor: (x) => ({ pix: 'Pix', dinheiro: 'Dinheiro' }[x.p.forma] || '') },
-    { titulo: 'Lucro liberado (primeiro o custo)', tipo: 'moeda', valor: (x) => arredonda2(x.lucro) },
-    { titulo: 'Data da venda', valor: (x) => dataBR(x.v.data_venda) },
-  ], recebimentos)
-
-  const wsCompras = montarAba([
-    { titulo: 'Data', valor: (c) => dataBR(c.data_compra) },
-    { titulo: 'Produto', valor: (c) => c.produto?.nome },
-    { titulo: 'Fornecedor', valor: (c) => c.fornecedor },
-    { titulo: 'Quantidade', valor: (c) => Number(c.quantidade) },
-    { titulo: 'Custo unitário', tipo: 'moeda', valor: (c) => Number(c.custo_unitario) },
-    { titulo: 'Total', tipo: 'moeda', valor: (c) => c.total },
-    { titulo: 'Pago até hoje', tipo: 'moeda', valor: (c) => c.pago },
-    { titulo: 'Falta pagar', tipo: 'moeda', valor: (c) => Math.max(0, c.falta) },
-    { titulo: 'Vencimento', valor: (c) => dataBR(c.vencimento) },
-    { titulo: 'Observação da cobrança', valor: (c) => c.observacao_cobranca },
-  ], comprasDoMes)
-
-  // Fotografia de hoje (de qualquer mês): quem deve e a quem se deve
-  const emAberto = (lista) => lista.filter((x) => x.falta > 0.004)
-    .sort((a, b) => comparaTexto(a.vencimento || '9999', b.vencimento || '9999') || comparaTexto(a.data_venda || a.data_compra, b.data_venda || b.data_compra))
-  const wsReceber = montarAba([
-    { titulo: 'Cliente', valor: (v) => v.cliente },
-    { titulo: 'Data da venda', valor: (v) => dataBR(v.data_venda) },
-    { titulo: 'Produtos', valor: (v) => textoDosProdutos(v.itens, org.produtoPorId) },
-    { titulo: 'Total', tipo: 'moeda', valor: (v) => v.total },
-    { titulo: 'Já pago', tipo: 'moeda', valor: (v) => v.pago },
-    { titulo: 'Falta', tipo: 'moeda', valor: (v) => v.falta },
-    { titulo: 'Vencimento', valor: (v) => dataBR(v.vencimento) },
-    { titulo: 'Situação', valor: (v) => situacaoDoPrazo(v.vencimento) },
-    { titulo: 'Observação da cobrança', valor: (v) => v.observacao_cobranca },
-  ], emAberto(org.vendas))
-  const wsPagar = montarAba([
-    { titulo: 'Fornecedor', valor: (c) => c.fornecedor || 'Sem fornecedor' },
-    { titulo: 'Data da compra', valor: (c) => dataBR(c.data_compra) },
-    { titulo: 'Produto', valor: (c) => c.produto?.nome },
-    { titulo: 'Total', tipo: 'moeda', valor: (c) => c.total },
-    { titulo: 'Já pago', tipo: 'moeda', valor: (c) => c.pago },
-    { titulo: 'Falta', tipo: 'moeda', valor: (c) => c.falta },
-    { titulo: 'Vencimento', valor: (c) => dataBR(c.vencimento) },
-    { titulo: 'Situação', valor: (c) => situacaoDoPrazo(c.vencimento) },
-    { titulo: 'Observação da cobrança', valor: (c) => c.observacao_cobranca },
-  ], emAberto(org.compras))
-
-  return [
-    [wsVendas, 'Estoque - Vendas'],
-    [wsItens, 'Estoque - Itens vendidos'],
-    [wsRecebimentos, 'Estoque - Recebimentos'],
-    [wsCompras, 'Estoque - Compras'],
-    [wsReceber, 'A receber (hoje)'],
-    [wsPagar, 'A pagar (hoje)'],
-  ]
-}
-
-// Abas do Estoque no backup completo (todas as colunas do banco + nomes ao lado dos ids)
-function abasEstoqueCompletas(est, org) {
-  const { produtoPorId, fornecedorPorId, clientePorId } = org
-  const vendaPorId = porId(org.vendas)
-  const compraPorId = porId(org.compras)
-  const nomeProduto = (id) => produtoPorId[id]?.nome
-  const nomeCliente = (id) => clientePorId[id]?.nome
-
-  const ordenaPorData = (lista, campo) => [...lista].sort((a, b) => comparaTexto(b[campo], a[campo]))
-  const vendasOrdenadas = ordenaPorData(est.vendas_estoque, 'data_venda')
-  const comprasOrdenadas = ordenaPorData(est.compras_estoque, 'data_compra')
-
-  return [
-    [abaCrua([...est.fornecedores].sort((a, b) => comparaTexto(a.nome, b.nome))), 'Fornecedores'],
-    [abaCrua([...est.produtos].sort((a, b) => comparaTexto(a.nome, b.nome)), [
-      { titulo: 'Fornecedor', valor: (l) => fornecedorPorId[l.fornecedor_id]?.nome },
-    ]), 'Produtos'],
-    [abaCrua(comprasOrdenadas, [
-      { titulo: 'Produto', valor: (l) => nomeProduto(l.produto_id) },
-      { titulo: 'Fornecedor', valor: (l) => fornecedorPorId[l.fornecedor_id]?.nome },
-      { titulo: 'Total', tipo: 'moeda', valor: (l) => compraPorId[l.id]?.total },
-      { titulo: 'Pago', tipo: 'moeda', valor: (l) => compraPorId[l.id]?.pago },
-      { titulo: 'Falta pagar', tipo: 'moeda', valor: (l) => Math.max(0, compraPorId[l.id]?.falta || 0) },
-    ]), 'Compras (estoque)'],
-    [abaCrua(ordenaPorData(est.pagamentos_compra, 'data_pagamento'), [
-      { titulo: 'Produto da compra', valor: (l) => nomeProduto(compraPorId[l.compra_id]?.produto_id) },
-      { titulo: 'Fornecedor', valor: (l) => compraPorId[l.compra_id]?.fornecedor },
-      { titulo: 'Data da compra', valor: (l) => dataBR(compraPorId[l.compra_id]?.data_compra) },
-    ]), 'Pagamentos de compras'],
-    [abaCrua(vendasOrdenadas, [
-      { titulo: 'Cliente', valor: (l) => nomeCliente(l.cliente_id) },
-      { titulo: 'Produtos', valor: (l) => textoDosProdutos(vendaPorId[l.id]?.itens || [], produtoPorId) },
-      { titulo: 'Total', tipo: 'moeda', valor: (l) => vendaPorId[l.id]?.total },
-      { titulo: 'Custo da mercadoria', tipo: 'moeda', valor: (l) => vendaPorId[l.id]?.custo },
-      { titulo: 'Pago', tipo: 'moeda', valor: (l) => vendaPorId[l.id]?.pago },
-      { titulo: 'Falta receber', tipo: 'moeda', valor: (l) => Math.max(0, vendaPorId[l.id]?.falta || 0) },
-    ]), 'Vendas (estoque)'],
-    [abaCrua(est.venda_estoque_itens, [
-      { titulo: 'Cliente', valor: (l) => nomeCliente(vendaPorId[l.venda_id]?.cliente_id) },
-      { titulo: 'Data da venda', valor: (l) => dataBR(vendaPorId[l.venda_id]?.data_venda) },
-      { titulo: 'Produto', valor: (l) => nomeProduto(l.produto_id) },
-      { titulo: 'Total da linha', tipo: 'moeda', valor: (l) => arredonda2(Number(l.quantidade) * Number(l.preco_unitario)) },
-    ]), 'Itens das vendas'],
-    [abaCrua(ordenaPorData(est.pagamentos_venda, 'data_pagamento'), [
-      { titulo: 'Cliente', valor: (l) => nomeCliente(vendaPorId[l.venda_id]?.cliente_id) },
-      { titulo: 'Data da venda', valor: (l) => dataBR(vendaPorId[l.venda_id]?.data_venda) },
-    ]), 'Pagamentos de vendas'],
-    [abaCrua(ordenaPorData(est.retiradas_lucro, 'data_retirada')), 'Retiradas de lucro'],
-    [abaCrua(est.metas_estoque, [
-      { titulo: 'Produto', valor: (l) => nomeProduto(l.produto_id) },
-      { titulo: 'Subtotal', tipo: 'moeda', valor: (l) => arredonda2(Number(l.quantidade) * Number(l.preco_unitario)) },
-    ]), 'Metas (próxima compra)'],
-    [abaCrua(ordenaPorData(est.lembretes, 'created_at'), [
-      { titulo: 'Cliente', valor: (l) => nomeCliente(l.cliente_id) },
-    ]), 'Lembretes'],
-  ]
+// Destaca em cores a coluna "Situação" (vencida em vermelho, vence hoje em laranja)
+function destacarSituacao(indice) {
+  return (row) => {
+    const cell = row.getCell(indice + 1)
+    const texto = String(cell.value || '')
+    if (texto.startsWith('Venceu')) cell.font = { bold: true, color: { argb: 'FFB03A3A' } }
+    else if (texto === 'Vence hoje') cell.font = { bold: true, color: { argb: 'FFA24F00' } }
+  }
 }
 
 // ── Relatório do mês ──────────────────────────────────────────
 
 async function gerarRelatorioMes() {
-  const XLSX = window.XLSX
+  const ExcelJS = window.ExcelJS
   const [ano, mes] = selectMes.value.split('-')
   const inicio = `${ano}-${mes}-01`
   const fim = `${ano}-${mes}-${String(new Date(ano, mes, 0).getDate()).padStart(2, '0')}`
+  const noMes = (d) => d >= inicio && d <= fim
 
   const [visitas, empresas, recebidos] = await Promise.all([
     ler('visitas', {
@@ -435,8 +477,7 @@ async function gerarRelatorioMes() {
   const est = await lerEstoque()
   const org = est.ok ? organizarEstoque(est) : null
 
-  const empresaPorId = {}
-  empresas.forEach((e) => { empresaPorId[e.id] = e })
+  const empresaPorId = porId(empresas)
   const recebidoPorEmpresa = {}
   recebidos.forEach((r) => { recebidoPorEmpresa[r.empresa_id] = r })
 
@@ -481,82 +522,233 @@ async function gerarRelatorioMes() {
     else comissaoAReceber += c
   })
 
-  // Aba Resumo
   const nomeMes = new Date(ano, mes - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-  const resumo = [
-    ['Relatório do mês', celula(nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1))],
-    [],
-    ['Visitas no mês', celula(visitas.length, 'numero')],
-    ['Visitas em que comprou', celula(compraram, 'numero')],
-    ['Taxa de conversão', celula(visitas.length ? (compraram / visitas.length) * 100 : 0, 'percentual')],
-    ['Total vendido (já sem o desconto da visita)', celula(totalVendido, 'moeda')],
-    ['Comissão estimada', celula(totalComissao, 'moeda')],
-    ['Comissão já recebida', celula(comissaoRecebida, 'moeda')],
-    ['Comissão ainda a receber', celula(comissaoAReceber, 'moeda')],
-    ...(org ? linhasResumoEstoque(est, org, inicio, fim) : []),
-    [],
-    ['Gerado em', celula(new Date().toLocaleString('pt-BR'))],
+  const nomeMesBonito = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1)
+
+  const wb = new ExcelJS.Workbook()
+  wb.creator = 'Planilha Inteligente'
+  wb.created = new Date()
+
+  // ── Resumo ──
+  const guia = [
+    { rotulo: 'Resumo', nota: 'Esta página.' },
+    { rotulo: 'Comissão por empresa', nota: 'Quanto vendeu e quanto tem de comissão em cada empresa que você representa, e se já recebeu.' },
+    { rotulo: 'Vendas das empresas', nota: 'Cada item vendido das empresas que você representa, com a comissão dele.' },
+    { rotulo: 'Visitas', nota: 'Todas as visitas do mês, compraram ou não.' },
   ]
-  const wsResumo = XLSX.utils.aoa_to_sheet(resumo)
-  wsResumo['!cols'] = [{ wch: 44 }, { wch: 24 }]
+  if (org) {
+    guia.push(
+      { rotulo: 'Estoque - Vendas', nota: 'Cada venda de produto do seu estoque no mês: total, quanto já foi pago e quanto falta.' },
+      { rotulo: 'Estoque - Recebimentos', nota: 'O dinheiro que entrou no mês das vendas de estoque e o lucro que cada recebimento liberou.' },
+      { rotulo: 'Estoque - Compras', nota: 'O que você comprou dos fornecedores no mês, o que já pagou e o que falta.' },
+      { rotulo: 'Em aberto', nota: 'Fotografia de HOJE: quem ainda te deve e o que você ainda deve (de qualquer mês).' },
+    )
+  }
+  const blocos = [
+    {
+      titulo: 'Empresas que eu represento', cor: 'azul', linhas: [
+        { rotulo: 'Visitas no mês', valor: visitas.length, tipo: 'numero' },
+        { rotulo: 'Visitas em que a loja comprou', valor: compraram, tipo: 'numero' },
+        { rotulo: 'Taxa de conversão', valor: visitas.length ? (compraram / visitas.length) * 100 : 0, tipo: 'percentual', nota: 'Das visitas, quantas viraram compra.' },
+        { rotulo: 'Total vendido', valor: totalVendido, tipo: 'moeda', nota: 'Já sem o desconto fixo do cliente.' },
+        { rotulo: 'Comissão estimada', valor: totalComissao, tipo: 'moeda' },
+        { rotulo: 'Comissão já recebida', valor: comissaoRecebida, tipo: 'moeda' },
+        { rotulo: 'Comissão ainda a receber', valor: comissaoAReceber, tipo: 'moeda' },
+      ],
+    },
+  ]
+  if (org) {
+    const n = numerosDoEstoque(est, org, inicio, fim)
+    blocos.push({
+      titulo: 'Meu estoque (revenda)', cor: 'verde', linhas: [
+        { rotulo: 'Mercadoria em estoque', valor: n.valorEstoque, tipo: 'moeda', nota: 'O que você tem parado hoje, pelo preço de custo.' },
+        { rotulo: 'Vendido de produtos no mês', valor: n.vendidoNoMes, tipo: 'moeda', nota: 'Conta na hora da venda, mesmo que o cliente ainda não tenha pago.' },
+        { rotulo: 'Lucro recebido no mês', valor: n.lucroDoMes, tipo: 'moeda', nota: 'Só do dinheiro que já entrou. O pagamento cobre primeiro o custo; o que passar disso é lucro.' },
+        { rotulo: 'Retirado no mês', valor: n.retiradoNoMes, tipo: 'moeda', nota: 'Lucro que você tirou para você neste mês.' },
+        { rotulo: 'Pode retirar agora', valor: n.podeRetirar, tipo: 'moeda', nota: 'Todo o lucro já recebido (desde o começo) menos tudo o que você já retirou.' },
+        { rotulo: 'Clientes ainda me devem', valor: n.aReceber, tipo: 'moeda', nota: 'Em aberto hoje, de qualquer mês.' },
+        { rotulo: 'Eu ainda devo aos fornecedores', valor: n.aPagar, tipo: 'moeda', nota: 'Em aberto hoje, de qualquer mês.' },
+      ],
+    })
+  }
+  blocos.push({ titulo: 'O que tem em cada aba', cor: 'cinza', linhas: guia })
+  adicionarResumo(wb, {
+    nome: 'Resumo',
+    titulo: `Relatório do mês: ${nomeMesBonito}`,
+    subtitulo: `Gerado em ${new Date().toLocaleString('pt-BR')}. Os valores são os reais do seu cadastro; não compartilhe este arquivo.`,
+    blocos,
+  })
 
-  // Aba Comissão por empresa (todas as empresas, como na tela Empresas)
-  const empresasOrdenadas = [...empresas].sort((a, b) => comparaTexto(a.nome, b.nome))
-  const linhasEmpresas = empresasOrdenadas.map((e) => ({
-    empresa: e,
-    vendido: porEmpresa[e.id]?.vendido || 0,
-    comissao: porEmpresa[e.id]?.comissao || 0,
-    recebido: recebidoPorEmpresa[e.id],
-  }))
-  const wsEmpresas = montarAba([
-    { titulo: 'Empresa', valor: (l) => l.empresa.nome },
-    { titulo: '% de comissão', tipo: 'percentual', valor: (l) => l.empresa.percentual_comissao },
-    { titulo: 'Vendido', tipo: 'moeda', valor: (l) => l.vendido },
-    { titulo: 'Comissão', tipo: 'moeda', valor: (l) => l.comissao },
-    { titulo: 'Recebida?', valor: (l) => (l.comissao > 0 ? simNao(l.recebido?.recebido) : '') },
-    { titulo: 'Recebida em', valor: (l) => (l.recebido?.recebido ? dataHoraBR(l.recebido.recebido_em) : '') },
-  ], linhasEmpresas)
+  // ── Empresas que representa ──
+  adicionarAba(wb, {
+    nome: 'Comissão por empresa', cor: 'azul',
+    titulo: `Comissão por empresa: ${nomeMesBonito}`,
+    descricao: 'Todas as empresas que você representa, mesmo as sem venda no mês. "Recebida" aparece quando você marca na tela Empresas.',
+    linhas: [...empresas].sort((a, b) => comparaTexto(a.nome, b.nome)).map((e) => ({
+      empresa: e, vendido: porEmpresa[e.id]?.vendido || 0, comissao: porEmpresa[e.id]?.comissao || 0, recebido: recebidoPorEmpresa[e.id],
+    })),
+    colunas: [
+      { titulo: 'Empresa', valor: (l) => l.empresa.nome },
+      { titulo: '% de comissão', tipo: 'percentual', valor: (l) => l.empresa.percentual_comissao },
+      { titulo: 'Vendido', tipo: 'moeda', soma: true, valor: (l) => l.vendido },
+      { titulo: 'Comissão', tipo: 'moeda', soma: true, valor: (l) => l.comissao },
+      { titulo: 'Já recebi?', tipo: 'texto', valor: (l) => (l.comissao > 0 ? (l.recebido?.recebido ? 'Sim' : 'Não') : '') },
+      { titulo: 'Recebida em', tipo: 'data', valor: (l) => (l.recebido?.recebido ? l.recebido.recebido_em : '') },
+    ],
+  })
 
-  // Aba Vendas (uma linha por item vendido)
-  const wsVendas = montarAba([
-    { titulo: 'Data', valor: (l) => dataBR(l.visita.data_visita) },
-    { titulo: 'Cliente', valor: (l) => l.visita.clientes?.nome },
-    { titulo: 'Cidade', valor: (l) => l.visita.clientes?.cidade },
-    { titulo: 'Empresa', valor: (l) => l.empresa?.nome },
-    { titulo: 'Valor', tipo: 'moeda', valor: (l) => l.item.valor },
-    { titulo: 'Comissão', tipo: 'moeda', valor: (l) => l.comissao },
-    { titulo: 'Como foi calculada', valor: (l) => (
-      l.item.comissao_manual !== null && l.item.comissao_manual !== undefined
-        ? 'Valor digitado'
-        : `${l.empresa?.percentual_comissao || 0}% do valor`
-    ) },
-  ], itensDeVenda)
+  adicionarAba(wb, {
+    nome: 'Vendas das empresas', cor: 'azul',
+    titulo: `Vendas das empresas: ${nomeMesBonito}`,
+    descricao: 'Um item por linha. A comissão é o valor digitado na visita ou, se não houve, o percentual da empresa sobre o valor.',
+    linhas: itensDeVenda,
+    colunas: [
+      { titulo: 'Data', tipo: 'data', valor: (l) => l.visita.data_visita },
+      { titulo: 'Cliente', valor: (l) => l.visita.clientes?.nome },
+      { titulo: 'Cidade', valor: (l) => l.visita.clientes?.cidade },
+      { titulo: 'Empresa', valor: (l) => l.empresa?.nome },
+      { titulo: 'Valor', tipo: 'moeda', soma: true, valor: (l) => l.item.valor },
+      { titulo: 'Comissão', tipo: 'moeda', soma: true, valor: (l) => l.comissao },
+      { titulo: 'Como a comissão foi calculada', valor: (l) => (
+        l.item.comissao_manual !== null && l.item.comissao_manual !== undefined
+          ? 'Valor digitado'
+          : `${l.empresa?.percentual_comissao || 0}% do valor`) },
+    ],
+  })
 
-  // Aba Visitas (todas, inclusive as sem compra)
-  const wsVisitas = montarAba([
-    { titulo: 'Data', valor: (l) => dataBR(l.v.data_visita) },
-    { titulo: 'Cliente', valor: (l) => l.v.clientes?.nome },
-    { titulo: 'Cidade', valor: (l) => l.v.clientes?.cidade },
-    { titulo: 'Comprou?', valor: (l) => simNao(l.v.comprou) },
-    { titulo: 'Subtotal', tipo: 'moeda', valor: (l) => (l.v.comprou ? l.subtotal : null) },
-    { titulo: 'Desconto', tipo: 'moeda', valor: (l) => (l.v.comprou ? l.desconto : null) },
-    { titulo: 'Total', tipo: 'moeda', valor: (l) => (l.v.comprou ? l.total : null) },
-    { titulo: 'Observação', valor: (l) => l.v.observacao },
-  ], linhasVisitas)
+  adicionarAba(wb, {
+    nome: 'Visitas', cor: 'azul',
+    titulo: `Visitas: ${nomeMesBonito}`,
+    descricao: 'Todas as visitas do mês, inclusive as em que a loja não comprou. O desconto é o desconto fixo do cliente.',
+    linhas: linhasVisitas,
+    colunas: [
+      { titulo: 'Data', tipo: 'data', valor: (l) => l.v.data_visita },
+      { titulo: 'Cliente', valor: (l) => l.v.clientes?.nome },
+      { titulo: 'Cidade', valor: (l) => l.v.clientes?.cidade },
+      { titulo: 'Comprou?', tipo: 'simnao', valor: (l) => l.v.comprou },
+      { titulo: 'Subtotal', tipo: 'moeda', soma: true, valor: (l) => (l.v.comprou ? l.subtotal : null) },
+      { titulo: 'Desconto', tipo: 'moeda', soma: true, valor: (l) => (l.v.comprou ? l.desconto : null) },
+      { titulo: 'Total', tipo: 'moeda', soma: true, valor: (l) => (l.v.comprou ? l.total : null) },
+      { titulo: 'Observação', valor: (l) => l.v.observacao },
+    ],
+  })
 
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, wsResumo, 'Resumo')
-  XLSX.utils.book_append_sheet(wb, wsEmpresas, 'Comissão por empresa')
-  XLSX.utils.book_append_sheet(wb, wsVendas, 'Vendas')
-  XLSX.utils.book_append_sheet(wb, wsVisitas, 'Visitas')
-  if (org) abasEstoqueDoMes(est, org, inicio, fim).forEach(([ws, nome]) => XLSX.utils.book_append_sheet(wb, ws, nome))
-  baixar(wb, `relatorio-${ano}-${mes}.xlsx`)
+  // ── Estoque ──
+  if (org) {
+    const vendasDoMes = org.vendas.filter((v) => noMes(v.data_venda)).sort((a, b) => comparaTexto(a.data_venda, b.data_venda))
+    adicionarAba(wb, {
+      nome: 'Estoque - Vendas', cor: 'verde',
+      titulo: `Vendas do meu estoque: ${nomeMesBonito}`,
+      descricao: 'Uma venda por linha. "Lucro máximo" é o que sobra se o cliente pagar tudo (total menos o custo da mercadoria).',
+      linhas: vendasDoMes,
+      colunas: [
+        { titulo: 'Data', tipo: 'data', valor: (v) => v.data_venda },
+        { titulo: 'Cliente', valor: (v) => v.cliente },
+        { titulo: 'Produtos', valor: (v) => textoDosProdutos(v.itens, org.produtoPorId) },
+        { titulo: 'Total', tipo: 'moeda', soma: true, valor: (v) => v.total },
+        { titulo: 'Custo da mercadoria', tipo: 'moeda', soma: true, valor: (v) => v.custo },
+        { titulo: 'Lucro máximo', tipo: 'moeda', soma: true, valor: (v) => Math.max(0, v.total - v.custo) },
+        { titulo: 'Já pago', tipo: 'moeda', soma: true, valor: (v) => v.pago },
+        { titulo: 'Falta receber', tipo: 'moeda', soma: true, valor: (v) => Math.max(0, v.falta) },
+        { titulo: 'Vencimento', tipo: 'data', valor: (v) => v.vencimento },
+        { titulo: 'Observação da cobrança', valor: (v) => v.observacao_cobranca },
+      ],
+    })
+
+    const recebimentos = []
+    org.vendas.forEach((v) => lucroPorPagamento(v).forEach((x) => {
+      if (noMes(String(x.pagamento.data_pagamento).slice(0, 10))) recebimentos.push({ v, p: x.pagamento, lucro: x.lucro })
+    }))
+    recebimentos.sort((a, b) => comparaTexto(a.p.data_pagamento, b.p.data_pagamento))
+    adicionarAba(wb, {
+      nome: 'Estoque - Recebimentos', cor: 'verde',
+      titulo: `Dinheiro recebido do estoque: ${nomeMesBonito}`,
+      descricao: 'Cada pagamento recebido no mês, de vendas de qualquer mês. "Lucro liberado" é a parte que virou lucro depois de cobrir o custo da venda.',
+      linhas: recebimentos,
+      colunas: [
+        { titulo: 'Dia do recebimento', tipo: 'data', valor: (x) => x.p.data_pagamento },
+        { titulo: 'Cliente', valor: (x) => x.v.cliente },
+        { titulo: 'Valor recebido', tipo: 'moeda', soma: true, valor: (x) => Number(x.p.valor) },
+        { titulo: 'Forma', valor: (x) => FORMA[x.p.forma] || '' },
+        { titulo: 'Lucro liberado', tipo: 'moeda', soma: true, valor: (x) => arredonda2(x.lucro) },
+        { titulo: 'Data da venda', tipo: 'data', valor: (x) => x.v.data_venda },
+      ],
+    })
+
+    const comprasDoMes = org.compras.filter((c) => noMes(c.data_compra)).sort((a, b) => comparaTexto(a.data_compra, b.data_compra))
+    adicionarAba(wb, {
+      nome: 'Estoque - Compras', cor: 'verde',
+      titulo: `Compras de mercadoria: ${nomeMesBonito}`,
+      descricao: 'O que você comprou dos fornecedores no mês. "Falta pagar" é o saldo de hoje.',
+      linhas: comprasDoMes,
+      colunas: [
+        { titulo: 'Data', tipo: 'data', valor: (c) => c.data_compra },
+        { titulo: 'Produto', valor: (c) => c.produto?.nome },
+        { titulo: 'Fornecedor', valor: (c) => c.fornecedor || 'Sem fornecedor' },
+        { titulo: 'Quantidade', tipo: 'numero', valor: (c) => Number(c.quantidade) },
+        { titulo: 'Custo unitário', tipo: 'moeda', valor: (c) => Number(c.custo_unitario) },
+        { titulo: 'Total', tipo: 'moeda', soma: true, valor: (c) => c.total },
+        { titulo: 'Já pago', tipo: 'moeda', soma: true, valor: (c) => c.pago },
+        { titulo: 'Falta pagar', tipo: 'moeda', soma: true, valor: (c) => Math.max(0, c.falta) },
+        { titulo: 'Vencimento', tipo: 'data', valor: (c) => c.vencimento },
+        { titulo: 'Observação da cobrança', valor: (c) => c.observacao_cobranca },
+      ],
+    })
+
+    // Fotografia de hoje: o que clientes devem e o que ele deve, de qualquer mês
+    const emAberto = []
+    org.vendas.filter((v) => v.falta > 0.004).forEach((v) => emAberto.push({
+      tipo: 'Cliente me deve', quem: v.cliente, data: v.data_venda, oque: textoDosProdutos(v.itens, org.produtoPorId),
+      total: v.total, pago: v.pago, falta: v.falta, vencimento: v.vencimento, obs: v.observacao_cobranca,
+    }))
+    org.compras.filter((c) => c.falta > 0.004).forEach((c) => emAberto.push({
+      tipo: 'Eu devo', quem: c.fornecedor || 'Sem fornecedor', data: c.data_compra, oque: `${c.produto?.nome || 'produto'} × ${Number(c.quantidade)}`,
+      total: c.total, pago: c.pago, falta: c.falta, vencimento: c.vencimento, obs: c.observacao_cobranca,
+    }))
+    emAberto.sort((a, b) => comparaTexto(a.tipo, b.tipo) || comparaTexto(a.vencimento || '9999', b.vencimento || '9999') || comparaTexto(a.data, b.data))
+    const colunasAberto = [
+      { titulo: 'Quem', valor: (x) => x.quem },
+      { titulo: 'Tipo', valor: (x) => x.tipo },
+      { titulo: 'Data', tipo: 'data', valor: (x) => x.data },
+      { titulo: 'O quê', valor: (x) => x.oque },
+      { titulo: 'Total', tipo: 'moeda', valor: (x) => x.total },
+      { titulo: 'Já pago', tipo: 'moeda', valor: (x) => x.pago },
+      { titulo: 'Falta', tipo: 'moeda', soma: true, valor: (x) => x.falta },
+      { titulo: 'Vencimento', tipo: 'data', valor: (x) => x.vencimento },
+      { titulo: 'Situação', valor: (x) => situacaoDoPrazo(x.vencimento) },
+      { titulo: 'Observação', valor: (x) => x.obs },
+    ]
+    adicionarAba(wb, {
+      nome: 'Em aberto', cor: 'verde',
+      titulo: `Em aberto hoje (${new Date().toLocaleDateString('pt-BR')})`,
+      descricao: 'Tudo que ainda não foi pago por completo, de qualquer mês: o que clientes te devem e o que você deve aos fornecedores. Use o filtro de "Tipo" para ver um lado de cada vez; o total "Falta" respeita o filtro.',
+      linhas: emAberto,
+      colunas: colunasAberto,
+      aposLinha: destacarSituacao(colunasAberto.findIndex((c) => c.titulo === 'Situação')),
+    })
+  }
+
+  await baixar(wb, `relatorio-${ano}-${mes}.xlsx`)
 }
 
-// ── Backup completo ───────────────────────────────────────────
+// ── Cópia de segurança (backup completo) ──────────────────────
+
+// Colunas que são "código interno" e não vão para a cópia legível
+const TECNICAS = new Set(['id', 'user_id', 'created_at'])
+const ehTecnica = (k) => TECNICAS.has(k) || k.endsWith('_id')
+
+// Se o banco tiver alguma coluna que não está nas abas abaixo, ela vai para o fim com o nome
+// original, para a cópia nunca perder informação.
+function colunasExtras(linhas, conhecidas) {
+  const chaves = []
+  linhas.forEach((l) => Object.keys(l).forEach((k) => {
+    if (!ehTecnica(k) && !conhecidas.includes(k) && !chaves.includes(k)) chaves.push(k)
+  }))
+  return chaves.map((k) => ({ titulo: k, valor: (l) => (typeof l[k] === 'boolean' ? (l[k] ? 'Sim' : 'Não') : l[k]) }))
+}
 
 async function gerarBackupCompleto() {
-  const XLSX = window.XLSX
+  const ExcelJS = window.ExcelJS
 
   const [clientes, empresas, visitas, itens, rotas, rotaClientes, agendamentos, cidadesOrdem, recebidas] = await Promise.all([
     ler('clientes'),
@@ -570,17 +762,13 @@ async function gerarBackupCompleto() {
     ler('comissoes_recebidas'),
   ])
 
-  const clientePorId = {}
-  clientes.forEach((c) => { clientePorId[c.id] = c })
-  const empresaPorId = {}
-  empresas.forEach((e) => { empresaPorId[e.id] = e })
-  const visitaPorId = {}
-  visitas.forEach((v) => { visitaPorId[v.id] = v })
-  const rotaPorId = {}
-  rotas.forEach((r) => { rotaPorId[r.id] = r })
+  const clientePorId = porId(clientes)
+  const empresaPorId = porId(empresas)
+  const visitaPorId = porId(visitas)
+  const rotaPorId = porId(rotas)
   const nomeRota = (id) => {
     const r = rotaPorId[id]
-    return r ? `${r.cidade || ''} — ${r.nome || ''}` : ''
+    return r ? `${r.cidade || ''} - ${r.nome || ''}` : ''
   }
 
   clientes.sort((a, b) => comparaTexto(a.nome, b.nome))
@@ -590,39 +778,306 @@ async function gerarBackupCompleto() {
   agendamentos.sort((a, b) => comparaTexto(a.data, b.data))
   cidadesOrdem.sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
 
-  const wb = XLSX.utils.book_new()
-  const add = (ws, nome) => XLSX.utils.book_append_sheet(wb, ws, nome)
-
-  add(abaCrua(clientes), 'Clientes')
-  add(abaCrua(empresas), 'Empresas')
-  add(abaCrua(visitas, [
-    { titulo: 'Cliente', valor: (l) => clientePorId[l.cliente_id]?.nome },
-    { titulo: 'Cidade', valor: (l) => clientePorId[l.cliente_id]?.cidade },
-  ]), 'Visitas')
-  add(abaCrua(itens, [
-    { titulo: 'Data da visita', valor: (l) => dataBR(visitaPorId[l.visita_id]?.data_visita) },
-    { titulo: 'Cliente', valor: (l) => clientePorId[visitaPorId[l.visita_id]?.cliente_id]?.nome },
-    { titulo: 'Empresa', valor: (l) => empresaPorId[l.empresa_id]?.nome },
-  ]), 'Itens de venda')
-  add(abaCrua(rotas), 'Rotas')
-  add(abaCrua(rotaClientes, [
-    { titulo: 'Rota', valor: (l) => nomeRota(l.rota_id) },
-    { titulo: 'Cliente', valor: (l) => clientePorId[l.cliente_id]?.nome },
-  ]), 'Clientes das rotas')
-  add(abaCrua(agendamentos, [
-    { titulo: 'Rota', valor: (l) => nomeRota(l.rota_id) },
-  ]), 'Datas das rotas')
-  add(abaCrua(cidadesOrdem), 'Ordem das cidades')
-  add(abaCrua(recebidas, [
-    { titulo: 'Empresa', valor: (l) => empresaPorId[l.empresa_id]?.nome },
-  ]), 'Comissões recebidas')
-
   // Estoque (revenda) e Lembretes: se não der para ler, são pulados e o aviso aparece no fim
   avisoFinal = ''
   const est = await lerEstoque()
-  if (est.ok) abasEstoqueCompletas(est, organizarEstoque(est)).forEach(([ws, nome]) => add(ws, nome))
+  const org = est.ok ? organizarEstoque(est) : null
 
-  baixar(wb, `backup-${dataLocalStr(new Date())}.xlsx`)
+  const wb = new ExcelJS.Workbook()
+  wb.creator = 'Planilha Inteligente'
+  wb.created = new Date()
+
+  // A aba "Leia-me" é criada primeiro (fica na frente) e preenchida no fim, quando já se sabe as abas
+  const abasCriadas = []
+  const aba = (config) => {
+    const extras = config.conhecidas ? colunasExtras(config.linhas, config.conhecidas) : []
+    adicionarAba(wb, { ...config, colunas: [...config.colunas, ...extras] })
+    abasCriadas.push({ nome: config.nome, cor: config.cor, nota: config.descricao })
+  }
+
+  // ── Clientes e rotas (cinza) ──
+  aba({
+    nome: 'Clientes', cor: 'cinza', titulo: 'Clientes',
+    descricao: 'Todas as lojas cadastradas. Use o filtro (setinha no cabeçalho) para procurar por nome ou cidade.',
+    linhas: clientes,
+    conhecidas: ['nome', 'endereco', 'bairro', 'cidade', 'estado', 'telefone', 'desconto', 'observacoes', 'latitude', 'longitude'],
+    colunas: [
+      { titulo: 'Nome', valor: (l) => l.nome },
+      { titulo: 'Cidade', valor: (l) => l.cidade },
+      { titulo: 'Estado', valor: (l) => l.estado },
+      { titulo: 'Bairro', valor: (l) => l.bairro },
+      { titulo: 'Endereço', valor: (l) => l.endereco },
+      { titulo: 'Telefone', valor: (l) => l.telefone },
+      { titulo: 'Desconto fixo', tipo: 'moeda', valor: (l) => (l.desconto > 0 ? l.desconto : null) },
+      { titulo: 'Observações', valor: (l) => l.observacoes },
+      { titulo: 'Coordenadas', valor: (l) => (l.latitude !== null && l.latitude !== undefined && l.longitude !== null && l.longitude !== undefined ? `${l.latitude}, ${l.longitude}` : '') },
+      { titulo: 'Cadastrado em', tipo: 'data', opcional: true, valor: (l) => l.created_at },
+    ],
+  })
+
+  // ── Empresas que representa (azul) ──
+  aba({
+    nome: 'Empresas', cor: 'azul', titulo: 'Empresas que você representa',
+    descricao: 'As empresas e o percentual de comissão de cada uma.',
+    linhas: empresas, conhecidas: ['nome', 'percentual_comissao'],
+    colunas: [
+      { titulo: 'Empresa', valor: (l) => l.nome },
+      { titulo: '% de comissão', tipo: 'percentual', valor: (l) => l.percentual_comissao },
+    ],
+  })
+  aba({
+    nome: 'Visitas', cor: 'azul', titulo: 'Visitas',
+    descricao: 'Todas as visitas registradas, da mais recente para a mais antiga. "Comprou?" se refere às empresas que você representa.',
+    linhas: visitas, conhecidas: ['data_visita', 'comprou', 'desconto_aplicado', 'observacao'],
+    colunas: [
+      { titulo: 'Data', tipo: 'data', valor: (l) => l.data_visita },
+      { titulo: 'Cliente', valor: (l) => clientePorId[l.cliente_id]?.nome },
+      { titulo: 'Cidade', valor: (l) => clientePorId[l.cliente_id]?.cidade },
+      { titulo: 'Comprou?', tipo: 'simnao', valor: (l) => l.comprou },
+      { titulo: 'Desconto aplicado', tipo: 'moeda', soma: true, valor: (l) => (l.desconto_aplicado > 0 ? l.desconto_aplicado : null) },
+      { titulo: 'Observação', valor: (l) => l.observacao },
+    ],
+  })
+  aba({
+    nome: 'Vendas das empresas', cor: 'azul', titulo: 'Itens vendidos das empresas que você representa',
+    descricao: 'Cada item vendido numa visita. A comissão só aparece aqui quando foi digitada à mão; senão vale o percentual da empresa.',
+    linhas: itens, conhecidas: ['valor', 'comissao_manual'],
+    colunas: [
+      { titulo: 'Data da visita', tipo: 'data', valor: (l) => visitaPorId[l.visita_id]?.data_visita },
+      { titulo: 'Cliente', valor: (l) => clientePorId[visitaPorId[l.visita_id]?.cliente_id]?.nome },
+      { titulo: 'Empresa', valor: (l) => empresaPorId[l.empresa_id]?.nome },
+      { titulo: 'Valor', tipo: 'moeda', soma: true, valor: (l) => l.valor },
+      { titulo: 'Comissão digitada', tipo: 'moeda', valor: (l) => l.comissao_manual },
+    ],
+  })
+  aba({
+    nome: 'Comissões recebidas', cor: 'azul', titulo: 'Comissões recebidas',
+    descricao: 'O que você marcou como recebido na tela Empresas, mês a mês.',
+    linhas: recebidas, conhecidas: ['mes', 'ano', 'recebido', 'recebido_em'],
+    colunas: [
+      { titulo: 'Empresa', valor: (l) => empresaPorId[l.empresa_id]?.nome },
+      { titulo: 'Mês', tipo: 'numero', valor: (l) => l.mes },
+      { titulo: 'Ano', tipo: 'numero', valor: (l) => l.ano },
+      { titulo: 'Recebida?', tipo: 'simnao', valor: (l) => l.recebido },
+      { titulo: 'Recebida em', tipo: 'data', valor: (l) => l.recebido_em },
+    ],
+  })
+
+  // ── Rotas (cinza) ──
+  aba({
+    nome: 'Rotas', cor: 'cinza', titulo: 'Rotas',
+    descricao: 'As rotas salvas, por cidade. As colunas "antigas" são de uma versão anterior do sistema.',
+    linhas: rotas, conhecidas: ['cidade', 'nome', 'observacao', 'mes', 'ano', 'data_visita'],
+    colunas: [
+      { titulo: 'Cidade', valor: (l) => l.cidade },
+      { titulo: 'Rota', valor: (l) => l.nome },
+      { titulo: 'Observação', valor: (l) => l.observacao },
+      { titulo: 'Mês (antigo)', tipo: 'numero', opcional: true, valor: (l) => l.mes },
+      { titulo: 'Ano (antigo)', tipo: 'numero', opcional: true, valor: (l) => l.ano },
+      { titulo: 'Data (antiga)', tipo: 'data', opcional: true, valor: (l) => l.data_visita },
+    ],
+  })
+  aba({
+    nome: 'Clientes das rotas', cor: 'cinza', titulo: 'Clientes de cada rota',
+    descricao: 'Quais lojas fazem parte de cada rota e em que ordem.',
+    linhas: [...rotaClientes].sort((a, b) => comparaTexto(nomeRota(a.rota_id), nomeRota(b.rota_id)) || (a.ordem || 0) - (b.ordem || 0)),
+    conhecidas: ['ordem'],
+    colunas: [
+      { titulo: 'Rota', valor: (l) => nomeRota(l.rota_id) },
+      { titulo: 'Ordem', tipo: 'numero', valor: (l) => l.ordem },
+      { titulo: 'Cliente', valor: (l) => clientePorId[l.cliente_id]?.nome },
+      { titulo: 'Cidade', valor: (l) => clientePorId[l.cliente_id]?.cidade },
+    ],
+  })
+  aba({
+    nome: 'Datas das rotas', cor: 'cinza', titulo: 'Datas agendadas das rotas',
+    descricao: 'Em quais dias cada rota está marcada no calendário.',
+    linhas: agendamentos, conhecidas: ['data'],
+    colunas: [
+      { titulo: 'Data', tipo: 'data', valor: (l) => l.data },
+      { titulo: 'Rota', valor: (l) => nomeRota(l.rota_id) },
+    ],
+  })
+  aba({
+    nome: 'Ordem das cidades', cor: 'cinza', titulo: 'Ordem das cidades',
+    descricao: 'A ordem em que você prefere percorrer as cidades na tela Rotas.',
+    linhas: cidadesOrdem, conhecidas: ['cidade_chave', 'ordem'],
+    colunas: [
+      { titulo: 'Ordem', tipo: 'numero', valor: (l) => l.ordem },
+      { titulo: 'Cidade', valor: (l) => l.cidade_chave },
+    ],
+  })
+
+  // ── Estoque e Lembretes (verde) ──
+  if (org) {
+    const { produtoPorId, fornecedorPorId, clientePorId: clienteEstoque } = org
+    const vendaPorId = porId(org.vendas)
+    const compraPorId = porId(org.compras)
+    const nomeProduto = (id) => produtoPorId[id]?.nome
+    const nomeCliente = (id) => clienteEstoque[id]?.nome
+    const maisRecentes = (lista, campo) => [...lista].sort((a, b) => comparaTexto(b[campo], a[campo]))
+
+    aba({
+      nome: 'Fornecedores', cor: 'verde', titulo: 'Fornecedores',
+      descricao: 'De quem você compra a mercadoria da revenda.',
+      linhas: [...est.fornecedores].sort((a, b) => comparaTexto(a.nome, b.nome)), conhecidas: ['nome', 'observacao'],
+      colunas: [
+        { titulo: 'Fornecedor', valor: (l) => l.nome },
+        { titulo: 'Observação', valor: (l) => l.observacao },
+      ],
+    })
+    aba({
+      nome: 'Produtos', cor: 'verde', titulo: 'Produtos',
+      descricao: 'Os produtos da revenda, com o custo (quanto você paga) e o preço de venda.',
+      linhas: [...est.produtos].sort((a, b) => comparaTexto(a.nome, b.nome)), conhecidas: ['nome', 'unidade', 'descricao', 'preco_custo', 'preco_venda', 'ativo'],
+      colunas: [
+        { titulo: 'Produto', valor: (l) => l.nome },
+        { titulo: 'Fornecedor', valor: (l) => fornecedorPorId[l.fornecedor_id]?.nome },
+        { titulo: 'Vendido por', valor: (l) => l.unidade },
+        { titulo: 'Descrição', valor: (l) => l.descricao },
+        { titulo: 'Custo', tipo: 'moeda', valor: (l) => l.preco_custo },
+        { titulo: 'Preço de venda', tipo: 'moeda', valor: (l) => l.preco_venda },
+        { titulo: 'Em estoque agora', tipo: 'numero', valor: (l) => Math.round((org.saldo[l.id] || 0) * 1000) / 1000 },
+        { titulo: 'Ativo?', tipo: 'simnao', valor: (l) => l.ativo },
+      ],
+    })
+    aba({
+      nome: 'Compras (estoque)', cor: 'verde', titulo: 'Compras de mercadoria',
+      descricao: 'Tudo que você comprou dos fornecedores, da mais recente para a mais antiga.',
+      linhas: maisRecentes(est.compras_estoque, 'data_compra'), conhecidas: ['data_compra', 'quantidade', 'custo_unitario', 'vencimento', 'observacao', 'observacao_cobranca'],
+      colunas: [
+        { titulo: 'Data', tipo: 'data', valor: (l) => l.data_compra },
+        { titulo: 'Produto', valor: (l) => nomeProduto(l.produto_id) },
+        { titulo: 'Fornecedor', valor: (l) => fornecedorPorId[l.fornecedor_id]?.nome || 'Sem fornecedor' },
+        { titulo: 'Quantidade', tipo: 'numero', valor: (l) => Number(l.quantidade) },
+        { titulo: 'Custo unitário', tipo: 'moeda', valor: (l) => l.custo_unitario },
+        { titulo: 'Total', tipo: 'moeda', soma: true, valor: (l) => compraPorId[l.id]?.total },
+        { titulo: 'Já pago', tipo: 'moeda', soma: true, valor: (l) => compraPorId[l.id]?.pago },
+        { titulo: 'Falta pagar', tipo: 'moeda', soma: true, valor: (l) => Math.max(0, compraPorId[l.id]?.falta || 0) },
+        { titulo: 'Vencimento', tipo: 'data', valor: (l) => l.vencimento },
+        { titulo: 'Observação', valor: (l) => l.observacao },
+        { titulo: 'Observação da cobrança', valor: (l) => l.observacao_cobranca },
+      ],
+    })
+    aba({
+      nome: 'Pagamentos de compras', cor: 'verde', titulo: 'Pagamentos feitos aos fornecedores',
+      descricao: 'Cada pagamento, inclusive os parciais.',
+      linhas: maisRecentes(est.pagamentos_compra, 'data_pagamento'), conhecidas: ['valor', 'data_pagamento', 'forma'],
+      colunas: [
+        { titulo: 'Dia do pagamento', tipo: 'data', valor: (l) => l.data_pagamento },
+        { titulo: 'Fornecedor', valor: (l) => compraPorId[l.compra_id]?.fornecedor || 'Sem fornecedor' },
+        { titulo: 'Produto da compra', valor: (l) => nomeProduto(compraPorId[l.compra_id]?.produto_id) },
+        { titulo: 'Data da compra', tipo: 'data', valor: (l) => compraPorId[l.compra_id]?.data_compra },
+        { titulo: 'Valor', tipo: 'moeda', soma: true, valor: (l) => l.valor },
+        { titulo: 'Forma', valor: (l) => FORMA[l.forma] || '' },
+      ],
+    })
+    aba({
+      nome: 'Vendas (estoque)', cor: 'verde', titulo: 'Vendas do meu estoque',
+      descricao: 'Cada venda de produto, da mais recente para a mais antiga. "Falta receber" é o saldo de hoje.',
+      linhas: maisRecentes(est.vendas_estoque, 'data_venda'), conhecidas: ['data_venda', 'prazo_dias', 'vencimento', 'observacao', 'observacao_cobranca'],
+      colunas: [
+        { titulo: 'Data', tipo: 'data', valor: (l) => l.data_venda },
+        { titulo: 'Cliente', valor: (l) => nomeCliente(l.cliente_id) },
+        { titulo: 'Produtos', valor: (l) => textoDosProdutos(vendaPorId[l.id]?.itens || [], produtoPorId) },
+        { titulo: 'Total', tipo: 'moeda', soma: true, valor: (l) => vendaPorId[l.id]?.total },
+        { titulo: 'Custo da mercadoria', tipo: 'moeda', soma: true, valor: (l) => vendaPorId[l.id]?.custo },
+        { titulo: 'Já pago', tipo: 'moeda', soma: true, valor: (l) => vendaPorId[l.id]?.pago },
+        { titulo: 'Falta receber', tipo: 'moeda', soma: true, valor: (l) => Math.max(0, vendaPorId[l.id]?.falta || 0) },
+        { titulo: 'Prazo (dias)', tipo: 'numero', valor: (l) => l.prazo_dias },
+        { titulo: 'Vencimento', tipo: 'data', valor: (l) => l.vencimento },
+        { titulo: 'Observação', valor: (l) => l.observacao },
+        { titulo: 'Observação da cobrança', valor: (l) => l.observacao_cobranca },
+        { titulo: 'Lançada numa visita?', tipo: 'simnao', valor: (l) => !!l.visita_id },
+      ],
+    })
+    aba({
+      nome: 'Itens das vendas', cor: 'verde', titulo: 'Itens das vendas do estoque',
+      descricao: 'Cada produto vendido. O "custo unitário" é o do dia da venda (é ele que calcula o lucro).',
+      linhas: [...est.venda_estoque_itens].sort((a, b) => comparaTexto(vendaPorId[b.venda_id]?.data_venda, vendaPorId[a.venda_id]?.data_venda)),
+      conhecidas: ['quantidade', 'preco_unitario', 'custo_unitario'],
+      colunas: [
+        { titulo: 'Data da venda', tipo: 'data', valor: (l) => vendaPorId[l.venda_id]?.data_venda },
+        { titulo: 'Cliente', valor: (l) => nomeCliente(vendaPorId[l.venda_id]?.cliente_id) },
+        { titulo: 'Produto', valor: (l) => nomeProduto(l.produto_id) },
+        { titulo: 'Quantidade', tipo: 'numero', valor: (l) => Number(l.quantidade) },
+        { titulo: 'Preço unitário', tipo: 'moeda', valor: (l) => l.preco_unitario },
+        { titulo: 'Total da linha', tipo: 'moeda', soma: true, valor: (l) => arredonda2(Number(l.quantidade) * Number(l.preco_unitario)) },
+        { titulo: 'Custo unitário', tipo: 'moeda', valor: (l) => l.custo_unitario },
+        { titulo: 'Lucro bruto', tipo: 'moeda', soma: true, valor: (l) => arredonda2(Number(l.quantidade) * (Number(l.preco_unitario) - Number(l.custo_unitario))) },
+      ],
+    })
+    aba({
+      nome: 'Pagamentos de vendas', cor: 'verde', titulo: 'Pagamentos recebidos dos clientes',
+      descricao: 'Cada pagamento recebido, inclusive os parciais.',
+      linhas: maisRecentes(est.pagamentos_venda, 'data_pagamento'), conhecidas: ['valor', 'data_pagamento', 'forma'],
+      colunas: [
+        { titulo: 'Dia do pagamento', tipo: 'data', valor: (l) => l.data_pagamento },
+        { titulo: 'Cliente', valor: (l) => nomeCliente(vendaPorId[l.venda_id]?.cliente_id) },
+        { titulo: 'Data da venda', tipo: 'data', valor: (l) => vendaPorId[l.venda_id]?.data_venda },
+        { titulo: 'Valor', tipo: 'moeda', soma: true, valor: (l) => l.valor },
+        { titulo: 'Forma', valor: (l) => FORMA[l.forma] || '' },
+      ],
+    })
+    aba({
+      nome: 'Retiradas de lucro', cor: 'verde', titulo: 'Retiradas de lucro',
+      descricao: 'O lucro que você tirou para você.',
+      linhas: maisRecentes(est.retiradas_lucro, 'data_retirada'), conhecidas: ['valor', 'data_retirada', 'observacao'],
+      colunas: [
+        { titulo: 'Dia', tipo: 'data', valor: (l) => l.data_retirada },
+        { titulo: 'Valor', tipo: 'moeda', soma: true, valor: (l) => l.valor },
+        { titulo: 'Observação', valor: (l) => l.observacao },
+      ],
+    })
+    aba({
+      nome: 'Metas (próxima compra)', cor: 'verde', titulo: 'Próxima meta de compra',
+      descricao: 'O que você quer comprar e o dinheiro que precisa ter.',
+      linhas: est.metas_estoque, conhecidas: ['quantidade', 'preco_unitario'],
+      colunas: [
+        { titulo: 'Produto', valor: (l) => nomeProduto(l.produto_id) },
+        { titulo: 'Quantidade', tipo: 'numero', valor: (l) => Number(l.quantidade) },
+        { titulo: 'Preço unitário', tipo: 'moeda', valor: (l) => l.preco_unitario },
+        { titulo: 'Subtotal', tipo: 'moeda', soma: true, valor: (l) => arredonda2(Number(l.quantidade) * Number(l.preco_unitario)) },
+      ],
+    })
+    aba({
+      nome: 'Lembretes', cor: 'verde', titulo: 'Lembretes',
+      descricao: 'O que você anotou para não esquecer, os pendentes e os que já foram feitos.',
+      linhas: maisRecentes(est.lembretes, 'created_at'), conhecidas: ['texto', 'feito', 'feito_em'],
+      colunas: [
+        { titulo: 'Anotado em', tipo: 'data', valor: (l) => l.created_at },
+        { titulo: 'Lembrete', valor: (l) => l.texto },
+        { titulo: 'Cliente', valor: (l) => nomeCliente(l.cliente_id) },
+        { titulo: 'Feito?', tipo: 'simnao', valor: (l) => l.feito },
+        { titulo: 'Feito em', tipo: 'data', valor: (l) => l.feito_em },
+      ],
+    })
+  }
+
+  // ── "Leia-me": explica o arquivo e lista as abas, na frente de tudo ──
+  const leia = adicionarResumo(wb, {
+    nome: 'Leia-me',
+    cor: 'cinza',
+    titulo: 'Cópia de segurança: Planilha Inteligente',
+    subtitulo: `Gerada em ${new Date().toLocaleString('pt-BR')}. Contém os valores reais do seu cadastro; guarde com cuidado e não compartilhe.`,
+    blocos: [
+      {
+        titulo: 'Como usar', cor: 'azul', linhas: [
+          { rotulo: 'Cada aba é um assunto', nota: 'Veja a lista abaixo. A cor da aba mostra o grupo: azul = empresas que você representa, verde = seu estoque, cinza = clientes e rotas.' },
+          { rotulo: 'Procurar e filtrar', nota: 'Clique na setinha do cabeçalho de qualquer coluna para filtrar ou ordenar.' },
+          { rotulo: 'Totais', nota: 'A linha "Total" no fim de cada aba soma só o que estiver visível depois de filtrar.' },
+          { rotulo: 'Não é para restaurar', nota: 'Esta é uma cópia para consulta e segurança. Os códigos internos do sistema não foram incluídos.' },
+        ],
+      },
+      {
+        titulo: 'O que tem em cada aba', cor: 'cinza', linhas: abasCriadas.map((a) => ({ rotulo: a.nome, nota: a.nota })),
+      },
+    ],
+  })
+  // Leia-me vai para a primeira posição (o ExcelJS ordena as abas pelo orderNo ao gravar)
+  leia.orderNo = -1
+
+  await baixar(wb, `backup-${dataLocalStr(new Date())}.xlsx`)
 }
 
 // ── Botões ────────────────────────────────────────────────────
