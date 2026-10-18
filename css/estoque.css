@@ -249,3 +249,89 @@
 }
 
 .est-resumo strong { color: var(--accent-deep); }
+
+/* ═══════════════════════════════════════
+   Dashboard: seção "Estoque" (4 cards)
+═══════════════════════════════════════ */
+
+.est-dash { margin-bottom: 36px; }
+
+.est-dash-titulo {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-bottom: 14px;
+}
+
+.est-dash-titulo h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.est-dash-sub {
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+/* Os cards do Estoque usam o mesmo desenho dos de representação, com a borda verde */
+.est-dash .cards { margin-bottom: 0; }
+.est-dash .card-acento { border-top-color: #2E8B6A; }
+
+.est-card-destaque {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--text-dark);
+}
+
+.est-card-destaque strong { color: #2E7D5A; }
+
+.est-btn-card {
+  margin-top: 12px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--card);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-deep);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.est-btn-card:hover { background: #E8F4FC; }
+
+/* Lista de retiradas (janelinha "Registrar retirada") */
+.est-retiradas { margin: 4px 0 18px; }
+
+.est-retiradas h4 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.est-retirada-linha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--bg);
+  font-size: 13px;
+}
+
+.est-retirada-linha:last-child { border-bottom: none; }
+.est-retirada-linha .est-sub { margin-top: 0; }
+
+.est-meta-info {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  color: var(--text-soft);
+  margin-bottom: 8px;
+}

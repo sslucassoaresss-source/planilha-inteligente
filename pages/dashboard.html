@@ -13,6 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
   <link rel="stylesheet" href="../css/dashboard.css">
+  <link rel="stylesheet" href="../css/estoque.css">
 </head>
 <body>
 
@@ -63,6 +64,39 @@
       </div>
     </div>
 
+    <!-- ═══ Estoque (revenda): 4 cards, separados da representação (js/estoque-dashboard.js) ═══ -->
+    <section class="est-dash" id="estDashboard">
+      <div class="est-dash-titulo">
+        <h2>Estoque</h2>
+        <span class="est-dash-sub">sua revenda · vendido e lucro seguem o mês escolhido acima</span>
+      </div>
+      <div class="cards">
+        <div class="card card-acento">
+          <div class="card-label">Mercadoria em estoque</div>
+          <div class="card-valor" id="estValorEstoque">—</div>
+          <div class="card-sub" id="estSubEstoque">pelo preço de custo</div>
+        </div>
+        <div class="card card-acento">
+          <div class="card-label">Vendido no mês</div>
+          <div class="card-valor" id="estVendido">—</div>
+          <div class="card-sub" id="estSubVendido">vendas de produtos</div>
+        </div>
+        <div class="card card-acento">
+          <div class="card-label">Meu lucro</div>
+          <div class="card-valor" id="estLucro">—</div>
+          <div class="card-sub">já recebido neste mês</div>
+          <div class="est-card-destaque">Pode retirar agora: <strong id="estRetiravel">—</strong></div>
+          <button type="button" class="est-btn-card" id="estBtnRetirada">Registrar retirada</button>
+        </div>
+        <div class="card card-acento">
+          <div class="card-label">Próxima meta</div>
+          <div class="card-valor" id="estMeta">—</div>
+          <div class="card-sub" id="estSubMeta">dinheiro para a próxima compra</div>
+          <button type="button" class="est-btn-card" id="estBtnMeta">Editar meta</button>
+        </div>
+      </div>
+    </section>
+
     <!-- Gráfico + Visitas recentes -->
     <div class="paineis">
 
@@ -92,7 +126,72 @@
 
   </main>
 
+  <!-- Janelinhas do Estoque -->
+  <div class="modal-overlay" id="estModalRetirada">
+    <div class="modal">
+      <div class="modal-topo">
+        <h2>Registrar retirada de lucro</h2>
+        <button type="button" class="modal-fechar" data-fechar>&times;</button>
+      </div>
+      <form id="estFormRetirada">
+        <p class="est-total" id="estRetInfo" style="margin-bottom: 16px"></p>
+        <div class="form-grid">
+          <div class="field">
+            <label for="estRetValor">Valor retirado (R$) *</label>
+            <input type="number" id="estRetValor" step="0.01" min="0.01" required>
+          </div>
+          <div class="field">
+            <label for="estRetData">Dia</label>
+            <input type="date" id="estRetData" required>
+          </div>
+          <div class="field span-2">
+            <label for="estRetObs">Observação (opcional)</label>
+            <input type="text" id="estRetObs" placeholder="Ex: passei para a conta pessoal">
+          </div>
+        </div>
+        <div class="est-retiradas">
+          <h4>Últimas retiradas</h4>
+          <div id="estListaRetiradas"></div>
+        </div>
+        <div class="modal-rodape">
+          <button type="button" class="btn-secundario" data-fechar>Fechar</button>
+          <button type="submit" class="btn-primario" id="estBtnSalvarRetirada">Registrar retirada</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="estModalMeta">
+    <div class="modal modal-largo">
+      <div class="modal-topo">
+        <h2>Próxima meta</h2>
+        <button type="button" class="modal-fechar" data-fechar>&times;</button>
+      </div>
+      <form id="estFormMeta">
+        <p class="est-meta-info">Monte o que você quer comprar: produto, quantidade e quanto vai pagar em cada um. O sistema soma e mostra o dinheiro que você precisa ter.</p>
+        <div id="estListaMeta"></div>
+        <button type="button" class="est-btn-card" id="estBtnAddMeta" style="margin-top: 4px">+ Adicionar produto</button>
+        <div class="est-total" id="estMetaTotal" style="margin: 16px 0 20px">Total da meta: <strong>R$ 0,00</strong></div>
+        <div class="modal-rodape">
+          <button type="button" class="btn-secundario" data-fechar>Cancelar</button>
+          <button type="submit" class="btn-primario" id="estBtnSalvarMeta">Salvar meta</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <template id="estTemplateMeta">
+    <div class="est-linha">
+      <select class="est-produto"></select>
+      <input type="number" class="est-qtd" step="0.001" min="0.001" placeholder="Quantidade">
+      <input type="number" class="est-preco" step="0.01" min="0" placeholder="Preço (R$)">
+      <button type="button" class="est-btn-remover" title="Remover">🗑️</button>
+      <div class="est-linha-info"></div>
+    </div>
+  </template>
+
   <script type="module" src="../js/dashboard.js"></script>
+  <script type="module" src="../js/estoque-dashboard.js"></script>
   <script type="module" src="../js/backup.js"></script>
 
   <script type="module" src="../js/privacidade.js"></script>
