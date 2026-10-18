@@ -1,0 +1,131 @@
+/* ═══════════════════════════════════════
+   estoque.css
+   Seção "Estoque" da página Empresas
+   (fornecedores, produtos e compras da revenda).
+   Tudo aqui usa o prefixo est- para não esbarrar
+   nas classes do empresas.js (.btn-editar, etc.).
+═══════════════════════════════════════ */
+
+.est-secao {
+  margin-top: 56px;
+  padding-top: 32px;
+  border-top: 2px solid var(--line);
+}
+
+.est-titulo h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.est-desc {
+  font-size: 14px;
+  color: var(--text-soft);
+  margin: 6px 0 28px;
+}
+
+.est-bloco {
+  margin-bottom: 36px;
+}
+
+.est-bloco-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.est-bloco-topo h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.est-vazio-linha {
+  text-align: center;
+  color: var(--text-soft);
+  padding: 28px 16px !important;
+}
+
+.est-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.est-negativo { color: #A85454; font-weight: 600; }
+.est-inativo td { color: var(--text-soft); }
+
+/* Botões de ação nas tabelas (mesmo visual de Editar/Excluir) */
+.est-btn-editar,
+.est-btn-excluir {
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s;
+}
+
+.est-btn-editar { background: var(--bg); color: var(--accent-deep); }
+.est-btn-editar:hover { background: #D0E7F5; }
+.est-btn-excluir { background: #FBEAEA; color: #A85454; }
+.est-btn-excluir:hover { background: #F5D0D0; }
+
+.badge-parcial {
+  background: #FFF3E0;
+  color: #A24F00;
+}
+
+/* Janelinhas (modais) */
+.est-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text-dark);
+  cursor: pointer;
+}
+
+.est-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent-deep);
+  cursor: pointer;
+}
+
+.est-total {
+  grid-column: span 2;
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 14px;
+  color: var(--text-dark);
+}
+
+.est-total strong {
+  color: var(--accent-deep);
+  font-size: 16px;
+}
+
+.est-aviso {
+  grid-column: span 2;
+  font-size: 13px;
+  color: #A24F00;
+  background: #FFF3E0;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+@media (max-width: 700px) {
+  .est-secao { margin-top: 40px; }
+  .est-bloco-topo { flex-wrap: wrap; }
+  .est-total,
+  .est-aviso { grid-column: span 1; }
+}

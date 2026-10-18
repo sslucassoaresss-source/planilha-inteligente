@@ -13,6 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
   <link rel="stylesheet" href="../css/empresas.css">
+  <link rel="stylesheet" href="../css/estoque.css">
 </head>
 <body>
 
@@ -63,6 +64,78 @@
       </table>
     </div>
 
+    <!-- ═══ Estoque (revenda): fornecedores, produtos e compras ═══ -->
+    <section class="est-secao" id="secaoEstoque">
+      <div class="est-titulo">
+        <h2>Estoque</h2>
+        <p class="est-desc">Fornecedores, produtos e compras da sua revenda. Fica separado das empresas que você representa.</p>
+      </div>
+
+      <div class="est-bloco">
+        <div class="est-bloco-topo">
+          <h3>Fornecedores</h3>
+          <button type="button" class="btn-primario" id="estBtnNovoFornecedor">+ Novo fornecedor</button>
+        </div>
+        <div class="tabela-wrapper">
+          <table class="tabela">
+            <thead>
+              <tr><th>Fornecedor</th><th>Observação</th><th>Ações</th></tr>
+            </thead>
+            <tbody id="estListaFornecedores"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="est-bloco">
+        <div class="est-bloco-topo">
+          <h3>Produtos</h3>
+          <button type="button" class="btn-primario" id="estBtnNovoProduto">+ Novo produto</button>
+        </div>
+        <p class="resumo-comissao" id="estResumoProdutos" style="display:none"></p>
+        <div class="tabela-wrapper">
+          <table class="tabela">
+            <thead>
+              <tr>
+                <th>Produto</th>
+                <th>Unidade</th>
+                <th>Fornecedor</th>
+                <th>Custo</th>
+                <th>Preço de venda</th>
+                <th>Em estoque</th>
+                <th>Valor em estoque</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="estListaProdutos"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="est-bloco">
+        <div class="est-bloco-topo">
+          <h3>Compras</h3>
+          <button type="button" class="btn-primario" id="estBtnNovaCompra">+ Registrar compra</button>
+        </div>
+        <div class="tabela-wrapper">
+          <table class="tabela">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Produto</th>
+                <th>Fornecedor</th>
+                <th>Quantidade</th>
+                <th>Custo unitário</th>
+                <th>Total</th>
+                <th>Pagamento</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="estListaCompras"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <div class="modal-overlay" id="modalOverlay">
@@ -94,7 +167,128 @@
     </div>
   </div>
 
+  <!-- Janelinhas do Estoque -->
+  <div class="modal-overlay" id="estModalFornecedor">
+    <div class="modal">
+      <div class="modal-topo">
+        <h2 id="estFornecedorTitulo">Novo fornecedor</h2>
+        <button type="button" class="modal-fechar" data-fechar>&times;</button>
+      </div>
+      <form id="estFormFornecedor">
+        <input type="hidden" id="estFornecedorId">
+        <div class="form-grid" style="grid-template-columns: 1fr">
+          <div class="field">
+            <label for="estFornNome">Nome do fornecedor *</label>
+            <input type="text" id="estFornNome" placeholder="Ex: Luciano" required>
+          </div>
+          <div class="field">
+            <label for="estFornObs">Observação</label>
+            <textarea id="estFornObs" rows="2" placeholder="Ex: entrega às terças"></textarea>
+          </div>
+        </div>
+        <div class="modal-rodape">
+          <button type="button" class="btn-secundario" data-fechar>Cancelar</button>
+          <button type="submit" class="btn-primario" id="estBtnSalvarFornecedor">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="estModalProduto">
+    <div class="modal">
+      <div class="modal-topo">
+        <h2 id="estProdutoTitulo">Novo produto</h2>
+        <button type="button" class="modal-fechar" data-fechar>&times;</button>
+      </div>
+      <form id="estFormProduto">
+        <input type="hidden" id="estProdutoId">
+        <div class="form-grid">
+          <div class="field span-2">
+            <label for="estProdNome">Nome do produto * (coloque o peso no nome)</label>
+            <input type="text" id="estProdNome" placeholder="Ex: Areia de mandioca 4 kg · Ração 15 kg" required>
+          </div>
+          <div class="field">
+            <label for="estProdUnidade">Vendido por</label>
+            <select id="estProdUnidade">
+              <option value="fardo">fardo</option>
+              <option value="saco">saco</option>
+              <option value="kg">kg</option>
+              <option value="un">unidade</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="estProdFornecedor">Fornecedor</label>
+            <select id="estProdFornecedor"></select>
+          </div>
+          <div class="field span-2">
+            <label for="estProdDescricao">Descrição (opcional)</label>
+            <input type="text" id="estProdDescricao" placeholder="Ex: fardo com 5 sacos de 4 kg">
+          </div>
+          <div class="field">
+            <label for="estProdCusto">Custo (quanto você paga) *</label>
+            <input type="number" id="estProdCusto" step="0.01" min="0" placeholder="0,00" required>
+          </div>
+          <div class="field">
+            <label for="estProdVenda">Preço de venda *</label>
+            <input type="number" id="estProdVenda" step="0.01" min="0" placeholder="0,00" required>
+          </div>
+          <label class="est-check span-2"><input type="checkbox" id="estProdAtivo" checked> Produto ativo (aparece nas compras)</label>
+        </div>
+        <div class="modal-rodape">
+          <button type="button" class="btn-secundario" data-fechar>Cancelar</button>
+          <button type="submit" class="btn-primario" id="estBtnSalvarProduto">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="estModalCompra">
+    <div class="modal">
+      <div class="modal-topo">
+        <h2>Registrar compra</h2>
+        <button type="button" class="modal-fechar" data-fechar>&times;</button>
+      </div>
+      <form id="estFormCompra">
+        <div class="form-grid">
+          <div class="est-aviso" id="estCompAviso" style="display:none">Cadastre um produto antes de registrar uma compra.</div>
+          <div class="field span-2">
+            <label for="estCompProduto">Produto *</label>
+            <select id="estCompProduto" required></select>
+          </div>
+          <div class="field">
+            <label for="estCompFornecedor">Fornecedor</label>
+            <select id="estCompFornecedor"></select>
+          </div>
+          <div class="field">
+            <label for="estCompData">Data da compra</label>
+            <input type="date" id="estCompData" required>
+          </div>
+          <div class="field">
+            <label for="estCompQtd">Quantidade *</label>
+            <input type="number" id="estCompQtd" step="0.001" min="0.001" placeholder="Ex: 100" required>
+          </div>
+          <div class="field">
+            <label for="estCompCusto">Custo unitário *</label>
+            <input type="number" id="estCompCusto" step="0.01" min="0" placeholder="0,00" required>
+          </div>
+          <div class="est-total" id="estCompTotal">Total da compra: <strong>R$ 0,00</strong></div>
+          <div class="field span-2">
+            <label for="estCompObs">Observação (opcional)</label>
+            <input type="text" id="estCompObs" placeholder="Ex: boleto, entrega parcial...">
+          </div>
+          <label class="est-check span-2"><input type="checkbox" id="estCompPago" checked> Já paguei esta compra (se desmarcar, fica "a pagar")</label>
+          <label class="est-check span-2"><input type="checkbox" id="estCompAtualizaCusto" checked> Atualizar o custo do produto para este valor</label>
+        </div>
+        <div class="modal-rodape">
+          <button type="button" class="btn-secundario" data-fechar>Cancelar</button>
+          <button type="submit" class="btn-primario" id="estBtnSalvarCompra">Salvar compra</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script type="module" src="../js/empresas.js"></script>
+  <script type="module" src="../js/estoque.js"></script>
 
   <script type="module" src="../js/privacidade.js"></script>
   <script type="module" src="../js/pwa.js"></script>
