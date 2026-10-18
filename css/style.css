@@ -98,6 +98,33 @@ body {
   color: #A85454;
 }
 
+/* Botão de ocultar valores (criado por js/privacidade.js, fica antes do "Sair") */
+.btn-olho {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-olho:hover {
+  background: var(--bg);
+  color: var(--accent-deep);
+}
+
+.btn-olho[aria-pressed="true"] {
+  background: var(--bg);
+  color: var(--accent-deep);
+  border-color: var(--accent-deep);
+}
+
 /* ── Página interna ── */
 .pagina {
   max-width: 1100px;
@@ -370,6 +397,12 @@ body {
   .btn-sair {
     order: 2;
     padding: 6px 12px;
+  }
+
+  .btn-olho {
+    order: 2;
+    width: 32px;
+    height: 32px;
   }
 
   .topbar-nav {
