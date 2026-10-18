@@ -13,7 +13,11 @@ const SRI_XLSX = 'sha512-r22gChDnGvBylk90+2e/ycr3RVrDi8DIOkIGNhJlKfuyQM4tIRAI062
 
 const FORMATO_MOEDA = '"R$" #,##0.00'
 // Colunas do banco que guardam dinheiro (ganham formato de moeda no backup completo)
-const COLUNAS_MOEDA = new Set(['valor', 'desconto', 'desconto_aplicado', 'comissao_manual'])
+const COLUNAS_MOEDA = new Set([
+  'valor', 'desconto', 'desconto_aplicado', 'comissao_manual',
+  // Estoque
+  'preco_custo', 'preco_venda', 'custo_unitario', 'preco_unitario',
+])
 
 const btnMes = document.getElementById('btnExcelMes')
 const btnBackup = document.getElementById('btnBackupCompleto')
@@ -131,6 +135,284 @@ function baixar(wb, nomeArquivo) {
   window.XLSX.writeFile(wb, nomeArquivo)
 }
 
+// ── Estoque (revenda) e Lembretes ─────────────────────────────
+
+const TABELAS_ESTOQUE = [
+  'fornecedores', 'produtos', 'compras_estoque', 'pagamentos_compra', 'vendas_estoque',
+  'venda_estoque_itens', 'pagamentos_venda', 'retiradas_lucro', 'metas_estoque', 'lembretes',
+]
+
+let avisoFinal = '' // mostrado ao fim da geração (ex.: tabelas do Estoque que não puderam ser lidas)
+
+// Lê todas as tabelas do Estoque. Se alguma falhar, `ok` fica falso e as abas do Estoque são
+// puladas (o resto do arquivo sai normalmente).
+async function lerEstoque() {
+  const pares = await Promise.all([
+    ...TABELAS_ESTOQUE.map(async (t) => {
+      try { return [t, await ler(t)] } catch { return [t, null] }
+    }),
+    (async () => { try { return ['clientes', await ler('clientes', { select: 'id, nome' })] } catch { return ['clientes', null] } })(),
+  ])
+  const dados = Object.fromEntries(pares)
+  const falhas = Object.keys(dados).filter((t) => dados[t] === null)
+  if (falhas.length) avisoFinal = `As abas do Estoque não foram incluídas porque não consegui ler: ${falhas.join(', ')}. O restante do arquivo está completo.`
+  return { ...dados, falhas, ok: falhas.length === 0 }
+}
+
+const arredonda2 = (v) => Math.round((Number(v) || 0) * 100) / 100
+const somar = (lista, f) => lista.reduce((s, x) => s + f(x), 0)
+const agrupar = (lista, chave) => lista.reduce((m, x) => { (m[x[chave]] = m[x[chave]] || []).push(x); return m }, {})
+const porId = (lista) => Object.fromEntries(lista.map((x) => [x.id, x]))
+
+// Dias até uma data "AAAA-MM-DD" (negativo = já passou), sem passar por UTC/fuso
+function diasAte(dataStr) {
+  const [a, m, d] = String(dataStr).slice(0, 10).split('-').map(Number)
+  const [ha, hm, hd] = dataLocalStr(new Date()).split('-').map(Number)
+  return Math.round((Date.UTC(a, m - 1, d) - Date.UTC(ha, hm - 1, hd)) / 86400000)
+}
+
+function situacaoDoPrazo(vencimento) {
+  if (!vencimento) return 'Sem prazo'
+  const dias = diasAte(vencimento)
+  if (dias < 0) return dias === -1 ? 'Venceu ontem' : `Venceu há ${-dias} dias`
+  if (dias === 0) return 'Vence hoje'
+  return dias === 1 ? 'Vence amanhã' : `Vence em ${dias} dias`
+}
+
+// Lucro que cada pagamento "liberou" numa venda, pela regra "primeiro o custo" (a mesma do
+// Dashboard): o dinheiro que entra cobre primeiro o custo; só o excedente é lucro.
+function lucroPorPagamento(venda) {
+  const lucroMaximo = Math.max(0, venda.total - venda.custo)
+  const pagamentos = [...venda.pagamentos].sort((a, b) =>
+    comparaTexto(a.data_pagamento, b.data_pagamento) || comparaTexto(a.created_at, b.created_at))
+  let acumulado = 0
+  let liberado = 0
+  return pagamentos.map((p) => {
+    acumulado += Number(p.valor)
+    const novo = Math.min(lucroMaximo, Math.max(0, acumulado - venda.custo))
+    const incremento = novo - liberado
+    liberado = novo
+    return { pagamento: p, lucro: incremento }
+  })
+}
+
+// Organiza as tabelas do Estoque: vendas e compras com totais, pagamentos, nomes e saldos
+function organizarEstoque(est) {
+  const produtoPorId = porId(est.produtos)
+  const fornecedorPorId = porId(est.fornecedores)
+  const clientePorId = porId(est.clientes)
+  const itensPorVenda = agrupar(est.venda_estoque_itens, 'venda_id')
+  const pagVendaPorVenda = agrupar(est.pagamentos_venda, 'venda_id')
+  const pagCompraPorCompra = agrupar(est.pagamentos_compra, 'compra_id')
+
+  const vendas = est.vendas_estoque.map((v) => {
+    const itens = itensPorVenda[v.id] || []
+    const pagamentos = pagVendaPorVenda[v.id] || []
+    const total = arredonda2(somar(itens, (i) => Number(i.quantidade) * Number(i.preco_unitario)))
+    const custo = arredonda2(somar(itens, (i) => Number(i.quantidade) * Number(i.custo_unitario)))
+    const pago = arredonda2(somar(pagamentos, (p) => Number(p.valor)))
+    return { ...v, itens, pagamentos, total, custo, pago, falta: arredonda2(total - pago), cliente: clientePorId[v.cliente_id]?.nome || '' }
+  })
+
+  const compras = est.compras_estoque.map((c) => {
+    const pagamentos = pagCompraPorCompra[c.id] || []
+    const total = arredonda2(Number(c.quantidade) * Number(c.custo_unitario))
+    const pago = arredonda2(somar(pagamentos, (p) => Number(p.valor)))
+    return { ...c, pagamentos, total, pago, falta: arredonda2(total - pago), produto: produtoPorId[c.produto_id], fornecedor: fornecedorPorId[c.fornecedor_id]?.nome || '' }
+  })
+
+  // Estoque atual de cada produto = comprado − vendido
+  const saldo = {}
+  compras.forEach((c) => { saldo[c.produto_id] = (saldo[c.produto_id] || 0) + Number(c.quantidade) })
+  est.venda_estoque_itens.forEach((i) => { saldo[i.produto_id] = (saldo[i.produto_id] || 0) - Number(i.quantidade) })
+
+  return { produtoPorId, fornecedorPorId, clientePorId, vendas, compras, saldo }
+}
+
+const textoDosProdutos = (itens, produtoPorId) =>
+  itens.map((i) => `${produtoPorId[i.produto_id]?.nome || 'produto'} × ${Number(i.quantidade)}`).join('; ')
+
+// Linhas do Resumo do mês sobre o Estoque (mesmos números dos cards do Dashboard)
+function linhasResumoEstoque(est, org, inicio, fim) {
+  const vendidoNoMes = somar(org.vendas.filter((v) => v.data_venda >= inicio && v.data_venda <= fim), (v) => v.total)
+  let lucroDoMes = 0
+  let lucroTotal = 0
+  org.vendas.forEach((v) => lucroPorPagamento(v).forEach((x) => {
+    lucroTotal += x.lucro
+    const dia = String(x.pagamento.data_pagamento).slice(0, 10)
+    if (dia >= inicio && dia <= fim) lucroDoMes += x.lucro
+  }))
+  const retirado = somar(est.retiradas_lucro, (r) => Number(r.valor))
+  const retiradoNoMes = somar(est.retiradas_lucro.filter((r) => r.data_retirada >= inicio && r.data_retirada <= fim), (r) => Number(r.valor))
+  const valorEstoque = somar(est.produtos, (p) => Math.max(0, org.saldo[p.id] || 0) * Number(p.preco_custo))
+
+  return [
+    [],
+    ['Estoque (revenda)'],
+    ['Mercadoria em estoque (pelo custo)', celula(arredonda2(valorEstoque), 'moeda')],
+    ['Vendido de produtos no mês', celula(arredonda2(vendidoNoMes), 'moeda')],
+    ['Lucro recebido no mês', celula(arredonda2(lucroDoMes), 'moeda')],
+    ['Retirado no mês', celula(arredonda2(retiradoNoMes), 'moeda')],
+    ['Pode retirar agora (acumulado)', celula(Math.max(0, arredonda2(lucroTotal - retirado)), 'moeda')],
+    ['A receber de clientes (em aberto hoje)', celula(arredonda2(somar(org.vendas.filter((v) => v.falta > 0.004), (v) => v.falta)), 'moeda')],
+    ['A pagar a fornecedores (em aberto hoje)', celula(arredonda2(somar(org.compras.filter((c) => c.falta > 0.004), (c) => c.falta)), 'moeda')],
+  ]
+}
+
+// Abas do Estoque no relatório do mês
+function abasEstoqueDoMes(est, org, inicio, fim) {
+  const noMes = (d) => d >= inicio && d <= fim
+  const vendasDoMes = org.vendas.filter((v) => noMes(v.data_venda)).sort((a, b) => comparaTexto(a.data_venda, b.data_venda))
+  const comprasDoMes = org.compras.filter((c) => noMes(c.data_compra)).sort((a, b) => comparaTexto(a.data_compra, b.data_compra))
+
+  const wsVendas = montarAba([
+    { titulo: 'Data', valor: (v) => dataBR(v.data_venda) },
+    { titulo: 'Cliente', valor: (v) => v.cliente },
+    { titulo: 'Produtos', valor: (v) => textoDosProdutos(v.itens, org.produtoPorId) },
+    { titulo: 'Total', tipo: 'moeda', valor: (v) => v.total },
+    { titulo: 'Custo da mercadoria', tipo: 'moeda', valor: (v) => v.custo },
+    { titulo: 'Lucro máximo (total − custo)', tipo: 'moeda', valor: (v) => Math.max(0, v.total - v.custo) },
+    { titulo: 'Pago até hoje', tipo: 'moeda', valor: (v) => v.pago },
+    { titulo: 'Falta receber', tipo: 'moeda', valor: (v) => Math.max(0, v.falta) },
+    { titulo: 'Vencimento', valor: (v) => dataBR(v.vencimento) },
+    { titulo: 'Observação da cobrança', valor: (v) => v.observacao_cobranca },
+  ], vendasDoMes)
+
+  const itens = []
+  vendasDoMes.forEach((v) => v.itens.forEach((i) => itens.push({ v, i })))
+  const wsItens = montarAba([
+    { titulo: 'Data', valor: (x) => dataBR(x.v.data_venda) },
+    { titulo: 'Cliente', valor: (x) => x.v.cliente },
+    { titulo: 'Produto', valor: (x) => org.produtoPorId[x.i.produto_id]?.nome },
+    { titulo: 'Quantidade', valor: (x) => Number(x.i.quantidade) },
+    { titulo: 'Preço unitário', tipo: 'moeda', valor: (x) => Number(x.i.preco_unitario) },
+    { titulo: 'Total', tipo: 'moeda', valor: (x) => arredonda2(Number(x.i.quantidade) * Number(x.i.preco_unitario)) },
+    { titulo: 'Custo unitário (do dia da venda)', tipo: 'moeda', valor: (x) => Number(x.i.custo_unitario) },
+    { titulo: 'Lucro bruto', tipo: 'moeda', valor: (x) => arredonda2(Number(x.i.quantidade) * (Number(x.i.preco_unitario) - Number(x.i.custo_unitario))) },
+  ], itens)
+
+  // Dinheiro recebido no mês (qualquer venda) e o lucro que cada recebimento liberou
+  const recebimentos = []
+  org.vendas.forEach((v) => lucroPorPagamento(v).forEach((x) => {
+    if (noMes(String(x.pagamento.data_pagamento).slice(0, 10))) recebimentos.push({ v, p: x.pagamento, lucro: x.lucro })
+  }))
+  recebimentos.sort((a, b) => comparaTexto(a.p.data_pagamento, b.p.data_pagamento))
+  const wsRecebimentos = montarAba([
+    { titulo: 'Dia do recebimento', valor: (x) => dataBR(x.p.data_pagamento) },
+    { titulo: 'Cliente', valor: (x) => x.v.cliente },
+    { titulo: 'Valor recebido', tipo: 'moeda', valor: (x) => Number(x.p.valor) },
+    { titulo: 'Forma', valor: (x) => ({ pix: 'Pix', dinheiro: 'Dinheiro' }[x.p.forma] || '') },
+    { titulo: 'Lucro liberado (primeiro o custo)', tipo: 'moeda', valor: (x) => arredonda2(x.lucro) },
+    { titulo: 'Data da venda', valor: (x) => dataBR(x.v.data_venda) },
+  ], recebimentos)
+
+  const wsCompras = montarAba([
+    { titulo: 'Data', valor: (c) => dataBR(c.data_compra) },
+    { titulo: 'Produto', valor: (c) => c.produto?.nome },
+    { titulo: 'Fornecedor', valor: (c) => c.fornecedor },
+    { titulo: 'Quantidade', valor: (c) => Number(c.quantidade) },
+    { titulo: 'Custo unitário', tipo: 'moeda', valor: (c) => Number(c.custo_unitario) },
+    { titulo: 'Total', tipo: 'moeda', valor: (c) => c.total },
+    { titulo: 'Pago até hoje', tipo: 'moeda', valor: (c) => c.pago },
+    { titulo: 'Falta pagar', tipo: 'moeda', valor: (c) => Math.max(0, c.falta) },
+    { titulo: 'Vencimento', valor: (c) => dataBR(c.vencimento) },
+    { titulo: 'Observação da cobrança', valor: (c) => c.observacao_cobranca },
+  ], comprasDoMes)
+
+  // Fotografia de hoje (de qualquer mês): quem deve e a quem se deve
+  const emAberto = (lista) => lista.filter((x) => x.falta > 0.004)
+    .sort((a, b) => comparaTexto(a.vencimento || '9999', b.vencimento || '9999') || comparaTexto(a.data_venda || a.data_compra, b.data_venda || b.data_compra))
+  const wsReceber = montarAba([
+    { titulo: 'Cliente', valor: (v) => v.cliente },
+    { titulo: 'Data da venda', valor: (v) => dataBR(v.data_venda) },
+    { titulo: 'Produtos', valor: (v) => textoDosProdutos(v.itens, org.produtoPorId) },
+    { titulo: 'Total', tipo: 'moeda', valor: (v) => v.total },
+    { titulo: 'Já pago', tipo: 'moeda', valor: (v) => v.pago },
+    { titulo: 'Falta', tipo: 'moeda', valor: (v) => v.falta },
+    { titulo: 'Vencimento', valor: (v) => dataBR(v.vencimento) },
+    { titulo: 'Situação', valor: (v) => situacaoDoPrazo(v.vencimento) },
+    { titulo: 'Observação da cobrança', valor: (v) => v.observacao_cobranca },
+  ], emAberto(org.vendas))
+  const wsPagar = montarAba([
+    { titulo: 'Fornecedor', valor: (c) => c.fornecedor || 'Sem fornecedor' },
+    { titulo: 'Data da compra', valor: (c) => dataBR(c.data_compra) },
+    { titulo: 'Produto', valor: (c) => c.produto?.nome },
+    { titulo: 'Total', tipo: 'moeda', valor: (c) => c.total },
+    { titulo: 'Já pago', tipo: 'moeda', valor: (c) => c.pago },
+    { titulo: 'Falta', tipo: 'moeda', valor: (c) => c.falta },
+    { titulo: 'Vencimento', valor: (c) => dataBR(c.vencimento) },
+    { titulo: 'Situação', valor: (c) => situacaoDoPrazo(c.vencimento) },
+    { titulo: 'Observação da cobrança', valor: (c) => c.observacao_cobranca },
+  ], emAberto(org.compras))
+
+  return [
+    [wsVendas, 'Estoque - Vendas'],
+    [wsItens, 'Estoque - Itens vendidos'],
+    [wsRecebimentos, 'Estoque - Recebimentos'],
+    [wsCompras, 'Estoque - Compras'],
+    [wsReceber, 'A receber (hoje)'],
+    [wsPagar, 'A pagar (hoje)'],
+  ]
+}
+
+// Abas do Estoque no backup completo (todas as colunas do banco + nomes ao lado dos ids)
+function abasEstoqueCompletas(est, org) {
+  const { produtoPorId, fornecedorPorId, clientePorId } = org
+  const vendaPorId = porId(org.vendas)
+  const compraPorId = porId(org.compras)
+  const nomeProduto = (id) => produtoPorId[id]?.nome
+  const nomeCliente = (id) => clientePorId[id]?.nome
+
+  const ordenaPorData = (lista, campo) => [...lista].sort((a, b) => comparaTexto(b[campo], a[campo]))
+  const vendasOrdenadas = ordenaPorData(est.vendas_estoque, 'data_venda')
+  const comprasOrdenadas = ordenaPorData(est.compras_estoque, 'data_compra')
+
+  return [
+    [abaCrua([...est.fornecedores].sort((a, b) => comparaTexto(a.nome, b.nome))), 'Fornecedores'],
+    [abaCrua([...est.produtos].sort((a, b) => comparaTexto(a.nome, b.nome)), [
+      { titulo: 'Fornecedor', valor: (l) => fornecedorPorId[l.fornecedor_id]?.nome },
+    ]), 'Produtos'],
+    [abaCrua(comprasOrdenadas, [
+      { titulo: 'Produto', valor: (l) => nomeProduto(l.produto_id) },
+      { titulo: 'Fornecedor', valor: (l) => fornecedorPorId[l.fornecedor_id]?.nome },
+      { titulo: 'Total', tipo: 'moeda', valor: (l) => compraPorId[l.id]?.total },
+      { titulo: 'Pago', tipo: 'moeda', valor: (l) => compraPorId[l.id]?.pago },
+      { titulo: 'Falta pagar', tipo: 'moeda', valor: (l) => Math.max(0, compraPorId[l.id]?.falta || 0) },
+    ]), 'Compras (estoque)'],
+    [abaCrua(ordenaPorData(est.pagamentos_compra, 'data_pagamento'), [
+      { titulo: 'Produto da compra', valor: (l) => nomeProduto(compraPorId[l.compra_id]?.produto_id) },
+      { titulo: 'Fornecedor', valor: (l) => compraPorId[l.compra_id]?.fornecedor },
+      { titulo: 'Data da compra', valor: (l) => dataBR(compraPorId[l.compra_id]?.data_compra) },
+    ]), 'Pagamentos de compras'],
+    [abaCrua(vendasOrdenadas, [
+      { titulo: 'Cliente', valor: (l) => nomeCliente(l.cliente_id) },
+      { titulo: 'Produtos', valor: (l) => textoDosProdutos(vendaPorId[l.id]?.itens || [], produtoPorId) },
+      { titulo: 'Total', tipo: 'moeda', valor: (l) => vendaPorId[l.id]?.total },
+      { titulo: 'Custo da mercadoria', tipo: 'moeda', valor: (l) => vendaPorId[l.id]?.custo },
+      { titulo: 'Pago', tipo: 'moeda', valor: (l) => vendaPorId[l.id]?.pago },
+      { titulo: 'Falta receber', tipo: 'moeda', valor: (l) => Math.max(0, vendaPorId[l.id]?.falta || 0) },
+    ]), 'Vendas (estoque)'],
+    [abaCrua(est.venda_estoque_itens, [
+      { titulo: 'Cliente', valor: (l) => nomeCliente(vendaPorId[l.venda_id]?.cliente_id) },
+      { titulo: 'Data da venda', valor: (l) => dataBR(vendaPorId[l.venda_id]?.data_venda) },
+      { titulo: 'Produto', valor: (l) => nomeProduto(l.produto_id) },
+      { titulo: 'Total da linha', tipo: 'moeda', valor: (l) => arredonda2(Number(l.quantidade) * Number(l.preco_unitario)) },
+    ]), 'Itens das vendas'],
+    [abaCrua(ordenaPorData(est.pagamentos_venda, 'data_pagamento'), [
+      { titulo: 'Cliente', valor: (l) => nomeCliente(vendaPorId[l.venda_id]?.cliente_id) },
+      { titulo: 'Data da venda', valor: (l) => dataBR(vendaPorId[l.venda_id]?.data_venda) },
+    ]), 'Pagamentos de vendas'],
+    [abaCrua(ordenaPorData(est.retiradas_lucro, 'data_retirada')), 'Retiradas de lucro'],
+    [abaCrua(est.metas_estoque, [
+      { titulo: 'Produto', valor: (l) => nomeProduto(l.produto_id) },
+      { titulo: 'Subtotal', tipo: 'moeda', valor: (l) => arredonda2(Number(l.quantidade) * Number(l.preco_unitario)) },
+    ]), 'Metas (próxima compra)'],
+    [abaCrua(ordenaPorData(est.lembretes, 'created_at'), [
+      { titulo: 'Cliente', valor: (l) => nomeCliente(l.cliente_id) },
+    ]), 'Lembretes'],
+  ]
+}
+
 // ── Relatório do mês ──────────────────────────────────────────
 
 async function gerarRelatorioMes() {
@@ -147,6 +429,11 @@ async function gerarRelatorioMes() {
     ler('empresas'),
     ler('comissoes_recebidas', { filtro: (q) => q.eq('mes', parseInt(mes)).eq('ano', parseInt(ano)) }),
   ])
+
+  // Estoque (revenda): se não der para ler, as abas dele são puladas e o resto sai normalmente
+  avisoFinal = ''
+  const est = await lerEstoque()
+  const org = est.ok ? organizarEstoque(est) : null
 
   const empresaPorId = {}
   empresas.forEach((e) => { empresaPorId[e.id] = e })
@@ -206,6 +493,7 @@ async function gerarRelatorioMes() {
     ['Comissão estimada', celula(totalComissao, 'moeda')],
     ['Comissão já recebida', celula(comissaoRecebida, 'moeda')],
     ['Comissão ainda a receber', celula(comissaoAReceber, 'moeda')],
+    ...(org ? linhasResumoEstoque(est, org, inicio, fim) : []),
     [],
     ['Gerado em', celula(new Date().toLocaleString('pt-BR'))],
   ]
@@ -261,6 +549,7 @@ async function gerarRelatorioMes() {
   XLSX.utils.book_append_sheet(wb, wsEmpresas, 'Comissão por empresa')
   XLSX.utils.book_append_sheet(wb, wsVendas, 'Vendas')
   XLSX.utils.book_append_sheet(wb, wsVisitas, 'Visitas')
+  if (org) abasEstoqueDoMes(est, org, inicio, fim).forEach(([ws, nome]) => XLSX.utils.book_append_sheet(wb, ws, nome))
   baixar(wb, `relatorio-${ano}-${mes}.xlsx`)
 }
 
@@ -328,6 +617,11 @@ async function gerarBackupCompleto() {
     { titulo: 'Empresa', valor: (l) => empresaPorId[l.empresa_id]?.nome },
   ]), 'Comissões recebidas')
 
+  // Estoque (revenda) e Lembretes: se não der para ler, são pulados e o aviso aparece no fim
+  avisoFinal = ''
+  const est = await lerEstoque()
+  if (est.ok) abasEstoqueCompletas(est, organizarEstoque(est)).forEach(([ws, nome]) => add(ws, nome))
+
   baixar(wb, `backup-${dataLocalStr(new Date())}.xlsx`)
 }
 
@@ -341,6 +635,7 @@ async function executar(botao, tarefa) {
   try {
     await carregarBiblioteca()
     await tarefa()
+    if (avisoFinal) alert(avisoFinal)
   } catch (err) {
     console.error('Erro ao gerar o Excel:', err)
     alert(`Não foi possível gerar o arquivo Excel. ${err.message || ''} Confira a conexão e tente de novo.`)
