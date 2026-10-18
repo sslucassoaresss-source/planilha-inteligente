@@ -961,3 +961,11 @@
   .ent-parada-linha { flex-direction: column; align-items: stretch; }
   .ent-btn-feita { align-self: flex-start; }
 }
+
+/* Faixa das entregas: "Abrir Rotas" fica à direita */
+.est-faixa-ir {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}

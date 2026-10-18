@@ -51,9 +51,10 @@ function iniciar(userId) {
   let compras = []
   let retiradas = []
   let metas = []
+  let entregas = []   // só para o aviso de "entrega sem dia" / atrasada
 
   async function carregar() {
-    const [p, v, c, r, m] = await Promise.all([
+    const [p, v, c, r, m, en] = await Promise.all([
       supabase.from('produtos').select('*').order('nome'),
       buscarTodasLinhas('vendas_estoque', {
         select: '*, clientes(nome), venda_estoque_itens(produto_id, quantidade, preco_unitario, custo_unitario, produtos(nome, unidade)), pagamentos_venda(valor, data_pagamento, created_at)',
@@ -65,6 +66,8 @@ function iniciar(userId) {
       }),
       supabase.from('retiradas_lucro').select('*').order('data_retirada', { ascending: false }),
       supabase.from('metas_estoque').select('*').order('created_at'),
+      // Entregas (só o necessário para o aviso). Se falhar, o resto do Dashboard segue normal.
+      supabase.from('entregas').select('id, data_entrega, entrega_paradas(feita)'),
     ])
     const erro = p.error || v.error || c.error || r.error || m.error
     if (erro) {
@@ -78,6 +81,8 @@ function iniciar(userId) {
     compras = c.data
     retiradas = r.data
     metas = m.data
+    if (en.error) console.error('Erro ao carregar as entregas para o aviso:', en.error)
+    entregas = en.error ? [] : en.data
     return true
   }
 
@@ -184,7 +189,21 @@ function iniciar(userId) {
       $('estSubMeta').textContent = resumo.join(' + ') + (resto > 0 ? ` + ${resto} mais` : '')
     }
     desenharCobrancas()
+    desenharFaixaEntregas()
     return c
+  }
+
+  // Aviso das entregas (o "rota sem dia" do Caio, só para entregas): sem dia marcado ou atrasadas
+  function desenharFaixaEntregas() {
+    const hoje = dataLocalStr(new Date())
+    const pendentes = entregas.filter((e) => (e.entrega_paradas || []).some((p) => !p.feita))
+    const semDia = pendentes.filter((e) => !e.data_entrega).length
+    const atrasadas = pendentes.filter((e) => e.data_entrega && e.data_entrega < hoje).length
+    const partes = []
+    if (semDia) partes.push(`${semDia} ${semDia === 1 ? 'entrega sem dia marcado' : 'entregas sem dia marcado'}`)
+    if (atrasadas) partes.push(`${atrasadas} ${atrasadas === 1 ? 'entrega atrasada' : 'entregas atrasadas'}`)
+    $('estFaixaEntregas').style.display = partes.length ? 'flex' : 'none'
+    $('estFaixaEntregasTexto').textContent = partes.join(' · ')
   }
 
   async function recarregar() {

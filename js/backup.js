@@ -349,6 +349,7 @@ async function baixar(wb, nomeArquivo) {
 const TABELAS_ESTOQUE = [
   'fornecedores', 'produtos', 'compras_estoque', 'pagamentos_compra', 'vendas_estoque',
   'venda_estoque_itens', 'pagamentos_venda', 'retiradas_lucro', 'metas_estoque', 'lembretes',
+  'entregas', 'entrega_paradas', 'entrega_itens',
 ]
 
 let avisoFinal = '' // mostrado ao fim da geração (ex.: tabelas do Estoque que não puderam ser lidas)
@@ -415,8 +416,36 @@ function organizarEstoque(est) {
   compras.forEach((c) => { saldo[c.produto_id] = (saldo[c.produto_id] || 0) + Number(c.quantidade) })
   est.venda_estoque_itens.forEach((i) => { saldo[i.produto_id] = (saldo[i.produto_id] || 0) - Number(i.quantidade) })
 
-  return { produtoPorId, fornecedorPorId, clientePorId, vendas, compras, saldo }
+  // Entregas: cada uma com as suas paradas (clientes) e o que levar em cada
+  const paradasPorEntrega = agrupar(est.entrega_paradas, 'entrega_id')
+  const itensPorParada = agrupar(est.entrega_itens, 'parada_id')
+  const entregas = est.entregas.map((e) => ({
+    ...e,
+    paradas: [...(paradasPorEntrega[e.id] || [])]
+      .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
+      .map((p) => ({ ...p, cliente: clientePorId[p.cliente_id]?.nome || '', itens: itensPorParada[p.id] || [] })),
+  }))
+  const entregaPorVenda = {}
+  entregas.forEach((e) => e.paradas.forEach((p) => { if (p.venda_id) entregaPorVenda[p.venda_id] = e }))
+  // De onde veio cada venda: de uma visita, de uma entrega ou "avulsa"
+  vendas.forEach((v) => {
+    v.origem = v.visita_id ? 'Visita' : entregaPorVenda[v.id] ? `Entrega: ${entregaPorVenda[v.id].nome || 'sem nome'}` : 'Avulsa'
+  })
+
+  return { produtoPorId, fornecedorPorId, clientePorId, vendas, compras, saldo, entregas }
 }
+
+// Situação de uma entrega: concluída, sem dia marcado, atrasada, hoje ou com dia marcado
+function situacaoDaEntrega(ent) {
+  if (!ent.paradas.some((p) => !p.feita)) return 'Concluída'
+  if (!ent.data_entrega) return 'Sem dia marcado'
+  const dias = diasAte(ent.data_entrega)
+  if (dias < 0) return 'Atrasada'
+  return dias === 0 ? 'É hoje' : 'Dia marcado'
+}
+
+const textoDosItensDaParada = (itens, produtoPorId) =>
+  itens.map((i) => `${produtoPorId[i.produto_id]?.nome || 'produto'} × ${Number(i.quantidade)}`).join('; ')
 
 const textoDosProdutos = (itens, produtoPorId) =>
   itens.map((i) => `${produtoPorId[i.produto_id]?.nome || 'produto'} × ${Number(i.quantidade)}`).join('; ')
@@ -441,6 +470,9 @@ function numerosDoEstoque(est, org, inicio, fim) {
     podeRetirar: Math.max(0, arredonda2(lucroTotal - retirado)),
     aReceber: arredonda2(somar(org.vendas.filter((v) => v.falta > 0.004), (v) => v.falta)),
     aPagar: arredonda2(somar(org.compras.filter((c) => c.falta > 0.004), (c) => c.falta)),
+    entregasPendentes: org.entregas.filter((e) => situacaoDaEntrega(e) !== 'Concluída').length,
+    entregasSemDia: org.entregas.filter((e) => situacaoDaEntrega(e) === 'Sem dia marcado').length,
+    entregasAtrasadas: org.entregas.filter((e) => situacaoDaEntrega(e) === 'Atrasada').length,
   }
 }
 
@@ -451,6 +483,16 @@ function destacarSituacao(indice) {
     const texto = String(cell.value || '')
     if (texto.startsWith('Venceu')) cell.font = { bold: true, color: { argb: 'FFB03A3A' } }
     else if (texto === 'Vence hoje') cell.font = { bold: true, color: { argb: 'FFA24F00' } }
+  }
+}
+
+// Cores da coluna "Situação" das entregas (sem dia ou atrasada em destaque)
+function destacarSituacaoEntrega(indice) {
+  return (row) => {
+    const cell = row.getCell(indice + 1)
+    const texto = String(cell.value || '')
+    if (texto === 'Atrasada') cell.font = { bold: true, color: { argb: 'FFB03A3A' } }
+    else if (texto === 'Sem dia marcado' || texto === 'É hoje') cell.font = { bold: true, color: { argb: 'FFA24F00' } }
   }
 }
 
@@ -542,6 +584,7 @@ async function gerarRelatorioMes() {
       { rotulo: 'Estoque - Recebimentos', nota: 'O dinheiro que entrou no mês das vendas de estoque e o lucro que cada recebimento liberou.' },
       { rotulo: 'Estoque - Compras', nota: 'O que você comprou dos fornecedores no mês, o que já pagou e o que falta.' },
       { rotulo: 'Em aberto', nota: 'Fotografia de HOJE: quem ainda te deve e o que você ainda deve (de qualquer mês).' },
+      { rotulo: 'Entregas pendentes', nota: 'As entregas que ainda faltam fazer, com o que levar para cada cliente e se estão sem dia ou atrasadas.' },
     )
   }
   const blocos = [
@@ -568,6 +611,10 @@ async function gerarRelatorioMes() {
         { rotulo: 'Pode retirar agora', valor: n.podeRetirar, tipo: 'moeda', nota: 'Todo o lucro já recebido (desde o começo) menos tudo o que você já retirou.' },
         { rotulo: 'Clientes ainda me devem', valor: n.aReceber, tipo: 'moeda', nota: 'Em aberto hoje, de qualquer mês.' },
         { rotulo: 'Eu ainda devo aos fornecedores', valor: n.aPagar, tipo: 'moeda', nota: 'Em aberto hoje, de qualquer mês.' },
+        {
+          rotulo: 'Entregas pendentes', valor: n.entregasPendentes, tipo: 'numero',
+          nota: [n.entregasSemDia ? `${n.entregasSemDia} sem dia marcado` : '', n.entregasAtrasadas ? `${n.entregasAtrasadas} ${n.entregasAtrasadas === 1 ? 'atrasada' : 'atrasadas'}` : ''].filter(Boolean).join(' · ') || 'Todas com dia marcado.',
+        },
       ],
     })
   }
@@ -644,6 +691,7 @@ async function gerarRelatorioMes() {
       colunas: [
         { titulo: 'Data', tipo: 'data', valor: (v) => v.data_venda },
         { titulo: 'Cliente', valor: (v) => v.cliente },
+        { titulo: 'Origem', valor: (v) => v.origem },
         { titulo: 'Produtos', valor: (v) => textoDosProdutos(v.itens, org.produtoPorId) },
         { titulo: 'Total', tipo: 'moeda', soma: true, valor: (v) => v.total },
         { titulo: 'Custo da mercadoria', tipo: 'moeda', soma: true, valor: (v) => v.custo },
@@ -725,6 +773,35 @@ async function gerarRelatorioMes() {
       linhas: emAberto,
       colunas: colunasAberto,
       aposLinha: destacarSituacao(colunasAberto.findIndex((c) => c.titulo === 'Situação')),
+    })
+
+    // Entregas que ainda faltam fazer (um cliente por linha): sem dia e atrasadas primeiro
+    const paradasPendentes = []
+    org.entregas.forEach((e) => {
+      const situacao = situacaoDaEntrega(e)
+      if (situacao === 'Concluída') return
+      e.paradas.filter((p) => !p.feita).forEach((p) => paradasPendentes.push({ e, p, situacao }))
+    })
+    const pesoSituacao = { 'Sem dia marcado': 0, Atrasada: 1, 'É hoje': 2, 'Dia marcado': 3 }
+    paradasPendentes.sort((a, b) =>
+      pesoSituacao[a.situacao] - pesoSituacao[b.situacao] ||
+      comparaTexto(a.e.data_entrega || '', b.e.data_entrega || '') ||
+      comparaTexto(a.e.created_at, b.e.created_at))
+    const colunasEntregas = [
+      { titulo: 'Situação', valor: (x) => x.situacao },
+      { titulo: 'Entrega', valor: (x) => x.e.nome || 'Entrega' },
+      { titulo: 'Dia', tipo: 'data', valor: (x) => x.e.data_entrega },
+      { titulo: 'Cliente', valor: (x) => x.p.cliente },
+      { titulo: 'O que levar', valor: (x) => textoDosItensDaParada(x.p.itens, org.produtoPorId) },
+      { titulo: 'Observação da entrega', valor: (x) => x.e.observacao },
+    ]
+    adicionarAba(wb, {
+      nome: 'Entregas pendentes', cor: 'verde',
+      titulo: `Entregas que faltam fazer (hoje, ${new Date().toLocaleDateString('pt-BR')})`,
+      descricao: 'Um cliente por linha, de qualquer mês. "Sem dia marcado" e "Atrasada" vêm primeiro.',
+      linhas: paradasPendentes,
+      colunas: colunasEntregas,
+      aposLinha: destacarSituacaoEntrega(0),
     })
   }
 
@@ -979,6 +1056,7 @@ async function gerarBackupCompleto() {
       colunas: [
         { titulo: 'Data', tipo: 'data', valor: (l) => l.data_venda },
         { titulo: 'Cliente', valor: (l) => nomeCliente(l.cliente_id) },
+        { titulo: 'Origem', valor: (l) => vendaPorId[l.id]?.origem },
         { titulo: 'Produtos', valor: (l) => textoDosProdutos(vendaPorId[l.id]?.itens || [], produtoPorId) },
         { titulo: 'Total', tipo: 'moeda', soma: true, valor: (l) => vendaPorId[l.id]?.total },
         { titulo: 'Custo da mercadoria', tipo: 'moeda', soma: true, valor: (l) => vendaPorId[l.id]?.custo },
@@ -988,7 +1066,28 @@ async function gerarBackupCompleto() {
         { titulo: 'Vencimento', tipo: 'data', valor: (l) => l.vencimento },
         { titulo: 'Observação', valor: (l) => l.observacao },
         { titulo: 'Observação da cobrança', valor: (l) => l.observacao_cobranca },
-        { titulo: 'Lançada numa visita?', tipo: 'simnao', valor: (l) => !!l.visita_id },
+      ],
+    })
+    // Entregas: um cliente por linha, com o que levar e se já foi entregue
+    const linhasEntregas = []
+    org.entregas.forEach((e) => {
+      if (e.paradas.length === 0) linhasEntregas.push({ e, p: null })
+      e.paradas.forEach((p) => linhasEntregas.push({ e, p }))
+    })
+    linhasEntregas.sort((a, b) => comparaTexto(b.e.data_entrega || '9999', a.e.data_entrega || '9999') || comparaTexto(b.e.created_at, a.e.created_at))
+    aba({
+      nome: 'Entregas', cor: 'verde', titulo: 'Entregas',
+      descricao: 'Cada entrega montada, com um cliente por linha: o que era para levar e se já foi entregue (e a venda que gerou). Sem dia marcado aparece primeiro.',
+      linhas: linhasEntregas,
+      colunas: [
+        { titulo: 'Entrega', valor: (x) => x.e.nome || 'Entrega' },
+        { titulo: 'Dia', tipo: 'data', valor: (x) => x.e.data_entrega },
+        { titulo: 'Situação', valor: (x) => situacaoDaEntrega(x.e) },
+        { titulo: 'Cliente', valor: (x) => (x.p ? x.p.cliente : '(sem clientes)') },
+        { titulo: 'O que levar', valor: (x) => (x.p ? textoDosItensDaParada(x.p.itens, produtoPorId) : '') },
+        { titulo: 'Entregue?', tipo: 'simnao', valor: (x) => (x.p ? x.p.feita : null) },
+        { titulo: 'Valor da venda gerada', tipo: 'moeda', valor: (x) => (x.p && x.p.venda_id ? vendaPorId[x.p.venda_id]?.total : null) },
+        { titulo: 'Observação da entrega', valor: (x) => x.e.observacao },
       ],
     })
     aba({
