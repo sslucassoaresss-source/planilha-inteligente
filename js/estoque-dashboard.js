@@ -15,9 +15,20 @@
 import { supabase, buscarTodasLinhas } from './supabase.js'
 import { mensagemErro } from './erros.js'
 
+// Ponte com o gráfico "Vendas por dia" do dashboard.js: devolve, para um mês, o quanto
+// foi vendido de produtos do estoque em cada dia (a parte VERDE das barras). Existe desde
+// já (antes de qualquer espera) e só responde depois que os dados carregaram; se algo
+// falhar, responde vazio e o gráfico fica só azul, como sempre foi.
+let definirCalculoPorDia
+const calculoPorDiaPronto = new Promise((resolver) => { definirCalculoPorDia = resolver })
+window.estoqueDashboard = {
+  vendasPorDia: async (ano, mes) => (await calculoPorDiaPronto)(ano, mes),
+}
+
 const { data: { session } } = await supabase.auth.getSession()
 // Sem sessão, o dashboard.js já manda para o login.
 if (session) iniciar(session.user.id)
+else definirCalculoPorDia(() => ({}))
 
 function iniciar(userId) {
   const $ = (id) => document.getElementById(id)
@@ -174,6 +185,19 @@ function iniciar(userId) {
 
   async function recarregar() {
     if (await carregar()) desenhar()
+  }
+
+  // Total vendido de produtos em cada dia do mês: { 1: 260, 12: 10, ... } (dia -> valor)
+  function vendasPorDia(ano, mes) {
+    const mesTexto = `${ano}-${String(mes).padStart(2, '0')}`
+    const porDia = {}
+    vendas.forEach((v) => {
+      if (String(v.data_venda).slice(0, 7) !== mesTexto) return
+      const dia = Number(String(v.data_venda).slice(8, 10))
+      const total = (v.venda_estoque_itens || []).reduce((s, i) => s + Number(i.quantidade) * Number(i.preco_unitario), 0)
+      porDia[dia] = arredonda2((porDia[dia] || 0) + total)
+    })
+    return porDia
   }
 
   $('selectMes').addEventListener('change', desenhar)
@@ -349,5 +373,6 @@ function iniciar(userId) {
     }
   })
 
-  recarregar()
+  // Libera o gráfico assim que os dados chegarem (mesmo se o carregamento falhar: aí vem vazio)
+  recarregar().finally(() => definirCalculoPorDia(vendasPorDia))
 }

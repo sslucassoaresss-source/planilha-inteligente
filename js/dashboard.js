@@ -56,7 +56,17 @@ async function carregarDados() {
   }
 
   renderizarCards(visitas)
-  renderizarGrafico(visitas, ano, mes)
+
+  // Vendas de produtos do estoque por dia (js/estoque-dashboard.js): a parte VERDE das
+  // barras. Opcional: se o módulo não existir ou falhar, o gráfico fica só azul, como sempre.
+  let estoquePorDia = {}
+  try {
+    estoquePorDia = (await window.estoqueDashboard?.vendasPorDia(ano, mes)) || {}
+  } catch (erroEstoque) {
+    console.error('Erro ao ler as vendas do estoque para o gráfico:', erroEstoque)
+  }
+
+  renderizarGrafico(visitas, ano, mes, estoquePorDia)
   renderizarVisitasRecentes(visitas)
 }
 
@@ -95,7 +105,7 @@ function renderizarCards(visitas) {
 }
 
 // ── Gráfico de barras por dia ─────────────────────────────────
-function renderizarGrafico(visitas, ano, mes) {
+function renderizarGrafico(visitas, ano, mes, estoquePorDia = {}) {
   const grafico = document.getElementById('grafico')
   grafico.innerHTML = ''
 
@@ -112,10 +122,14 @@ function renderizarGrafico(visitas, ano, mes) {
     }
   })
 
-  const maxValor = Math.max(...Object.values(vendasPorDia), 1)
+  // A altura de cada barra é a soma da parte azul (empresas representadas) com a verde (estoque)
+  const totalDoDia = (d) => (vendasPorDia[d] || 0) + (estoquePorDia[d] || 0)
+  const maxValor = Math.max(...Array.from({ length: diasNoMes }, (_, i) => totalDoDia(i + 1)), 1)
 
   for (let dia = 1; dia <= diasNoMes; dia++) {
-    const valor = vendasPorDia[dia] || 0
+    const valorEmpresas = vendasPorDia[dia] || 0
+    const valorEstoque = estoquePorDia[dia] || 0
+    const valor = valorEmpresas + valorEstoque
     const altura = Math.max((valor / maxValor) * 100, valor > 0 ? 8 : 2)
 
     const wrap = document.createElement('div')
@@ -129,7 +143,18 @@ function renderizarGrafico(visitas, ano, mes) {
     if (valor > 0) {
       const tooltip = document.createElement('div')
       tooltip.className = 'barra-tooltip'
-      tooltip.textContent = valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+      const moeda = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+      if (valorEstoque > 0) {
+        // Dia com venda de estoque: mostra os dois valores e pinta a parte de cima de verde
+        tooltip.classList.add('barra-tooltip-duplo')
+        tooltip.textContent = `Empresas: ${moeda(valorEmpresas)}\nEstoque: ${moeda(valorEstoque)}`
+        const verde = document.createElement('div')
+        verde.className = 'barra-estoque'
+        verde.style.height = `${(valorEstoque / valor) * 100}%`
+        barra.appendChild(verde)
+      } else {
+        tooltip.textContent = moeda(valor)
+      }
       barra.appendChild(tooltip)
     }
 

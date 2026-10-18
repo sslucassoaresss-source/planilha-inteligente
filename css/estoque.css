@@ -359,3 +359,49 @@
 }
 
 .est-card-destaque { margin-top: 3px; font-size: 12px; }
+
+/* ═══════════════════════════════════════
+   Gráfico "Vendas por dia": parte verde (estoque) e legenda
+═══════════════════════════════════════ */
+
+.grafico-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: -10px 0 16px;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.grafico-legenda-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.grafico-ponto {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.grafico-ponto-azul  { background: var(--accent); }
+.grafico-ponto-verde { background: #2E8B6A; }
+
+/* Parte de cima da barra, com a venda de estoque (o azul das empresas fica embaixo) */
+.barra-estoque {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #2E8B6A;
+  border-radius: 4px 4px 0 0;
+}
+
+/* Dica com duas linhas (empresas + estoque) */
+.barra-tooltip.barra-tooltip-duplo {
+  white-space: pre;
+  text-align: left;
+  line-height: 1.5;
+}
