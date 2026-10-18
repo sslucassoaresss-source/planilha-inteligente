@@ -13,6 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
   <link rel="stylesheet" href="../css/visitas.css">
+  <link rel="stylesheet" href="../css/estoque.css">
 </head>
 <body>
 
@@ -75,6 +76,30 @@
       </table>
     </div>
 
+    <!-- Vendas de produtos do estoque do mês (js/estoque-visitas.js) -->
+    <section class="est-secao-vendas" id="estSecaoVendas">
+      <div class="est-bloco-topo">
+        <h3>Vendas de produtos do mês</h3>
+      </div>
+      <p class="est-resumo" id="estResumoVendas" style="display:none"></p>
+      <div class="tabela-wrapper">
+        <table class="tabela est-tabela">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Cliente</th>
+              <th>Produtos</th>
+              <th>Total</th>
+              <th>Pago</th>
+              <th>Situação</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="estListaVendas"></tbody>
+        </table>
+      </div>
+    </section>
+
   </main>
 
   <!-- Modal -->
@@ -125,8 +150,8 @@
         <!-- Itens de venda (só aparece se Comprou) -->
         <div class="itens-venda" id="blocoItens" style="display:none">
           <div class="itens-venda-topo">
-            <span class="itens-venda-titulo">Itens da venda</span>
-            <button type="button" class="btn-add-item" id="btnAddItem">+ Adicionar item</button>
+            <span class="itens-venda-titulo">Itens de empresas representadas</span>
+            <button type="button" class="btn-add-item" id="btnAddItem">+ Item de empresa representada</button>
           </div>
 
           <div id="listaItens"></div>
@@ -142,6 +167,51 @@
           <div class="itens-total itens-total-final">
             <span>Total da visita:</span>
             <strong id="totalItens">R$ 0,00</strong>
+          </div>
+
+          <!-- Produtos do ESTOQUE do Caio (fora da comissão; ver js/estoque-visitas.js) -->
+          <div class="est-venda" id="estBlocoVenda">
+            <div class="itens-venda-topo">
+              <span class="itens-venda-titulo">Produtos do meu estoque</span>
+              <button type="button" class="btn-add-item" id="estBtnAddProduto">+ Produto do meu estoque</button>
+            </div>
+
+            <div id="estListaLinhas"></div>
+
+            <div class="itens-total" id="estLinhaTotal" style="display:none">
+              <span>Total dos produtos do estoque:</span>
+              <strong id="estTotalProdutos">R$ 0,00</strong>
+            </div>
+
+            <div id="estPagamentoBox" style="display:none">
+              <div class="est-pagamento">
+                <div class="field span-2">
+                  <label for="estPagamento">Pagamento dos produtos do estoque</label>
+                  <select id="estPagamento">
+                    <option value="pago">Pago agora</option>
+                    <option value="fiado">Fiado (pagar depois)</option>
+                    <option value="parte">Pagou uma parte</option>
+                  </select>
+                </div>
+                <div class="field" id="estCampoValorPago" style="display:none">
+                  <label for="estValorPago">Valor pago agora (R$)</label>
+                  <input type="number" id="estValorPago" step="0.01" min="0.01" placeholder="0,00">
+                </div>
+                <div class="field" id="estCampoForma">
+                  <label for="estForma">Forma de pagamento</label>
+                  <select id="estForma">
+                    <option value="">—</option>
+                    <option value="pix">Pix</option>
+                    <option value="dinheiro">Dinheiro</option>
+                  </select>
+                </div>
+                <div class="field" id="estCampoPrazo" style="display:none">
+                  <label for="estPrazo">Prazo para pagar o resto (dias)</label>
+                  <input type="number" id="estPrazo" step="1" min="0" placeholder="Ex: 10">
+                </div>
+              </div>
+            </div>
+            <p class="est-nota" id="estNotaPagamento" style="display:none"></p>
           </div>
         </div>
 
@@ -170,6 +240,55 @@
     </div>
   </template>
 
+  <!-- Linha de produto do estoque (usada por js/estoque-visitas.js) -->
+  <template id="estTemplateLinha">
+    <div class="est-linha">
+      <select class="est-produto"></select>
+      <input type="number" class="est-qtd" step="0.001" min="0.001" placeholder="Quantidade">
+      <input type="number" class="est-preco" step="0.01" min="0" placeholder="Preço (R$)">
+      <button type="button" class="est-btn-remover" title="Remover">🗑️</button>
+      <div class="est-linha-info"></div>
+    </div>
+  </template>
+
+  <!-- Janelinha "Receber" (pagamento em partes de uma venda de produtos) -->
+  <div class="modal-overlay" id="estModalPagamento">
+    <div class="modal">
+      <div class="modal-topo">
+        <h2>Receber pagamento</h2>
+        <button type="button" class="modal-fechar" data-fechar>&times;</button>
+      </div>
+      <form id="estFormPagamento">
+        <input type="hidden" id="estPagVendaId">
+        <p class="est-total" id="estPagInfo" style="margin-bottom: 16px"></p>
+        <div class="form-grid">
+          <div class="field">
+            <label for="estPagValor">Valor recebido (R$) *</label>
+            <input type="number" id="estPagValor" step="0.01" min="0.01" required>
+          </div>
+          <div class="field">
+            <label for="estPagData">Dia</label>
+            <input type="date" id="estPagData" required>
+          </div>
+          <div class="field span-2">
+            <label for="estPagForma">Forma (opcional)</label>
+            <select id="estPagForma">
+              <option value="">—</option>
+              <option value="pix">Pix</option>
+              <option value="dinheiro">Dinheiro</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-rodape">
+          <button type="button" class="btn-secundario" data-fechar>Cancelar</button>
+          <button type="submit" class="btn-primario" id="estBtnSalvarPagamento">Salvar pagamento</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Este módulo vem ANTES do visitas.js para a ponte (window.estoqueVisitas) já existir quando a lista carregar -->
+  <script type="module" src="../js/estoque-visitas.js"></script>
   <script type="module" src="../js/visitas.js"></script>
 
   <script type="module" src="../js/privacidade.js"></script>

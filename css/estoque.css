@@ -129,3 +129,123 @@
   .est-total,
   .est-aviso { grid-column: span 1; }
 }
+
+/* ═══════════════════════════════════════
+   Visitas: produtos do meu estoque
+   (dentro da janela da visita e a lista "Vendas de produtos do mês")
+═══════════════════════════════════════ */
+
+.est-venda {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line);
+}
+
+.est-linha {
+  display: grid;
+  grid-template-columns: 1.4fr 0.7fr 0.8fr auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.est-linha select,
+.est-linha input {
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-dark);
+  background: var(--card);
+  min-width: 0;
+  width: 100%;
+}
+
+.est-linha select:focus,
+.est-linha input:focus {
+  outline: none;
+  border-color: var(--accent-deep);
+}
+
+.est-btn-remover {
+  background: #FBEAEA;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 9px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+
+.est-btn-remover:hover { background: #F5D0D0; }
+
+.est-linha-info {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  color: var(--text-soft);
+  margin-bottom: 8px;
+}
+
+.est-linha-info.est-excede {
+  color: #A85454;
+  font-weight: 600;
+}
+
+.est-pagamento {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.est-pagamento .span-2 { grid-column: span 2; }
+
+.est-nota {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-soft);
+  line-height: 1.5;
+}
+
+/* Etiqueta "Meu estoque" na tabela de visitas */
+.empresa-tag.est-tag {
+  background: #E6F5EE;
+  border-color: #BFE3D0;
+  color: #2E7D5A;
+}
+
+.est-secao-vendas { margin-top: 44px; }
+
+/* A tela de Visitas esconde as colunas 4 e 5 de toda ".tabela" no celular;
+   nesta lista elas precisam continuar aparecendo. */
+@media (max-width: 700px) {
+  .tabela.est-tabela th:nth-child(4),
+  .tabela.est-tabela td:nth-child(4),
+  .tabela.est-tabela th:nth-child(5),
+  .tabela.est-tabela td:nth-child(5) {
+    display: table-cell;
+  }
+}
+
+@media (max-width: 600px) {
+  .est-linha {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  }
+  .est-linha .est-produto { grid-column: 1 / -1; }
+  .est-pagamento { grid-template-columns: 1fr; }
+  .est-pagamento .span-2 { grid-column: span 1; }
+}
+
+/* Resumo acima da lista de vendas (mesmo visual do resumo de comissão de Empresas) */
+.est-resumo {
+  font-size: 14px;
+  color: var(--text-dark);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.est-resumo strong { color: var(--accent-deep); }

@@ -245,6 +245,7 @@ function fecharModal() {
   boxSugestoes.style.display = 'none'
   listaItens.innerHTML = ''
   clienteAtual = null
+  window.estoqueVisitas?.limpar()
 }
 
 document.getElementById('btnNovaVisita').addEventListener('click', () => abrirModal())
@@ -267,6 +268,12 @@ formVisita.addEventListener('submit', async (e) => {
   const comprou   = document.getElementById('comprou').value === 'true'
   const desconto  = clienteAtual?.desconto || 0
 
+  // Produtos do ESTOQUE do Caio (js/estoque-visitas.js). Tudo opcional: se esse
+  // módulo não carregou, `vendaEstoque` fica undefined e a tela funciona como sempre.
+  const vendaEstoque = window.estoqueVisitas?.coletar()
+  if (vendaEstoque?.cancelado) return
+  if (vendaEstoque?.erro) { alert(vendaEstoque.erro); return }
+
   // Monta lista de itens a partir das linhas do formulário
   const linhas = document.querySelectorAll('.item-venda-row')
   const itens = []
@@ -281,8 +288,9 @@ formVisita.addEventListener('submit', async (e) => {
       itens.push({ empresa_id: empresaId, valor: valorBruto, comissao_manual: comissaoManual })
     }
 
-    if (itens.length === 0) {
-      alert('Adicione pelo menos um item de venda com empresa e valor.')
+    // Vale também ter só produto do estoque (sem item de empresa representada)
+    if (itens.length === 0 && !vendaEstoque?.temItens) {
+      alert('Adicione pelo menos um item de venda com empresa e valor (ou um produto do seu estoque).')
       return
     }
   }
@@ -292,7 +300,8 @@ formVisita.addEventListener('submit', async (e) => {
     cliente_id:        document.getElementById('clienteId').value,
     data_visita:       document.getElementById('dataVisita').value,
     comprou,
-    desconto_aplicado: comprou ? desconto : 0,
+    // O desconto fixo do cliente só vale para itens de empresa representada
+    desconto_aplicado: comprou && itens.length > 0 ? desconto : 0,
     observacao:        document.getElementById('observacao').value.trim() || null,
   }
 
@@ -330,6 +339,19 @@ formVisita.addEventListener('submit', async (e) => {
     error = resItens.error
   }
 
+  // Venda de produtos do estoque (se houver). A visita já está salva neste ponto;
+  // se só esta parte falhar, avisamos depois de fechar a janela.
+  let avisoEstoque = ''
+  if (!error && vendaEstoque) {
+    const resEstoque = await window.estoqueVisitas.salvar({
+      visitaId,
+      clienteId: dadosVisita.cliente_id,
+      data: dadosVisita.data_visita,
+      venda: vendaEstoque,
+    })
+    if (resEstoque?.erro) avisoEstoque = resEstoque.erro
+  }
+
   btnSalvar.textContent = 'Salvar'
   btnSalvar.disabled = false
 
@@ -341,6 +363,10 @@ formVisita.addEventListener('submit', async (e) => {
 
   fecharModal()
   carregarVisitas()
+
+  if (avisoEstoque) {
+    alert(`A visita foi salva, mas houve um problema com a venda de produtos do estoque:\n${avisoEstoque}\n\nConfira a lista "Vendas de produtos do mês". Se a venda não estiver lá, abra esta visita em "Editar" e lance os produtos de novo (não crie outra visita).`)
+  }
 })
 
 // ── Carregar visitas do mês ───────────────────────────────────
@@ -359,6 +385,9 @@ async function carregarVisitas() {
   if (error) { console.error('Erro ao carregar visitas:', error); return }
 
   await ordenarPelaRotaDoDia(visitas, inicio, fim)
+
+  // Vendas de produtos do estoque do mês (preenche a lista nova e a etiqueta de cada visita)
+  await window.estoqueVisitas?.carregarMes(visitas, inicio, fim)
 
   renderizarResumo(visitas)
   renderizarTabela(visitas)
@@ -459,10 +488,15 @@ function renderizarTabela(visitas) {
       ? totalVisita.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
       : '—'
 
-    const tagsEmpresas = itens.length > 0
+    // Etiqueta da venda de produtos do estoque (js/estoque-visitas.js), separada das empresas
+    const tagEstoque = v.venda_estoque
+      ? `<span class="empresa-tag est-tag">Meu estoque: ${v.venda_estoque.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>`
+      : ''
+
+    const tagsEmpresas = itens.length > 0 || tagEstoque
       ? `<div class="empresas-tags">${itens.map(it =>
           `<span class="empresa-tag">${it.empresas?.nome || '—'}: ${(it.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>`
-        ).join('')}</div>`
+        ).join('')}${tagEstoque}</div>`
       : '—'
 
     const tr = document.createElement('tr')
@@ -531,11 +565,18 @@ function editarVisita(id, lista) {
   }
 
   abrirModal('Editar Visita')
+
+  // Carrega os produtos do estoque vendidos nesta visita (se houver)
+  window.estoqueVisitas?.carregar(v.id)
 }
 
 // ── Excluir ───────────────────────────────────────────────────
 async function excluirVisita(id) {
-  if (!confirm('Tem certeza que deseja excluir esta visita?\nOs itens de venda vinculados também serão removidos.')) return
+  // A venda de produtos do estoque NÃO é apagada junto (protege o dinheiro/estoque registrado)
+  const avisoEstoque = window.estoqueVisitas?.temVenda(id)
+    ? '\n\nA venda de produtos do estoque desta visita NÃO é apagada: ela continua na lista "Vendas de produtos do mês" (apague de lá, se for o caso).'
+    : ''
+  if (!confirm('Tem certeza que deseja excluir esta visita?\nOs itens de venda vinculados também serão removidos.' + avisoEstoque)) return
 
   const { error } = await supabase.from('visitas').delete().eq('id', id)
   if (error) { console.error('Erro ao excluir:', error); alert('Erro ao excluir. Tente novamente.'); return }
