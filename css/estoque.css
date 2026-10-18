@@ -708,3 +708,238 @@
 @media (max-width: 900px) {
   .est-par-paineis { grid-template-columns: 1fr; }
 }
+
+/* ═══════════════════════════════════════
+   Rotas: seção "Entregas" (js/entregas.js)
+═══════════════════════════════════════ */
+
+.ent-secao {
+  margin-bottom: 20px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.ent-resumo {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding: 14px 18px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.ent-resumo::-webkit-details-marker { display: none; }
+
+.ent-resumo::before {
+  content: '▸';
+  color: var(--text-soft);
+  font-size: 12px;
+  align-self: center;
+}
+
+.ent-secao[open] > .ent-resumo::before { content: '▾'; }
+
+.ent-resumo-titulo {
+  font-family: 'Fraunces', serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.ent-resumo-texto {
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+.ent-resumo-alerta {
+  color: #7A5B00;
+  font-weight: 600;
+}
+
+.ent-corpo { padding: 0 18px 18px; }
+
+.ent-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.ent-desc {
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+.ent-aviso {
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  background: #FFF3CD;
+  border: 1px solid #F2D98C;
+  border-radius: 10px;
+  color: #7A5B00;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+#entLista {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ent-card {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-radius: 10px;
+  background: var(--card);
+}
+
+.ent-card-semdia    { border-left-color: #E0A93B; background: #FFFBF1; }
+.ent-card-atrasada  { border-left-color: #D98A8A; background: #FFF8F8; }
+.ent-card-concluida { border-left-color: #2E8B6A; opacity: 0.85; }
+
+.ent-card-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.ent-card-titulo { font-size: 15px; }
+
+.ent-marcar-dia {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+.ent-marcar-dia input[type="date"] {
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-dark);
+  background: var(--card);
+}
+
+.ent-levar {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--text-dark);
+}
+
+.ent-levar strong { color: var(--accent-deep); }
+
+.ent-paradas-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ent-parada-lista {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg);
+  font-size: 14px;
+}
+
+.ent-parada-lista .est-sub { margin-top: 2px; }
+.ent-feita { opacity: 0.7; }
+
+/* Janela de criar/editar */
+.ent-dica {
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.ent-secao-titulo {
+  margin: 4px 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.ent-parada {
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.ent-parada-travada { opacity: 0.75; }
+
+.ent-parada-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.ent-item {
+  display: grid;
+  grid-template-columns: 1.6fr 0.8fr auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.ent-item select,
+.ent-item input {
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-dark);
+  background: var(--card);
+  min-width: 0;
+  width: 100%;
+}
+
+.ent-item select:focus,
+.ent-item input:focus {
+  outline: none;
+  border-color: var(--accent-deep);
+}
+
+.ent-btn-add { margin-top: 4px; }
+
+.ent-busca {
+  position: relative;
+  margin-top: 6px;
+}
+
+.ent-busca input[type="text"] {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px dashed var(--accent-deep);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-dark);
+  background: var(--card);
+}
+
+.ent-busca input[type="text"]:focus {
+  outline: none;
+  border-style: solid;
+}
+
+@media (max-width: 600px) {
+  .ent-topo { flex-direction: column; align-items: stretch; }
+  .ent-item { grid-template-columns: minmax(0, 1fr) auto; }
+  .ent-item .ent-produto { grid-column: 1 / -1; }
+}

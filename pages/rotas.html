@@ -13,6 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
   <link rel="stylesheet" href="../css/rotas.css">
+  <link rel="stylesheet" href="../css/estoque.css">
 </head>
 <body>
 
@@ -36,6 +37,22 @@
         <select id="selectMes"></select>
       </div>
     </div>
+
+    <!-- Entregas da revenda (js/entregas.js): recolhível; abre sozinha quando há entrega sem dia -->
+    <details class="ent-secao" id="entSecao">
+      <summary class="ent-resumo">
+        <span class="ent-resumo-titulo">🚚 Entregas</span>
+        <span class="ent-resumo-texto" id="entResumoTexto"></span>
+      </summary>
+      <div class="ent-corpo">
+        <div class="ent-topo">
+          <p class="ent-desc">Monte o que levar para cada cliente, mesmo sem saber o dia. Enquanto estiver sem dia, aparece o aviso.</p>
+          <button type="button" class="btn-primario" id="entBtnNova">+ Nova entrega</button>
+        </div>
+        <div class="ent-aviso" id="entAviso" style="display:none"></div>
+        <div id="entLista"></div>
+      </div>
+    </details>
 
     <div class="visao-toggle">
       <button id="btnVisaoLista" class="visao-btn ativo">📋 Rotas Salvas</button>
@@ -120,7 +137,55 @@
     </div>
   </div>
 
+  <!-- Janela de criar/editar uma entrega (js/entregas.js) -->
+  <div class="modal-overlay" id="entModal">
+    <div class="modal">
+      <div class="modal-topo">
+        <h2 id="entModalTitulo">Nova entrega</h2>
+        <button type="button" class="modal-fechar" data-fechar>&times;</button>
+      </div>
+      <form id="entForm">
+        <input type="hidden" id="entId">
+        <div class="form-grid">
+          <div class="field span-2">
+            <label for="entNome">Nome (opcional)</label>
+            <input type="text" id="entNome" placeholder="Ex: Entrega de areia de sábado" maxlength="80">
+          </div>
+          <div class="field">
+            <label for="entData">Dia da entrega</label>
+            <input type="date" id="entData">
+            <span class="ent-dica">Deixe em branco se ainda não sabe o dia.</span>
+          </div>
+          <div class="field span-2">
+            <label for="entObs">Observação (opcional)</label>
+            <input type="text" id="entObs" placeholder="Ex: levar troco" maxlength="200">
+          </div>
+        </div>
+
+        <div class="est-aviso" id="entAvisoSemProdutos" style="display:none; margin-bottom: 12px">
+          Você ainda não tem produtos ativos. Cadastre em Empresas → Estoque → Produtos.
+        </div>
+
+        <div class="ent-secao-titulo">Clientes e o que levar</div>
+        <div id="entParadas"></div>
+
+        <div class="ent-busca">
+          <input type="text" id="entBuscaCliente" placeholder="+ Adicionar cliente: digite o nome para buscar" autocomplete="off">
+          <div class="sugestoes-cliente" id="entSugestoes"></div>
+        </div>
+
+        <div class="est-total" id="entTotalModal" style="margin: 16px 0 20px"></div>
+
+        <div class="modal-rodape">
+          <button type="button" class="btn-secundario" data-fechar>Cancelar</button>
+          <button type="submit" class="btn-primario" id="entBtnSalvar">Salvar entrega</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script type="module" src="../js/rotas.js"></script>
+  <script type="module" src="../js/entregas.js"></script>
 
   <script type="module" src="../js/privacidade.js"></script>
   <script type="module" src="../js/pwa.js"></script>
