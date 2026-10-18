@@ -157,7 +157,7 @@ function iniciar(userId) {
     }).join('')
 
     return `
-      <div class="ent-card ${semDia(ent) ? 'ent-card-semdia' : atrasada(ent) ? 'ent-card-atrasada' : concluida ? 'ent-card-concluida' : ''}">
+      <div class="ent-card ${semDia(ent) ? 'ent-card-semdia' : atrasada(ent) ? 'ent-card-atrasada' : concluida ? 'ent-card-concluida' : ''}" data-entrega-card="${ent.id}">
         <div class="ent-card-topo">
           <div class="ent-card-titulo"><strong>${esc(ent.nome || 'Entrega')}</strong> ${selo}</div>
           <div class="acoes">
@@ -196,7 +196,59 @@ function iniciar(userId) {
 
     // Abre sozinha, uma vez, quando há entrega sem dia (para o aviso não passar batido)
     if (!jaAbriu && (nSemDia > 0 || nAtrasadas > 0)) { $('entSecao').open = true; jaAbriu = true }
+
+    desenharNoCalendario()
   }
+
+  // ── Entregas no calendário do mês ───────────────────────────
+  // O rotas.js desenha o calendário e não é tocado: aqui só acrescentamos, em cada dia, um selo
+  // verde por entrega que tem aquele dia marcado. Se algo falhar, o calendário fica como sempre foi.
+  function desenharNoCalendario() {
+    try {
+      const calendario = $('calendarioMes')
+      const seletorMes = $('selectMes')
+      if (!calendario || !seletorMes) return
+      calendario.querySelectorAll('.ent-cal-item').forEach((el) => el.remove())
+
+      const prefixo = `${seletorMes.value}-` // "AAAA-MM-"
+      const porDia = {}
+      entregas.filter((e) => e.data_entrega && e.data_entrega.startsWith(prefixo)).forEach((e) => {
+        const dia = Number(e.data_entrega.slice(8, 10))
+        ;(porDia[dia] = porDia[dia] || []).push(e)
+      })
+
+      calendario.querySelectorAll('.calendario-dia:not(.vazio)').forEach((celula) => {
+        const dia = Number(celula.querySelector('.calendario-dia-numero')?.textContent)
+        ;(porDia[dia] || []).forEach((ent) => {
+          const concluida = !pendente(ent)
+          const levar = totalALevar(ent)
+          const item = document.createElement('div')
+          item.className = 'ent-cal-item'
+          item.innerHTML = `<button type="button" class="ent-cal-pill ${concluida ? 'ent-cal-feita' : atrasada(ent) ? 'ent-cal-atrasada' : ''}" data-entrega-cal="${ent.id}" title="${esc(`${ent.nome || 'Entrega'}${concluida ? ' (concluída)' : levar ? ` · levar: ${levar}` : ''}`)}">${concluida ? '✓' : '🚚'} ${esc(ent.nome || 'Entrega')}</button>`
+          celula.appendChild(item)
+        })
+      })
+    } catch (erro) {
+      console.error('Não foi possível mostrar as entregas no calendário:', erro)
+    }
+  }
+
+  // Clique no selo: abre o cartão da entrega (não deixa abrir o "atribuir rota ao dia" da célula)
+  $('calendarioMes')?.addEventListener('click', (e) => {
+    const pill = e.target.closest('[data-entrega-cal]')
+    if (!pill) return
+    e.stopPropagation()
+    $('entSecao').open = true
+    const card = document.querySelector(`[data-entrega-card="${pill.dataset.entregaCal}"]`)
+    if (!card) return
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    card.classList.add('ent-card-destaque')
+    setTimeout(() => card.classList.remove('ent-card-destaque'), 2200)
+  }, true)
+
+  // O calendário é redesenhado a cada troca de mês ou ação em Rotas: acompanhamos só os filhos diretos
+  // (nossos selos ficam dentro das células, então não disparam isto de novo)
+  if ($('calendarioMes')) new MutationObserver(desenharNoCalendario).observe($('calendarioMes'), { childList: true })
 
   async function recarregar() {
     if (await carregar()) desenhar()

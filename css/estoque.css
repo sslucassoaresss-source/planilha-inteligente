@@ -969,3 +969,35 @@
   font-weight: 500;
   white-space: nowrap;
 }
+
+/* ── Entregas no calendário de Rotas (selo verde, ao lado dos azuis das rotas de visita) ── */
+.ent-cal-item { display: flex; }
+.ent-cal-pill {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 5px;
+  background: #E1F3EA;
+  color: #1F6B50;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.15s;
+}
+.ent-cal-pill:hover { background: #CBEBDB; }
+.ent-cal-atrasada { background: #FBE4E4; color: #9B4141; }
+.ent-cal-atrasada:hover { background: #F6D2D2; }
+.ent-cal-feita { background: #EEF2F5; color: #6C8A9C; font-weight: 500; }
+.ent-cal-feita:hover { background: #E1E8ED; }
+.ent-card-destaque { box-shadow: 0 0 0 3px rgba(46, 139, 106, 0.45); transition: box-shadow 0.3s; }
+
+@media (max-width: 640px) {
+  .ent-cal-pill { font-size: 8px; padding: 2px 3px; }
+}
