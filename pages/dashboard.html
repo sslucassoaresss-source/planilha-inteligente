@@ -72,27 +72,31 @@
       </div>
       <div class="cards">
         <div class="card card-acento">
-          <div class="card-label">Mercadoria em estoque</div>
+          <div class="est-card-topo"><div class="card-label">Mercadoria em estoque</div></div>
           <div class="card-valor" id="estValorEstoque">—</div>
           <div class="card-sub" id="estSubEstoque">pelo preço de custo</div>
         </div>
         <div class="card card-acento">
-          <div class="card-label">Vendido no mês</div>
+          <div class="est-card-topo"><div class="card-label">Vendido no mês</div></div>
           <div class="card-valor" id="estVendido">—</div>
           <div class="card-sub" id="estSubVendido">vendas de produtos</div>
         </div>
         <div class="card card-acento">
-          <div class="card-label">Meu lucro</div>
+          <div class="est-card-topo">
+            <div class="card-label">Meu lucro</div>
+            <button type="button" class="est-btn-card" id="estBtnRetirada" title="Registrar uma retirada de lucro">+ Retirada</button>
+          </div>
           <div class="card-valor" id="estLucro">—</div>
           <div class="card-sub">já recebido neste mês</div>
           <div class="est-card-destaque">Pode retirar agora: <strong id="estRetiravel">—</strong></div>
-          <button type="button" class="est-btn-card" id="estBtnRetirada">Registrar retirada</button>
         </div>
         <div class="card card-acento">
-          <div class="card-label">Próxima meta</div>
+          <div class="est-card-topo">
+            <div class="card-label">Próxima meta</div>
+            <button type="button" class="est-btn-card" id="estBtnMeta" title="Montar ou editar a meta de compra">Editar</button>
+          </div>
           <div class="card-valor" id="estMeta">—</div>
           <div class="card-sub" id="estSubMeta">dinheiro para a próxima compra</div>
-          <button type="button" class="est-btn-card" id="estBtnMeta">Editar meta</button>
         </div>
       </div>
     </section>

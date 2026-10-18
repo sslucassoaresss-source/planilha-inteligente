@@ -335,3 +335,27 @@
   color: var(--text-soft);
   margin-bottom: 8px;
 }
+
+/* ── Ajuste de tamanho dos cards de Estoque: mais compactos, botões no canto ── */
+.est-dash .card { padding: 14px 18px; }
+.est-dash .card-label { margin-bottom: 0; font-size: 11px; }
+.est-dash .card-valor { font-size: 22px; }
+.est-dash .card-sub { margin-top: 4px; }
+
+.est-card-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  min-height: 26px;
+  margin-bottom: 8px;
+}
+
+.est-card-topo .est-btn-card {
+  margin-top: 0;
+  padding: 3px 10px;
+  font-size: 11px;
+}
+
+.est-card-destaque { margin-top: 3px; font-size: 12px; }
