@@ -170,6 +170,7 @@
 .filtro-mes {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;   /* no celular os botões de Excel descem para a linha de baixo */
   gap: 10px;
 }
 
