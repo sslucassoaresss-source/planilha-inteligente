@@ -149,12 +149,31 @@
 
     </div>
 
+    <div class="est-par-paineis">
     <!-- Clientes com desconto ativo -->
     <div class="painel painel-descontos">
       <div class="painel-titulo">💰 Clientes com desconto ativo</div>
       <div class="descontos-lista" id="descontosLista">
         <!-- Itens inseridos pelo JS -->
       </div>
+    </div>
+
+    <!-- Lembretes (js/lembretes.js) -->
+    <div class="painel painel-lembretes" id="estLembretes">
+      <div class="painel-titulo">📝 Lembretes</div>
+      <div class="est-lembretes-lista" id="estListaLembretes"></div>
+      <form class="est-lembrete-form" id="estFormLembrete">
+        <input type="text" id="estLembreteTexto" placeholder="Novo lembrete... Ex: mandar cotação pro Fulano" maxlength="200" required autocomplete="off">
+        <div class="est-lembrete-form-linha">
+          <div class="est-lembrete-busca">
+            <input type="text" id="estLembreteCliente" placeholder="Cliente (opcional): digite para buscar" autocomplete="off">
+            <input type="hidden" id="estLembreteClienteId">
+            <div class="sugestoes-cliente" id="estLembreteSugestoes"></div>
+          </div>
+          <button type="submit" class="btn-primario" id="estBtnSalvarLembrete">Salvar</button>
+        </div>
+      </form>
+    </div>
     </div>
 
   </main>
@@ -284,6 +303,7 @@
   <!-- O módulo do Estoque vem ANTES do dashboard.js: o gráfico pede a ele as vendas do estoque por dia -->
   <script type="module" src="../js/estoque-dashboard.js"></script>
   <script type="module" src="../js/dashboard.js"></script>
+  <script type="module" src="../js/lembretes.js"></script>
   <script type="module" src="../js/backup.js"></script>
 
   <script type="module" src="../js/privacidade.js"></script>
