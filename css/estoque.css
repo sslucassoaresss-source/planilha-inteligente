@@ -1001,3 +1001,7 @@
 @media (max-width: 640px) {
   .ent-cal-pill { font-size: 8px; padding: 2px 3px; }
 }
+
+/* ── Avisos no celular (botão "Ativar avisos" no Dashboard) ── */
+.avisos-area { display: inline-flex; align-items: center; }
+.avisos-dica { font-size: 12px; color: var(--text-soft); max-width: 320px; line-height: 1.35; }
