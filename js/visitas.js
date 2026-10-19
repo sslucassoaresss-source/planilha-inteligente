@@ -572,14 +572,27 @@ function editarVisita(id, lista) {
 
 // ── Excluir ───────────────────────────────────────────────────
 async function excluirVisita(id) {
-  // A venda de produtos do estoque NÃO é apagada junto (protege o dinheiro/estoque registrado)
-  const avisoEstoque = window.estoqueVisitas?.temVenda(id)
-    ? '\n\nA venda de produtos do estoque desta visita NÃO é apagada: ela continua na lista "Vendas de produtos do mês" (apague de lá, se for o caso).'
-    : ''
-  if (!confirm('Tem certeza que deseja excluir esta visita?\nOs itens de venda vinculados também serão removidos.' + avisoEstoque)) return
+  // Se a visita tem venda de produtos do estoque, uma janela pergunta se a venda também deve sair
+  // ('tudo' / 'so-visita' / 'cancelar'); sem venda (ou sem o módulo de estoque), a pergunta de sempre.
+  const escolha = (await window.estoqueVisitas?.perguntarExclusao(id)) ?? 'sem-venda'
+  if (escolha === 'cancelar') return
+  if (escolha === 'sem-venda' && !confirm('Tem certeza que deseja excluir esta visita?\nOs itens de venda vinculados também serão removidos.')) return
+
+  // Venda primeiro: se ela falhar, nada foi apagado; se a visita falhar depois, só a venda já saiu
+  if (escolha === 'tudo') {
+    const r = await window.estoqueVisitas.excluirVendaDaVisita(id)
+    if (r.erro) { alert(r.erro + '\nA visita não foi excluída.'); return }
+  }
 
   const { error } = await supabase.from('visitas').delete().eq('id', id)
-  if (error) { console.error('Erro ao excluir:', error); alert('Erro ao excluir. Tente novamente.'); return }
+  if (error) {
+    console.error('Erro ao excluir:', error)
+    alert(escolha === 'tudo'
+      ? 'A venda de produtos desta visita foi apagada, mas não foi possível excluir a visita. Tente excluir de novo.'
+      : 'Erro ao excluir. Tente novamente.')
+    carregarVisitas()
+    return
+  }
 
   carregarVisitas()
 }

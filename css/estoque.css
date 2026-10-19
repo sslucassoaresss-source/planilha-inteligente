@@ -1005,3 +1005,12 @@
 /* ── Avisos no celular (botão "Ativar avisos" no Dashboard) ── */
 .avisos-area { display: inline-flex; align-items: center; }
 .avisos-dica { font-size: 12px; color: var(--text-soft); max-width: 320px; line-height: 1.35; }
+
+/* ── Janela "Excluir visita" (visita com venda de produtos do estoque) ── */
+.est-exc-rodape { flex-wrap: wrap; justify-content: flex-end; }
+.est-exc-venda { background: #E6F5EE; border-left: 5px solid #2E8B6A; border-radius: 10px; padding: 10px 14px; margin: 12px 0; font-size: 14px; line-height: 1.45; }
+.est-exc-venda .empresas-tags { margin-top: 6px; }
+.est-exc-nota { font-size: 13px; color: var(--text-soft); margin: 0 0 16px; }
+@media (max-width: 640px) {
+  .est-exc-rodape button { flex: 1 1 100%; }
+}

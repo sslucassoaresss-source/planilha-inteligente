@@ -287,6 +287,22 @@
     </div>
   </div>
 
+  <!-- Janelinha "Excluir visita" quando a visita tem venda de produtos do estoque (js/estoque-visitas.js) -->
+  <div class="modal-overlay" id="estModalExclusao">
+    <div class="modal">
+      <div class="modal-topo">
+        <h2>Excluir visita</h2>
+        <button type="button" class="modal-fechar" id="estExcFechar">&times;</button>
+      </div>
+      <div id="estExcInfo"></div>
+      <div class="modal-rodape est-exc-rodape">
+        <button type="button" class="btn-secundario" id="estExcCancelar">Cancelar</button>
+        <button type="button" class="btn-secundario" id="estExcSo">Excluir só a visita</button>
+        <button type="button" class="btn-primario" id="estExcTudo">Excluir visita e a venda</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Este módulo vem ANTES do visitas.js para a ponte (window.estoqueVisitas) já existir quando a lista carregar -->
   <script type="module" src="../js/estoque-visitas.js"></script>
   <script type="module" src="../js/visitas.js"></script>

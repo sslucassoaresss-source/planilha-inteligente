@@ -558,7 +558,56 @@ $('estSecaoVendas').addEventListener('click', (e) => {
   if (botao.dataset.estAcao === 'excluir-venda') excluirVenda(botao.dataset.id)
 })
 
+// ── Excluir uma visita que tem venda de produtos do estoque ──
+// O visitas.js chama perguntarExclusao() antes de excluir. Se a visita não tem venda de estoque,
+// devolve 'sem-venda' e o visitas.js segue com a pergunta de sempre. Senão abre a janela e devolve:
+//   'tudo' (apagar a visita e a venda), 'so-visita' (manter a venda) ou 'cancelar'.
+let respostaExclusao = null
+
+function responderExclusao(escolha) {
+  fecharModal('estModalExclusao')
+  const resolver = respostaExclusao
+  respostaExclusao = null
+  if (resolver) resolver(escolha)
+}
+
+function perguntarExclusao(visitaId) {
+  const venda = porVisita[visitaId]
+  if (!venda) return Promise.resolve('sem-venda')
+  if (respostaExclusao) responderExclusao('cancelar')
+
+  const produtos = venda.itens.map((i) =>
+    `<span class="empresa-tag est-tag">${esc(i.produtos?.nome || '—')} × ${fmtQtd(i.quantidade)}</span>`).join('')
+  $('estExcInfo').innerHTML = `
+    <p>Excluir esta visita? Os itens das empresas representadas dela também serão removidos.</p>
+    <div class="est-exc-venda">
+      <strong>Ela tem uma venda de produtos do seu estoque</strong> (${esc(venda.clientes?.nome || '—')}):
+      <strong>${fmt(venda.total)}</strong>${venda.pago > 0 ? ` · já recebido ${fmt(venda.pago)}` : ''}
+      <div class="empresas-tags">${produtos}</div>
+    </div>
+    <p class="est-exc-nota"><strong>Excluir visita e a venda:</strong> o estoque volta, os pagamentos dessa venda são apagados e os números do Dashboard se corrigem.
+    <br><strong>Excluir só a visita:</strong> a venda continua valendo e fica em "Vendas de produtos do mês".</p>`
+  abrirModal('estModalExclusao')
+  return new Promise((resolver) => { respostaExclusao = resolver })
+}
+
+$('estExcTudo').addEventListener('click', () => responderExclusao('tudo'))
+$('estExcSo').addEventListener('click', () => responderExclusao('so-visita'))
+$('estExcCancelar').addEventListener('click', () => responderExclusao('cancelar'))
+$('estExcFechar').addEventListener('click', () => responderExclusao('cancelar'))
+
+// Apaga a venda de produtos da visita (itens e pagamentos vão junto). Devolve {} ou {erro}.
+async function excluirVendaDaVisita(visitaId) {
+  const venda = porVisita[visitaId]
+  if (!venda) return {}
+  const { error } = await supabase.from('vendas_estoque').delete().eq('id', venda.id)
+  if (error) { console.error('Erro ao apagar a venda de produtos da visita:', error); return { erro: mensagemErro(error, 'excluir a venda de produtos') } }
+  delete porVisita[visitaId]
+  await atualizarProdutos()
+  return {}
+}
+
 // ── API para o visitas.js ────────────────────────────────────
-window.estoqueVisitas = { coletar, salvar, carregar, limpar, carregarMes, temVenda }
+window.estoqueVisitas = { coletar, salvar, carregar, limpar, carregarMes, temVenda, perguntarExclusao, excluirVendaDaVisita }
 
 pronto.then((ok) => { if (ok) atualizarProdutos() })
