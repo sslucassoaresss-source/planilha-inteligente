@@ -1014,3 +1014,6 @@
 @media (max-width: 640px) {
   .est-exc-rodape button { flex: 1 1 100%; }
 }
+
+/* Botão de avisos: compacto (pílula pequena), bem mais discreto que os botões de Excel */
+.avisos-area .avisos-btn { padding: 5px 11px; font-size: 12px; border-radius: 999px; line-height: 1.3; }

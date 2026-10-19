@@ -25,7 +25,7 @@ function iniciar(userId) {
     area.innerHTML = ''
     const b = document.createElement('button')
     b.type = 'button'
-    b.className = 'btn-secundario'
+    b.className = 'btn-secundario avisos-btn'
     b.textContent = texto
     b.title = titulo
     b.addEventListener('click', async () => { b.disabled = true; try { await aoClicar() } finally { b.disabled = false } })
