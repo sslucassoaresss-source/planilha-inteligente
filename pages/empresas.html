@@ -245,10 +245,11 @@
   <div class="modal-overlay" id="estModalCompra">
     <div class="modal">
       <div class="modal-topo">
-        <h2>Registrar compra</h2>
+        <h2 id="estCompTitulo">Registrar compra</h2>
         <button type="button" class="modal-fechar" data-fechar>&times;</button>
       </div>
       <form id="estFormCompra">
+        <input type="hidden" id="estCompId">
         <div class="form-grid">
           <div class="est-aviso" id="estCompAviso" style="display:none">Cadastre um produto antes de registrar uma compra.</div>
           <div class="field span-2">
@@ -276,7 +277,10 @@
             <label for="estCompObs">Observação (opcional)</label>
             <input type="text" id="estCompObs" placeholder="Ex: boleto, entrega parcial...">
           </div>
-          <label class="est-check span-2"><input type="checkbox" id="estCompPago" checked> Já paguei esta compra (se desmarcar, fica "a pagar")</label>
+          <label class="est-check span-2" id="estLinhaPago"><input type="checkbox" id="estCompPago" checked> Já paguei esta compra (se desmarcar, fica "a pagar")</label>
+          <!-- Só na edição: situação do pagamento (os pagamentos já feitos não mudam sozinhos) -->
+          <div class="est-total span-2" id="estEdicaoPago" style="display:none"></div>
+          <label class="est-check span-2" id="estLinhaContinuaPaga" style="display:none"><input type="checkbox" id="estCompContinuaPaga"> Continua paga por inteiro (ajustar o pagamento para o novo total)</label>
           <div class="field span-2" id="estCampoVenc" style="display:none">
             <label for="estCompVenc">Vencimento (opcional: deixe em branco se não tem data)</label>
             <input type="date" id="estCompVenc">

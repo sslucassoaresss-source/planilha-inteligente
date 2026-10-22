@@ -174,6 +174,7 @@ function iniciar(userId) {
           <td>${pagamento}</td>
           <td>
             <div class="acoes">
+              <button type="button" class="est-btn-editar" data-acao="editar-compra" data-id="${c.id}">Editar</button>
               <button type="button" class="est-btn-excluir" data-acao="excluir-compra" data-id="${c.id}">Excluir</button>
             </div>
           </td>
@@ -319,31 +320,89 @@ function iniciar(userId) {
   }
 
   // ── Compra ──────────────────────────────────────────────────
-  function atualizarTotalCompra() {
-    const total = arredonda2(Number($('estCompQtd').value) * Number($('estCompCusto').value))
-    $('estCompTotal').innerHTML = `Total da compra: <strong>${fmt(total)}</strong>`
+  // A mesma janela serve para REGISTRAR e para EDITAR. Em edição, "compraEditando" guarda a compra
+  // original; os pagamentos já feitos NÃO mudam sozinhos (só se o Caio marcar "Continua paga por inteiro").
+  let compraEditando = null // { compra, pago } ou null (janela em modo "Registrar")
+
+  function totalDaJanela() {
+    return arredonda2(Number($('estCompQtd').value) * Number($('estCompCusto').value))
   }
 
-  function abrirCompra() {
-    const ativos = produtos.filter((p) => p.ativo)
+  function atualizarTotalCompra() {
+    $('estCompTotal').innerHTML = `Total da compra: <strong>${fmt(totalDaJanela())}</strong>`
+    if (compraEditando) atualizarSituacaoEdicao()
+  }
+
+  // Situação do pagamento de uma compra em edição, com os valores que estão na janela agora.
+  // "pagoReal" (opcional) é o total pago lido do banco no momento de salvar.
+  function situacaoEdicao(pagoReal) {
+    const { compra } = compraEditando
+    const pago = arredonda2(pagoReal ?? compraEditando.pago)
+    const totalAntigo = arredonda2(Number(compra.quantidade) * Number(compra.custo_unitario))
+    const totalNovo = totalDaJanela()
+    const estavaPaga = arredonda2(totalAntigo - pago) <= 0
+    const mudouTotal = Math.abs(totalNovo - totalAntigo) > 0.004
+    const mostraContinua = estavaPaga && mudouTotal // a caixinha só faz sentido nesse caso
+    const ajustar = mostraContinua && $('estCompContinuaPaga').checked
+    const pagoDepois = ajustar ? totalNovo : pago
+    return { pago, pagoDepois, totalAntigo, totalNovo, mostraContinua, ajustar, falta: arredonda2(totalNovo - pagoDepois) }
+  }
+
+  function atualizarSituacaoEdicao() {
+    const s = situacaoEdicao()
+    $('estLinhaContinuaPaga').style.display = s.mostraContinua ? '' : 'none'
+    $('estEdicaoPago').innerHTML = `Já pago: <strong>${fmt(s.pagoDepois)}</strong> · ` + (
+      s.falta > 0.004 ? `Falta <strong>${fmt(s.falta)}</strong>`
+        : s.falta < -0.004 ? `<strong>Pago a mais: ${fmt(-s.falta)}</strong> (corrija o valor)`
+          : '<strong>Paga por inteiro</strong>')
+    $('estCampoVenc').style.display = s.falta > 0.004 ? 'flex' : 'none'
+  }
+
+  // c = compra a editar; sem argumento, abre para registrar uma nova
+  function abrirCompra(c) {
+    const editando = !!c
+    compraEditando = editando ? { compra: c, pago: arredonda2(pagoPorCompra[c.id] || 0) } : null
+
+    const ativos = produtos.filter((p) => p.ativo || (editando && p.id === c.produto_id))
     const semProduto = ativos.length === 0
     $('estCompAviso').style.display = semProduto ? 'block' : 'none'
     $('estBtnSalvarCompra').disabled = semProduto
 
-    $('estCompProduto').innerHTML = ativos.map((p) => `<option value="${p.id}">${esc(p.nome)}</option>`).join('')
-    $('estCompData').value = hojeLocal()
-    $('estCompQtd').value = ''
-    $('estCompObs').value = ''
-    $('estCompPago').checked = true
-    $('estCompVenc').value = ''
-    $('estCampoVenc').style.display = 'none'
-    $('estCompAtualizaCusto').checked = true
-    aoMudarProdutoDaCompra()
+    $('estCompId').value = c?.id || ''
+    $('estCompTitulo').textContent = editando ? 'Editar compra' : 'Registrar compra'
+    $('estBtnSalvarCompra').textContent = editando ? 'Salvar alterações' : 'Salvar compra'
+    $('estLinhaPago').style.display = editando ? 'none' : ''
+    $('estEdicaoPago').style.display = editando ? '' : 'none'
+    $('estLinhaContinuaPaga').style.display = 'none'
+    $('estCompContinuaPaga').checked = false
+
+    $('estCompProduto').innerHTML = ativos.map((p) => `<option value="${p.id}">${esc(p.nome)}${p.ativo ? '' : ' (inativo)'}</option>`).join('')
+
+    if (editando) {
+      $('estCompProduto').value = c.produto_id
+      preencherSelectFornecedores($('estCompFornecedor'), c.fornecedor_id)
+      $('estCompData').value = String(c.data_compra).slice(0, 10)
+      $('estCompQtd').value = Number(c.quantidade)
+      $('estCompCusto').value = Number(c.custo_unitario)
+      $('estCompObs').value = c.observacao || ''
+      $('estCompVenc').value = c.vencimento ? String(c.vencimento).slice(0, 10) : ''
+      $('estCompAtualizaCusto').checked = false // numa edição, o custo do produto só muda se o Caio pedir
+      atualizarTotalCompra()
+    } else {
+      $('estCompData').value = hojeLocal()
+      $('estCompQtd').value = ''
+      $('estCompObs').value = ''
+      $('estCompPago').checked = true
+      $('estCompVenc').value = ''
+      $('estCampoVenc').style.display = 'none'
+      $('estCompAtualizaCusto').checked = true
+      aoMudarProdutoDaCompra()
+    }
     abrir('estModalCompra')
     $('estCompQtd').focus()
   }
 
-  // Ao escolher o produto, já sugere o fornecedor e o custo dele
+  // Ao escolher o produto (só ao registrar), já sugere o fornecedor e o custo dele
   function aoMudarProdutoDaCompra() {
     const p = produtoPorId()[$('estCompProduto').value]
     preencherSelectFornecedores($('estCompFornecedor'), p?.fornecedor_id)
@@ -356,10 +415,108 @@ function iniciar(userId) {
     $('estCampoVenc').style.display = $('estCompPago').checked ? 'none' : 'flex'
   })
 
-  $('estBtnNovaCompra').addEventListener('click', abrirCompra)
-  $('estCompProduto').addEventListener('change', aoMudarProdutoDaCompra)
+  $('estBtnNovaCompra').addEventListener('click', () => abrirCompra(null))
+  $('estCompProduto').addEventListener('change', () => { if (!compraEditando) aoMudarProdutoDaCompra() })
   $('estCompQtd').addEventListener('input', atualizarTotalCompra)
   $('estCompCusto').addEventListener('input', atualizarTotalCompra)
+  $('estCompContinuaPaga').addEventListener('change', atualizarSituacaoEdicao)
+
+  // Ajusta os pagamentos para a soma bater com o novo total (compra que continua paga por inteiro):
+  // total maior -> registra a diferença; total menor -> tira dos pagamentos mais recentes.
+  async function ajustarPagamentos(compraId, pagamentos, pago, totalNovo, dataPagamento) {
+    const diferenca = arredonda2(totalNovo - pago)
+    if (Math.abs(diferenca) < 0.004) return {}
+    if (diferenca > 0) {
+      const r = await supabase.from('pagamentos_compra').insert({ user_id: userId, compra_id: compraId, valor: diferenca, data_pagamento: dataPagamento })
+      return r.error ? { erro: r.error } : {}
+    }
+    let restante = -diferenca
+    const recentes = [...pagamentos].sort((a, b) =>
+      String(b.data_pagamento).localeCompare(String(a.data_pagamento)) || String(b.created_at).localeCompare(String(a.created_at)))
+    for (const p of recentes) {
+      if (restante <= 0.004) break
+      const valor = Number(p.valor)
+      const r = valor <= restante + 0.004
+        ? await supabase.from('pagamentos_compra').delete().eq('id', p.id)
+        : await supabase.from('pagamentos_compra').update({ valor: arredonda2(valor - restante) }).eq('id', p.id)
+      if (r.error) return { erro: r.error }
+      restante = arredonda2(restante - valor)
+    }
+    return {}
+  }
+
+  async function salvarEdicaoCompra({ produtoId, produto, quantidade, custo }) {
+    const antiga = compraEditando.compra
+    await comBotaoTravado($('estBtnSalvarCompra'), 'Salvando...', async () => {
+      // Pagamentos lidos do banco AGORA (a tela pode estar desatualizada)
+      const resPag = await supabase.from('pagamentos_compra').select('id, valor, data_pagamento, created_at').eq('compra_id', antiga.id)
+      if (resPag.error) { console.error('Erro ao ler os pagamentos da compra:', resPag.error); alert(mensagemErro(resPag.error)); return }
+      const pagamentos = resPag.data
+      const pago = arredonda2(pagamentos.reduce((s, p) => s + Number(p.valor), 0))
+      const s = situacaoEdicao(pago)
+
+      // 1) O novo total não pode ficar abaixo do que já foi pago (a menos que o pagamento seja ajustado junto)
+      if (!s.ajustar && s.totalNovo < pago - 0.004) {
+        alert(s.mostraContinua
+          ? `O novo total (${fmt(s.totalNovo)}) ficou menor do que já foi pago (${fmt(pago)}).\n\nSe a compra continua paga por inteiro, marque "Continua paga por inteiro" para o pagamento ser ajustado. Se não, corrija a quantidade ou o custo.`
+          : `O novo total (${fmt(s.totalNovo)}) ficou menor do que já foi pago (${fmt(pago)}). Corrija a quantidade ou o custo.`)
+        return
+      }
+
+      // 2) Lembrete: compra que estava paga por inteiro, mudou de valor e a caixinha está desmarcada
+      if (s.mostraContinua && !s.ajustar && s.totalNovo > pago + 0.004) {
+        if (!confirm(`Atenção: esta compra estava paga por inteiro (${fmt(pago)}) e o total mudou para ${fmt(s.totalNovo)}.\n\nSe ela continua paga, clique em Cancelar e marque "Continua paga por inteiro".\n\nSe salvar assim, ficará "Falta ${fmt(s.totalNovo - pago)}" em "Quem eu devo".\n\nSalvar mesmo assim?`)) return
+      }
+
+      // 3) Estoque: avisa (sem bloquear) se a edição deixar algum produto negativo
+      const saldoDepois = (id) => {
+        let saldo = estoqueDoProduto(id)
+        if (id === antiga.produto_id) saldo -= Number(antiga.quantidade)
+        if (id === produtoId) saldo += quantidade
+        return arredonda3(saldo)
+      }
+      const avisosEstoque = [...new Set([antiga.produto_id, produtoId])].map((id) => {
+        const antes = estoqueDoProduto(id)
+        const depois = saldoDepois(id)
+        const p = produtoPorId()[id]
+        return depois < 0 && depois < antes - 0.0005 ? `${p?.nome || 'produto'}: ficará com ${fmtQtd(depois)} ${p?.unidade || ''} (hoje: ${fmtQtd(antes)})` : null
+      }).filter(Boolean)
+      if (avisosEstoque.length && !confirm(`Depois desta edição o estoque ficará negativo (foi vendido mais do que comprado):\n\n${avisosEstoque.join('\n')}\n\nSalvar mesmo assim? (Depois é só lançar a compra que falta.)`)) return
+
+      // 4) Grava a compra; depois o pagamento e o custo do produto (se algum passo extra falhar, só avisamos o que faltou)
+      const dataCompra = $('estCompData').value || hojeLocal()
+      const { error } = await supabase.from('compras_estoque').update({
+        produto_id: produtoId,
+        fornecedor_id: $('estCompFornecedor').value || null,
+        quantidade,
+        custo_unitario: custo,
+        data_compra: dataCompra,
+        observacao: $('estCompObs').value.trim() || null,
+        vencimento: s.falta > 0.004 ? ($('estCompVenc').value || null) : (antiga.vencimento || null),
+      }).eq('id', antiga.id)
+      if (error) { console.error('Erro ao editar a compra:', error); alert(mensagemErro(error)); return }
+
+      let aviso = ''
+      if (s.ajustar) {
+        const r = await ajustarPagamentos(antiga.id, pagamentos, pago, s.totalNovo, dataCompra)
+        if (r.erro) {
+          console.error('Erro ao ajustar o pagamento da compra:', r.erro)
+          aviso += 'A compra foi alterada, mas não consegui ajustar o pagamento. Confira "Já pago" e "Falta" na lista de Compras.\n'
+        }
+      }
+      if ($('estCompAtualizaCusto').checked && custo !== Number(produto.preco_custo)) {
+        const r = await supabase.from('produtos').update({ preco_custo: custo }).eq('id', produtoId)
+        if (r.error) {
+          console.error('Erro ao atualizar o custo do produto:', r.error)
+          aviso += 'A compra foi alterada, mas não consegui atualizar o custo do produto.\n'
+        }
+      }
+
+      fechar('estModalCompra')
+      await recarregar()
+      if (aviso) alert(aviso)
+    })
+  }
 
   $('estFormCompra').addEventListener('submit', async (e) => {
     e.preventDefault()
@@ -368,6 +525,8 @@ function iniciar(userId) {
     const quantidade = arredonda3($('estCompQtd').value)
     const custo = arredonda2($('estCompCusto').value)
     if (!produto || quantidade <= 0 || custo < 0) return
+
+    if (compraEditando) { await salvarEdicaoCompra({ produtoId, produto, quantidade, custo }); return }
 
     const dados = {
       user_id: userId,
@@ -430,6 +589,7 @@ function iniciar(userId) {
       case 'excluir-fornecedor': excluirFornecedor(id); break
       case 'editar-produto': abrirProduto(produtos.find((p) => p.id === id)); break
       case 'excluir-produto': excluirProduto(id); break
+      case 'editar-compra': abrirCompra(compras.find((c) => c.id === id)); break
       case 'excluir-compra': excluirCompra(id); break
     }
   })
