@@ -303,6 +303,42 @@
     </div>
   </div>
 
+  <!-- Janelinha "Editar venda" (corrige produtos, quantidades, preços e, nas vendas soltas, a data) -->
+  <div class="modal-overlay" id="estModalEditarVenda">
+    <div class="modal">
+      <div class="modal-topo">
+        <h2>Editar venda de produtos</h2>
+        <button type="button" class="modal-fechar" data-fechar>&times;</button>
+      </div>
+      <form id="estFormEditarVenda">
+        <input type="hidden" id="estEdVendaId">
+        <p class="est-total" id="estEdCabecalho" style="margin-bottom: 14px"></p>
+        <div class="form-grid">
+          <div class="field span-2" id="estEdCampoData">
+            <label for="estEdData">Data da venda</label>
+            <input type="date" id="estEdData">
+          </div>
+          <div style="grid-column: 1 / -1">
+            <div class="est-ed-titulo">Produtos</div>
+            <div id="estEdLinhas"></div>
+            <button type="button" class="btn-add-item" id="estEdAddProduto">+ Produto do meu estoque</button>
+          </div>
+          <div class="est-total span-2" id="estEdTotal">Total da venda: <strong>R$ 0,00</strong></div>
+          <div class="est-total span-2" id="estEdSituacao"></div>
+          <label class="est-check span-2" id="estEdLinhaContinua" style="display:none"><input type="checkbox" id="estEdContinuaPaga"> Continua paga por inteiro (ajustar o pagamento para o novo total)</label>
+          <div class="field span-2" id="estEdCampoVenc" style="display:none">
+            <label for="estEdVenc">Vencimento (opcional: deixe em branco se não tem data)</label>
+            <input type="date" id="estEdVenc">
+          </div>
+        </div>
+        <div class="modal-rodape">
+          <button type="button" class="btn-secundario" data-fechar>Cancelar</button>
+          <button type="submit" class="btn-primario" id="estBtnSalvarEdVenda">Salvar alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Este módulo vem ANTES do visitas.js para a ponte (window.estoqueVisitas) já existir quando a lista carregar -->
   <script type="module" src="../js/estoque-visitas.js"></script>
   <script type="module" src="../js/visitas.js"></script>

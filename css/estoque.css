@@ -1017,3 +1017,6 @@
 
 /* Botão de avisos: compacto (pílula pequena), bem mais discreto que os botões de Excel */
 .avisos-area .avisos-btn { padding: 5px 11px; font-size: 12px; border-radius: 999px; line-height: 1.3; }
+
+/* Janela "Editar venda": título da lista de produtos */
+.est-ed-titulo { font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; }

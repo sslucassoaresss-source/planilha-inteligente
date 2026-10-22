@@ -486,7 +486,7 @@ function desenharLista() {
         <td>${fmt(v.total)}</td>
         <td>${fmt(v.pago)}</td>
         <td>${situacao}</td>
-        <td><div class="acoes">${receber}<button type="button" class="est-btn-excluir" data-est-acao="excluir-venda" data-id="${v.id}">Excluir</button></div></td>
+        <td><div class="acoes"><button type="button" class="est-btn-editar" data-est-acao="editar-venda" data-id="${v.id}">Editar</button>${receber}<button type="button" class="est-btn-excluir" data-est-acao="excluir-venda" data-id="${v.id}">Excluir</button></div></td>
       </tr>`
   }).join('')
 }
@@ -555,6 +555,7 @@ $('estSecaoVendas').addEventListener('click', (e) => {
   if (!botao) return
   const venda = mesVendas.find((v) => v.id === botao.dataset.id)
   if (botao.dataset.estAcao === 'receber' && venda) abrirReceber(venda)
+  if (botao.dataset.estAcao === 'editar-venda') abrirEditarVenda(botao.dataset.id)
   if (botao.dataset.estAcao === 'excluir-venda') excluirVenda(botao.dataset.id)
 })
 
@@ -606,6 +607,264 @@ async function excluirVendaDaVisita(visitaId) {
   await atualizarProdutos()
   return {}
 }
+
+// ── Editar uma venda de produtos (solta ou ligada a uma visita) ──
+// Corrige produtos, quantidades e preços (o estoque se acerta sozinho, pois é sempre calculado) e, nas
+// vendas SOLTAS, a data. O cliente não muda. Os pagamentos já feitos só mudam se o Caio marcar
+// "Continua paga por inteiro" (mesmas regras da edição de compras).
+let vendaEditando = null // { id, visitaId, itens, pago, totalAntigo, vencimento } enquanto a janela está aberta
+
+const qtdAntigaEd = (produtoId, itens = vendaEditando?.itens || []) =>
+  itens.filter((i) => i.produto_id === produtoId).reduce((s, i) => s + Number(i.quantidade), 0)
+
+function lerLinhasEd() {
+  return [...document.querySelectorAll('#estEdLinhas .est-linha')].map((linha) => ({
+    el: linha,
+    produtoId: linha.querySelector('.est-produto').value,
+    quantidade: arredonda3(linha.querySelector('.est-qtd').value),
+    preco: arredonda2(linha.querySelector('.est-preco').value),
+    precoVazio: linha.querySelector('.est-preco').value === '',
+    mexeu: !!(linha.querySelector('.est-produto').value || linha.querySelector('.est-qtd').value || linha.querySelector('.est-preco').value),
+  }))
+}
+
+const totalEd = () => arredonda2(lerLinhasEd().reduce((s, l) => s + (l.quantidade > 0 ? l.quantidade * l.preco : 0), 0))
+
+// Situação do pagamento com o que está na janela agora. "pagoReal"/"totalAntigoReal" (opcionais) vêm do banco no momento de salvar.
+function situacaoEd(pagoReal, totalAntigoReal) {
+  const pago = arredonda2(pagoReal ?? vendaEditando.pago)
+  const totalAntigo = arredonda2(totalAntigoReal ?? vendaEditando.totalAntigo)
+  const totalNovo = totalEd()
+  const estavaPaga = arredonda2(totalAntigo - pago) <= 0
+  const mudouTotal = Math.abs(totalNovo - totalAntigo) > 0.004
+  const mostraContinua = estavaPaga && pago > 0.004 && mudouTotal // a caixinha só faz sentido se já há pagamento e o valor mudou
+  const ajustar = mostraContinua && $('estEdContinuaPaga').checked
+  const pagoDepois = ajustar ? totalNovo : pago
+  return { pago, pagoDepois, totalAntigo, totalNovo, mostraContinua, ajustar, falta: arredonda2(totalNovo - pagoDepois) }
+}
+
+function atualizarEd() {
+  if (!vendaEditando) return
+  const linhas = lerLinhasEd()
+  const somaPorProduto = {}
+  linhas.forEach((l) => { if (l.produtoId) somaPorProduto[l.produtoId] = (somaPorProduto[l.produtoId] || 0) + l.quantidade })
+  linhas.forEach((l) => {
+    const info = l.el.querySelector('.est-linha-info')
+    const p = produtoPorId(l.produtoId)
+    if (!p) { info.textContent = ''; info.classList.remove('est-excede'); return }
+    // as quantidades desta venda já estão "descontadas" do estoque: voltam a ficar disponíveis na edição
+    const disponivel = arredonda3((estoque[p.id] || 0) + qtdAntigaEd(p.id))
+    const passa = (somaPorProduto[p.id] || 0) > disponivel
+    info.classList.toggle('est-excede', passa)
+    info.textContent = `Em estoque: ${fmtQtd(disponivel)} ${p.unidade}` +
+      (l.quantidade > 0 ? ` · Total da linha: ${fmt(arredonda2(l.quantidade * l.preco))}` : '') +
+      (passa ? ' · atenção: passa do que você tem em estoque' : '')
+  })
+
+  const s = situacaoEd()
+  $('estEdTotal').innerHTML = `Total da venda: <strong>${fmt(s.totalNovo)}</strong>`
+  $('estEdLinhaContinua').style.display = s.mostraContinua ? '' : 'none'
+  $('estEdSituacao').innerHTML = `Já recebido: <strong>${fmt(s.pagoDepois)}</strong> · ` + (
+    s.falta > 0.004 ? `Falta <strong>${fmt(s.falta)}</strong>`
+      : s.falta < -0.004 ? `<strong>Recebido a mais: ${fmt(-s.falta)}</strong> (corrija o valor${s.mostraContinua ? ' ou marque "Continua paga por inteiro"' : ''})`
+        : '<strong>Paga por inteiro</strong>')
+  $('estEdCampoVenc').style.display = s.falta > 0.004 ? 'flex' : 'none'
+}
+
+function adicionarLinhaEd({ produtoId = '', quantidade = '', preco = '' } = {}) {
+  const linha = $('estTemplateLinha').content.firstElementChild.cloneNode(true)
+  const select = linha.querySelector('.est-produto')
+  select.innerHTML = opcoesProdutos(produtoId)
+  select.value = produtoId
+  linha.querySelector('.est-qtd').value = quantidade
+  linha.querySelector('.est-preco').value = preco
+  select.addEventListener('change', () => {
+    const p = produtoPorId(select.value)
+    linha.querySelector('.est-preco').value = p ? p.preco_venda : ''
+    atualizarEd()
+  })
+  linha.querySelector('.est-qtd').addEventListener('input', atualizarEd)
+  linha.querySelector('.est-preco').addEventListener('input', atualizarEd)
+  linha.querySelector('.est-btn-remover').addEventListener('click', () => { linha.remove(); atualizarEd() })
+  $('estEdLinhas').appendChild(linha)
+  atualizarEd()
+}
+
+// Lê a venda COMPLETA do banco (itens e pagamentos), para não depender do que a tela guardou
+async function buscarVendaCompleta(id) {
+  const { data, error } = await supabase
+    .from('vendas_estoque')
+    .select('*, clientes(nome), venda_estoque_itens(*), pagamentos_venda(id, valor, data_pagamento, created_at)')
+    .eq('id', id)
+  if (error) { console.error('Erro ao carregar a venda:', error); return { erro: mensagemErro(error) } }
+  const venda = data?.[0]
+  if (!venda) return { naoExiste: true, erro: 'Esta venda não existe mais (ela foi apagada). A lista vai ser atualizada.' }
+  const itens = venda.venda_estoque_itens || []
+  const pagamentos = venda.pagamentos_venda || []
+  return {
+    venda,
+    itens,
+    pagamentos,
+    totalAntigo: arredonda2(itens.reduce((s, i) => s + Number(i.quantidade) * Number(i.preco_unitario), 0)),
+    pago: arredonda2(pagamentos.reduce((s, p) => s + Number(p.valor), 0)),
+  }
+}
+
+async function abrirEditarVenda(id) {
+  if (!(await pronto)) return
+  await atualizarProdutos() // estoque atual (as quantidades desta venda já estão descontadas dele)
+  const r = await buscarVendaCompleta(id)
+  if (r.erro) { alert(r.erro); if (r.naoExiste) recarregarTela(); return }
+  const v = r.venda
+
+  vendaEditando = { id, visitaId: v.visita_id, itens: r.itens, pago: r.pago, totalAntigo: r.totalAntigo, vencimento: v.vencimento }
+  $('estEdVendaId').value = id
+  $('estEdCabecalho').innerHTML = `<strong>${esc(v.clientes?.nome || '—')}</strong> · venda de ${dataBR(v.data_venda)}` +
+    (v.visita_id ? ' · ligada a uma visita (para mudar a data, edite a visita)' : ' · sem visita ligada')
+  $('estEdCampoData').style.display = v.visita_id ? 'none' : 'flex'
+  $('estEdData').value = String(v.data_venda).slice(0, 10)
+  $('estEdVenc').value = v.vencimento ? String(v.vencimento).slice(0, 10) : ''
+  $('estEdContinuaPaga').checked = false
+  $('estEdLinhas').innerHTML = ''
+  r.itens.forEach((i) => adicionarLinhaEd({ produtoId: i.produto_id, quantidade: Number(i.quantidade), preco: Number(i.preco_unitario) }))
+  abrirModal('estModalEditarVenda')
+  atualizarEd()
+}
+
+function fecharEditarVenda() {
+  fecharModal('estModalEditarVenda')
+  vendaEditando = null
+}
+
+$('estEdContinuaPaga').addEventListener('change', atualizarEd)
+$('estModalEditarVenda').querySelectorAll('[data-fechar]').forEach((b) => b.addEventListener('click', fecharEditarVenda))
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('estModalEditarVenda').classList.contains('aberto')) fecharEditarVenda() })
+$('estEdAddProduto').addEventListener('click', () => {
+  if (!produtos.some((p) => p.ativo)) { alert('Você ainda não tem produtos ativos. Cadastre em Empresas → Estoque → Produtos.'); return }
+  adicionarLinhaEd()
+})
+
+// Ajusta os pagamentos para a soma bater com o novo total (venda que continua paga por inteiro):
+// total maior -> registra a diferença; total menor -> tira dos pagamentos mais recentes.
+async function ajustarPagamentosVenda(vendaId, pagamentos, pago, totalNovo, dataPagamento) {
+  const diferenca = arredonda2(totalNovo - pago)
+  if (Math.abs(diferenca) < 0.004) return {}
+  if (diferenca > 0) {
+    const r = await supabase.from('pagamentos_venda').insert({ user_id: userId, venda_id: vendaId, valor: diferenca, data_pagamento: dataPagamento, forma: null })
+    return r.error ? { erro: r.error } : {}
+  }
+  let restante = -diferenca
+  const recentes = [...pagamentos].sort((a, b) =>
+    String(b.data_pagamento).localeCompare(String(a.data_pagamento)) || String(b.created_at).localeCompare(String(a.created_at)))
+  for (const p of recentes) {
+    if (restante <= 0.004) break
+    const valor = Number(p.valor)
+    const r = valor <= restante + 0.004
+      ? await supabase.from('pagamentos_venda').delete().eq('id', p.id)
+      : await supabase.from('pagamentos_venda').update({ valor: arredonda2(valor - restante) }).eq('id', p.id)
+    if (r.error) return { erro: r.error }
+    restante = arredonda2(restante - valor)
+  }
+  return {}
+}
+
+$('estFormEditarVenda').addEventListener('submit', async (e) => {
+  e.preventDefault()
+  if (!vendaEditando) return
+  const id = vendaEditando.id
+
+  // Linhas digitadas: validação básica (a mesma da visita)
+  const linhas = lerLinhasEd().filter((l) => l.mexeu)
+  for (const l of linhas) {
+    if (!l.produtoId || !(l.quantidade > 0)) { alert('Escolha o produto e a quantidade em todas as linhas (ou remova a linha).'); return }
+    if (l.precoVazio) { alert('Informe o preço em todas as linhas (se for brinde, coloque 0).'); return }
+  }
+  if (linhas.length === 0) { alert('Uma venda precisa de pelo menos um produto. Para apagar a venda inteira, use "Excluir" na lista.'); return }
+
+  const botao = $('estBtnSalvarEdVenda')
+  const rotulo = botao.textContent
+  botao.disabled = true
+  botao.textContent = 'Salvando...'
+  try {
+    // Venda lida do banco AGORA (a tela pode estar desatualizada) e estoque atual
+    const r = await buscarVendaCompleta(id)
+    if (r.erro) { alert(r.erro); if (r.naoExiste) { fecharEditarVenda(); recarregarTela() } return }
+    await atualizarProdutos()
+    const s = situacaoEd(r.pago, r.totalAntigo)
+
+    // 1) O novo total não pode ficar abaixo do que já foi recebido (a menos que o pagamento seja ajustado junto)
+    if (!s.ajustar && s.totalNovo < r.pago - 0.004) {
+      alert(s.mostraContinua
+        ? `O novo total (${fmt(s.totalNovo)}) ficou menor do que já foi recebido (${fmt(r.pago)}).\n\nSe a venda continua paga por inteiro, marque "Continua paga por inteiro" para o pagamento ser ajustado. Se não, corrija as quantidades ou os preços.`
+        : `O novo total (${fmt(s.totalNovo)}) ficou menor do que já foi recebido (${fmt(r.pago)}). Corrija as quantidades ou os preços.`)
+      return
+    }
+
+    // 2) Lembrete: estava paga por inteiro, mudou de valor e a caixinha está desmarcada
+    if (s.mostraContinua && !s.ajustar && s.totalNovo > r.pago + 0.004) {
+      if (!confirm(`Atenção: esta venda estava paga por inteiro (${fmt(r.pago)}) e o total mudou para ${fmt(s.totalNovo)}.\n\nSe ela continua paga, clique em Cancelar e marque "Continua paga por inteiro".\n\nSe salvar assim, ficará "Falta ${fmt(s.totalNovo - r.pago)}" em "Quem me deve".\n\nSalvar mesmo assim?`)) return
+    }
+
+    // 3) Estoque: avisa (sem bloquear) se a edição deixar algum produto negativo
+    const novaPorProduto = {}
+    linhas.forEach((l) => { novaPorProduto[l.produtoId] = (novaPorProduto[l.produtoId] || 0) + l.quantidade })
+    const idsAfetados = [...new Set([...r.itens.map((i) => i.produto_id), ...Object.keys(novaPorProduto)])]
+    const avisosEstoque = idsAfetados.map((pid) => {
+      const antes = arredonda3(estoque[pid] || 0)
+      const depois = arredonda3(antes + qtdAntigaEd(pid, r.itens) - (novaPorProduto[pid] || 0))
+      const p = produtoPorId(pid)
+      return depois < 0 && depois < antes - 0.0005 ? `${p?.nome || 'produto'}: ficará com ${fmtQtd(depois)} ${p?.unidade || ''} (hoje: ${fmtQtd(antes)})` : null
+    }).filter(Boolean)
+    if (avisosEstoque.length && !confirm(`Depois desta edição o estoque ficará negativo (vai sair mais do que entrou):\n\n${avisosEstoque.join('\n')}\n\nSalvar mesmo assim? (Depois é só lançar a compra que falta.)`)) return
+
+    // 4) Grava: itens novos ANTES de apagar os antigos (se algo falhar, a venda original continua inteira)
+    const custoAntigo = {}
+    r.itens.forEach((i) => { if (custoAntigo[i.produto_id] === undefined) custoAntigo[i.produto_id] = Number(i.custo_unitario) })
+    const novos = linhas.map((l) => ({
+      user_id: userId,
+      venda_id: id,
+      produto_id: l.produtoId,
+      quantidade: l.quantidade,
+      preco_unitario: l.preco,
+      // linha que já existia mantém o custo que tinha; produto novo usa o custo de hoje
+      custo_unitario: custoAntigo[l.produtoId] ?? (Number(produtoPorId(l.produtoId)?.preco_custo) || 0),
+    }))
+    const resNovos = await supabase.from('venda_estoque_itens').insert(novos)
+    if (resNovos.error) { console.error('Erro ao salvar os itens da venda:', resNovos.error); alert(mensagemErro(resNovos.error) + '\nNada foi alterado.'); return }
+
+    let aviso = ''
+    const resAntigos = await supabase.from('venda_estoque_itens').delete().in('id', r.itens.map((i) => i.id))
+    if (resAntigos.error) {
+      console.error('Erro ao remover os itens antigos da venda:', resAntigos.error)
+      aviso += 'Os produtos novos foram salvos, mas não consegui remover os antigos: a venda pode estar com itens repetidos. Confira em "Vendas de produtos do mês".\n'
+    }
+
+    const dataFinal = r.venda.visita_id ? String(r.venda.data_venda).slice(0, 10) : ($('estEdData').value || String(r.venda.data_venda).slice(0, 10))
+    const atualizacao = { vencimento: s.falta > 0.004 ? ($('estEdVenc').value || null) : (r.venda.vencimento || null) }
+    if (!r.venda.visita_id) atualizacao.data_venda = dataFinal
+    const resVenda = await supabase.from('vendas_estoque').update(atualizacao).eq('id', id)
+    if (resVenda.error) {
+      console.error('Erro ao atualizar a data/vencimento da venda:', resVenda.error)
+      aviso += 'Os produtos foram atualizados, mas não consegui salvar a data ou o vencimento.\n'
+    }
+
+    if (s.ajustar) {
+      const ra = await ajustarPagamentosVenda(id, r.pagamentos, r.pago, s.totalNovo, dataFinal)
+      if (ra.erro) {
+        console.error('Erro ao ajustar o pagamento da venda:', ra.erro)
+        aviso += 'A venda foi alterada, mas não consegui ajustar o pagamento. Confira "Pago" e "Situação" na lista.\n'
+      }
+    }
+
+    fecharEditarVenda()
+    await atualizarProdutos()
+    recarregarTela()
+    if (aviso) alert(aviso)
+  } finally {
+    botao.disabled = false
+    botao.textContent = rotulo
+  }
+})
 
 // ── API para o visitas.js ────────────────────────────────────
 window.estoqueVisitas = { coletar, salvar, carregar, limpar, carregarMes, temVenda, perguntarExclusao, excluirVendaDaVisita }

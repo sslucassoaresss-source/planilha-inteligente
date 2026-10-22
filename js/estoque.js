@@ -342,7 +342,7 @@ function iniciar(userId) {
     const totalNovo = totalDaJanela()
     const estavaPaga = arredonda2(totalAntigo - pago) <= 0
     const mudouTotal = Math.abs(totalNovo - totalAntigo) > 0.004
-    const mostraContinua = estavaPaga && mudouTotal // a caixinha só faz sentido nesse caso
+    const mostraContinua = estavaPaga && pago > 0.004 && mudouTotal // a caixinha só faz sentido se já há pagamento e o valor mudou
     const ajustar = mostraContinua && $('estCompContinuaPaga').checked
     const pagoDepois = ajustar ? totalNovo : pago
     return { pago, pagoDepois, totalAntigo, totalNovo, mostraContinua, ajustar, falta: arredonda2(totalNovo - pagoDepois) }
@@ -353,7 +353,7 @@ function iniciar(userId) {
     $('estLinhaContinuaPaga').style.display = s.mostraContinua ? '' : 'none'
     $('estEdicaoPago').innerHTML = `Já pago: <strong>${fmt(s.pagoDepois)}</strong> · ` + (
       s.falta > 0.004 ? `Falta <strong>${fmt(s.falta)}</strong>`
-        : s.falta < -0.004 ? `<strong>Pago a mais: ${fmt(-s.falta)}</strong> (corrija o valor)`
+        : s.falta < -0.004 ? `<strong>Pago a mais: ${fmt(-s.falta)}</strong> (corrija o valor${s.mostraContinua ? ' ou marque "Continua paga por inteiro"' : ''})`
           : '<strong>Paga por inteiro</strong>')
     $('estCampoVenc').style.display = s.falta > 0.004 ? 'flex' : 'none'
   }
@@ -573,7 +573,18 @@ function iniciar(userId) {
   })
 
   async function excluirCompra(id) {
-    if (!confirm('Excluir esta compra?\nO estoque do produto diminui na mesma quantidade e os pagamentos dela também são apagados.')) return
+    // Se excluir esta compra deixar o estoque negativo (vendeu mais do que sobraria comprado), avisa antes
+    const compra = compras.find((c) => c.id === id)
+    const produto = compra ? produtoPorId()[compra.produto_id] : null
+    let aviso = ''
+    if (compra) {
+      const antes = estoqueDoProduto(compra.produto_id)
+      const depois = arredonda3(antes - Number(compra.quantidade))
+      if (depois < 0 && depois < antes - 0.0005) {
+        aviso = `\n\nAtenção: o estoque de "${produto?.nome || 'produto'}" ficará em ${fmtQtd(depois)} ${produto?.unidade || ''} (hoje: ${fmtQtd(antes)}), porque já foi vendido mais do que sobraria comprado.`
+      }
+    }
+    if (!confirm('Excluir esta compra?\nO estoque do produto diminui na mesma quantidade e os pagamentos dela também são apagados.' + aviso)) return
     const { error } = await supabase.from('compras_estoque').delete().eq('id', id)
     if (error) { console.error('Erro ao excluir compra:', error); alert(mensagemErro(error, 'excluir')); return }
     await recarregar()
