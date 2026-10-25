@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js'
+import { esc } from './seguranca.js'
 
 const { data: { session } } = await supabase.auth.getSession()
 if (!session) {
@@ -199,7 +200,7 @@ function renderizarVisitasRecentes(visitas) {
     item.className = 'visita-item'
     item.innerHTML = `
       <div>
-        <div class="visita-nome">${v.clientes?.nome || '—'}</div>
+        <div class="visita-nome">${esc(v.clientes?.nome) || '—'}</div>
         <div class="visita-data">${dataFormatada}</div>
       </div>
       <span class="badge ${v.comprou ? 'badge-sim' : 'badge-nao'}">
@@ -235,7 +236,7 @@ async function carregarDescontos() {
     const item = document.createElement('div')
     item.className = 'visita-item'
     item.innerHTML = `
-      <div class="visita-nome">${c.nome}</div>
+      <div class="visita-nome">${esc(c.nome)}</div>
       <span class="badge badge-desconto">${c.desconto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
     `
     lista.appendChild(item)

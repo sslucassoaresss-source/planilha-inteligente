@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js'
 import { mensagemErro } from './erros.js'
+import { esc } from './seguranca.js'
 
 const { data: { session } } = await supabase.auth.getSession()
 if (!session) {
@@ -144,7 +145,7 @@ async function carregarEmpresas() {
     const tr = document.createElement('tr')
     if (recebido) tr.classList.add('recebido')
     tr.innerHTML = `
-      <td><strong>${empresa.nome}</strong></td>
+      <td><strong>${esc(empresa.nome)}</strong></td>
       <td>${empresa.percentual_comissao || 0}%</td>
       <td>${fmt(totais.vendido)}</td>
       <td>${fmt(totais.comissao)}</td>

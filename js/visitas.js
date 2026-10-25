@@ -1,5 +1,6 @@
 import { supabase, buscarTodasLinhas } from './supabase.js'
 import { mensagemErro } from './erros.js'
+import { esc } from './seguranca.js'
 
 const { data: { session } } = await supabase.auth.getSession()
 if (!session) {
@@ -495,14 +496,14 @@ function renderizarTabela(visitas) {
 
     const tagsEmpresas = itens.length > 0 || tagEstoque
       ? `<div class="empresas-tags">${itens.map(it =>
-          `<span class="empresa-tag">${it.empresas?.nome || '—'}: ${(it.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>`
+          `<span class="empresa-tag">${esc(it.empresas?.nome) || '—'}: ${(it.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>`
         ).join('')}${tagEstoque}</div>`
       : '—'
 
     const tr = document.createElement('tr')
     tr.innerHTML = `
       <td>${data}</td>
-      <td><strong>${v.clientes?.nome || '—'}</strong></td>
+      <td><strong>${esc(v.clientes?.nome) || '—'}</strong></td>
       <td><span class="badge ${v.comprou ? 'badge-sim' : 'badge-nao'}">${v.comprou ? 'Comprou' : 'Não comprou'}</span></td>
       <td>${tagsEmpresas}</td>
       <td>${valorFmt}</td>

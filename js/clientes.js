@@ -1,5 +1,6 @@
 import { supabase, buscarTodasLinhas } from './supabase.js'
 import { mensagemErro } from './erros.js'
+import { esc } from './seguranca.js'
 
 const { data: { session } } = await supabase.auth.getSession()
 if (!session) {
@@ -175,10 +176,10 @@ function renderizarTabela(lista) {
   lista.forEach(cliente => {
     const tr = document.createElement('tr')
     tr.innerHTML = `
-      <td><strong>${cliente.nome}</strong></td>
-      <td>${cliente.cidade || '—'}</td>
-      <td>${cliente.telefone || '—'}</td>
-      <td class="obs-cell" title="${cliente.observacoes || ''}">${cliente.observacoes || '—'}</td>
+      <td><strong>${esc(cliente.nome)}</strong></td>
+      <td>${esc(cliente.cidade) || '—'}</td>
+      <td>${esc(cliente.telefone) || '—'}</td>
+      <td class="obs-cell" title="${esc(cliente.observacoes)}">${esc(cliente.observacoes) || '—'}</td>
       <td class="celula-desconto" data-id="${cliente.id}">
         <button class="btn-desconto-rapido" data-id="${cliente.id}" data-valor="${cliente.desconto || 0}">
           ${cliente.desconto ? cliente.desconto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '+ desconto'}

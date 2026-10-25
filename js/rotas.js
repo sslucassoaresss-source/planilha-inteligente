@@ -1,5 +1,6 @@
 import { supabase, buscarTodasLinhas } from './supabase.js'
 import { mensagemErro } from './erros.js'
+import { esc } from './seguranca.js'
 import Sortable from 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/+esm'
 
 // ── Proteção de rota ──────────────────────────────────────────
@@ -479,7 +480,7 @@ async function carregarRotas(chavesParaAbrir = []) {
         <div class="cidade-header">
           <div class="cidade-info">
             <span class="cidade-drag-handle" title="Arraste para reordenar as cidades">⠿</span>
-            <span class="cidade-nome">${cidade}</span>
+            <span class="cidade-nome">${esc(cidade)}</span>
             <span class="cidade-count ${excede ? 'alerta-count' : ''}">
               ${listaClientesCidade.length} cliente${listaClientesCidade.length !== 1 ? 's' : ''}${excede ? ' ⚠️' : ''}
             </span>
@@ -743,7 +744,7 @@ function renderizarRotaSubcard(rota, index, clientes, vinculosRota, datas) {
     <div class="rota-subcard" data-rota-id="${rota.id}">
       <div class="rota-subcard-header">
         <div class="rota-subcard-info">
-          <span class="rota-nome">${nomeRota}</span>
+          <span class="rota-nome">${esc(nomeRota)}</span>
           <div class="rota-datas">${badgesData}</div>
         </div>
         <div class="rota-subcard-acoes">
@@ -805,7 +806,7 @@ function renderizarCalendario(ano, mes, rotasPorDia, todasRotasFixas) {
       <div class="calendario-dia-numero">${dia}</div>
       ${rotasDoDia.map(r => `
         <div class="calendario-rota-item">
-          <button class="calendario-rota-pill" data-chave="${r.chave}">${r.nome} — ${r.cidade}</button>
+          <button class="calendario-rota-pill" data-chave="${esc(r.chave)}">${esc(r.nome)} — ${esc(r.cidade)}</button>
           <button class="calendario-rota-remover" data-agendamento-id="${r.agendamentoId}" title="Remover desta data">×</button>
         </div>
       `).join('')}
@@ -830,7 +831,8 @@ function renderizarCalendario(ano, mes, rotasPorDia, todasRotasFixas) {
       e.stopPropagation() // não deixa abrir também o modal de atribuir do dia
       const chave = btn.dataset.chave
       mostrarLista()
-      const card = document.querySelector(`.cidade-card[data-cidade-chave="${chave}"]`)
+      // Comparação direta (em vez de montar um seletor com o texto): uma cidade com aspas no nome não quebra mais
+      const card = [...document.querySelectorAll('.cidade-card')].find(c => c.getAttribute('data-cidade-chave') === chave)
       if (card) {
         card.classList.add('aberto')
         card.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -869,11 +871,11 @@ function renderizarListaFixa(vinculos) {
         <span class="drag-handle">⠿</span>
         <span class="ordem-numero">${i + 1}</span>
         <div class="cliente-row-conteudo">
-          <div class="cliente-row-nome">${c.nome}</div>
-          <div class="cliente-row-end">${enderecoDe(c)}</div>
+          <div class="cliente-row-nome">${esc(c.nome)}</div>
+          <div class="cliente-row-end">${esc(enderecoDe(c))}</div>
         </div>
         <div class="cliente-row-acoes">
-          ${maps ? `<a href="${maps}" target="_blank" class="btn-maps">📍</a>` : ''}
+          ${maps ? `<a href="${esc(maps)}" target="_blank" rel="noopener noreferrer" class="btn-maps">📍</a>` : ''}
           <button class="btn-remover-rota" data-vinculo-id="${v.id}" title="Remover da rota">✕</button>
         </div>
       </div>
