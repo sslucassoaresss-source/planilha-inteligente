@@ -1,0 +1,4 @@
+# Resultados e capturas de tela de cada execução
+_resultados/
+# Pacotes instalados dentro de tests/
+node_modules/

@@ -1,0 +1,3 @@
+# Arquivos que a Vercel NÃO deve publicar (só existem para desenvolvimento)
+tests
+supabase

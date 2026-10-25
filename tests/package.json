@@ -1,0 +1,12 @@
+{
+  "name": "planilha-inteligente-testes",
+  "private": true,
+  "type": "module",
+  "description": "Testes automáticos da Planilha Inteligente (só para desenvolvimento; não vai para o ar).",
+  "scripts": {
+    "test": "node executar.mjs"
+  },
+  "dependencies": {
+    "web-push": "3.6.7"
+  }
+}
