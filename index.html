@@ -18,21 +18,53 @@
 
   <div class="layout">
 
-    <div class="brand-panel">
-      <div class="brand-mark">Planilha Inteligente</div>
-      <div class="brand-copy">
-        <h1>Seus clientes, suas rotas e suas vendas — tudo em um só lugar.</h1>
-        <p>Chega de Excel espalhado e anotação no WhatsApp. Registre visitas, acompanhe resultados e exporte seu relatório mensal em segundos.</p>
+    <aside class="brand-panel">
+      <div class="brand-mark">
+        <img src="favicon.svg" alt="" width="36" height="36">
+        <span>Planilha Inteligente</span>
       </div>
-      <div class="brand-footer">Simples de usar. Feito para representantes comerciais.</div>
-    </div>
 
-    <div class="form-panel">
+      <div class="brand-copy">
+        <h1>Representação e revenda, organizadas no mesmo lugar.</h1>
+        <p>Clientes, rotas, visitas, comissões e estoque, sem Excel espalhado nem anotação perdida no WhatsApp.</p>
+
+        <ul class="brand-lista">
+          <li>
+            <span class="brand-icone brand-icone-azul" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/></svg>
+            </span>
+            <div><strong>Representação</strong><span>Visitas, pedidos e comissão de cada empresa.</span></div>
+          </li>
+          <li>
+            <span class="brand-icone brand-icone-verde" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+            </span>
+            <div><strong>Estoque</strong><span>Compras, vendas, quem te deve e quem você deve.</span></div>
+          </li>
+          <li>
+            <span class="brand-icone" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+            </span>
+            <div><strong>Avisos no celular</strong><span>Todo dia, o que vence hoje e o que atrasou.</span></div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="brand-footer">Feito para representantes comerciais.</div>
+    </aside>
+
+    <main class="form-panel">
       <div class="form-card">
-        <div class="eyebrow">Bem-vindo de volta</div>
-        <h2>Entrar na sua conta</h2>
+        <!-- Marca no celular (o painel da esquerda some em telas pequenas) -->
+        <div class="form-marca">
+          <img src="favicon.svg" alt="" width="32" height="32">
+          <span>Planilha Inteligente</span>
+        </div>
 
-        <div class="error-msg" id="errorMsg">
+        <h2>Entrar</h2>
+        <p class="form-sub">Use o e-mail e a senha da sua conta.</p>
+
+        <div class="error-msg" id="errorMsg" role="alert">
           E-mail ou senha incorretos. Tente novamente.
         </div>
 
@@ -43,23 +75,17 @@
           </div>
           <div class="field">
             <label for="password">Senha</label>
-            <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password">
+            <div class="campo-senha">
+              <input type="password" id="password" placeholder="Sua senha" required autocomplete="current-password">
+              <button type="button" class="ver-senha" id="btnVerSenha" aria-label="Mostrar senha" aria-pressed="false">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
           </div>
-          <div class="row-between">
-            <label class="remember">
-              <input type="checkbox" id="remember">
-              Lembrar de mim
-            </label>
-            <a href="#" class="forgot">Esqueci minha senha</a>
-          </div>
-          <button type="submit" class="submit">Entrar</button>
+          <button type="submit" class="submit" id="btnEntrar">Entrar</button>
         </form>
-
-        <div class="footnote">
-          Ainda não tem uma conta? <a href="#">Fale com a gente</a>
-        </div>
       </div>
-    </div>
+    </main>
 
   </div>
 

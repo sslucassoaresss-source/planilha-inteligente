@@ -211,6 +211,18 @@ export const supabase = {
   auth: {
     getSession: async () => ({ data: { session: { user: { id: 'u1' } } } }),
     signOut: async () => ({}),
+    // Login simulado; o resultado vem da marca "login" no localStorage:
+    // ok (padrão) · senha (senha errada) · rede (o fetch lança erro) · rede-sdk (erro devolvido com status 0) · lento (demora 1,5 s e entra)
+    signInWithPassword: async () => {
+      const modo = localStorage.getItem('login') || 'ok'
+      window.__loginChamadas = (window.__loginChamadas || 0) + 1
+      if (modo === 'lento') await new Promise((r) => setTimeout(r, 1500))
+      if (modo === 'senha') return { data: {}, error: { name: 'AuthApiError', status: 400, message: 'Invalid login credentials' } }
+      if (modo === 'rede') throw new TypeError('Failed to fetch')
+      // como o supabase-js 2 costuma devolver a falha de rede (sem lançar)
+      if (modo === 'rede-sdk') return { data: {}, error: { name: 'AuthRetryableFetchError', status: 0, message: 'Failed to fetch' } }
+      return { data: { session: { user: { id: 'u1' } } }, error: null }
+    },
   },
 }
 

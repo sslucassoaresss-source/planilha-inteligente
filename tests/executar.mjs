@@ -29,6 +29,7 @@ const TESTES = [
   { nome: 'calendario', arquivo: 'calendario.mjs', tipo: 'navegador', desc: 'Entregas no calendário de Rotas' },
   { nome: 'avisos-botao', arquivo: 'avisos-botao.mjs', tipo: 'navegador', desc: 'Botão "Ativar avisos" (iPhone, permissão negada, falhas)' },
   { nome: 'console-limpo', arquivo: 'console-limpo.mjs', tipo: 'navegador', desc: 'Nenhuma página gera erro de JavaScript' },
+  { nome: 'login', arquivo: 'login.mjs', tipo: 'navegador', desc: 'Tela de login (mostrar senha, "Entrando…", senha errada × falha de rede)' },
   { nome: 'funcao-avisos-calculo', arquivo: 'funcao-avisos-calculo.mjs', tipo: 'node', desc: 'Cálculo do aviso diário (fuso de Brasília, vencidas, hoje, amanhã)' },
   { nome: 'funcao-avisos', arquivo: 'funcao-avisos.mjs', tipo: 'node', pacotes: ['web-push'], desc: 'Função avisos-diarios inteira (segredo, modos de teste, aparelhos expirados)' },
 ]

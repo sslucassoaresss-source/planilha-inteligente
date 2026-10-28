@@ -14,6 +14,7 @@
   --text-soft:   #6C8A9C;
   --success:     #4CAF82;
   --danger:      #D98A8A;
+  --anel:        rgba(61, 126, 166, 0.18);   /* anel de foco dos campos (verde dentro do estoque) */
 }
 
 /* ── Reset ── */
@@ -179,6 +180,7 @@ body {
   --accent-deep: #1F6A4F;
   --bg: #EEF7F2;
   --line: #C4E3D3;
+  --anel: rgba(46, 139, 106, 0.18);
 }
 
 .frente-verde .btn-primario { background: var(--f-cor); }
@@ -247,18 +249,18 @@ body {
 
 .btn-secundario {
   padding: 10px 20px;
-  background: transparent;
-  color: var(--text-soft);
-  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--text-dark);
+  border: 1px solid #D5DEE7;
   border-radius: 8px;
   font-family: inherit;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s, border-color 0.15s;
 }
 
-.btn-secundario:hover { background: var(--bg); }
+.btn-secundario:hover { background: #F3F5F8; border-color: #BFCCD9; }
 
 /* ── Campos de formulário ── */
 .field {
@@ -269,16 +271,16 @@ body {
 
 .field label {
   font-size: 13px;
-  font-weight: 500;
-  color: var(--text-dark);
+  font-weight: 600;
+  color: #3A5568;
 }
 
 .field input,
 .field textarea,
 .field select {
-  padding: 11px 13px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  padding: 10px 12px;
+  border: 1px solid #D5DEE7;
+  border-radius: 9px;
   font-family: inherit;
   font-size: 14px;
   color: var(--text-dark);
@@ -287,25 +289,37 @@ body {
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
+/* Campos de uma linha com a mesma altura (texto, número, data e listas) */
+.field input:not([type="checkbox"]):not([type="radio"]),
+.field select { min-height: 42px; }
+
 .field input::placeholder,
 .field textarea::placeholder {
-  color: #A9C2D1;
+  color: #9AAFBE;
 }
+
+.field input:hover,
+.field textarea:hover,
+.field select:hover { border-color: #BFCCD9; }
 
 .field input:focus,
 .field textarea:focus,
 .field select:focus {
   outline: none;
   border-color: var(--accent-deep);
-  box-shadow: 0 0 0 3px rgba(61, 126, 166, 0.15);
+  box-shadow: 0 0 0 3px var(--anel);
 }
 
-/* ── Modal ── */
+/* ── Modal (janelas de cadastro) ──
+   Cabeçalho e rodapé em faixas próprias, fixos enquanto o meio rola; a faixa de cor no topo
+   diz de qual frente é a janela: azul (representação) ou verde (estoque, com .frente-verde). */
 .modal-overlay {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(31, 59, 77, 0.35);
+  background: rgba(16, 32, 45, 0.48);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
   z-index: 200;
   align-items: center;
   justify-content: center;
@@ -318,44 +332,75 @@ body {
 
 .modal {
   background: var(--card);
-  border-radius: 14px;
+  border-top: 4px solid var(--accent-deep);
+  border-radius: 16px;
   width: 100%;
   max-width: 560px;
   max-height: 90vh;
   overflow-y: auto;
-  padding: 28px;
+  padding: 24px 28px;
+  box-shadow: 0 24px 60px rgba(16, 32, 45, 0.28), 0 2px 8px rgba(16, 32, 45, 0.10);
 }
 
 .modal-topo {
+  position: sticky;
+  top: -24px;
+  z-index: 2;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  gap: 12px;
+  margin: -24px -28px 22px;
+  padding: 18px 20px 16px 28px;
+  background: var(--card);
+  border-bottom: 1px solid #E3E9EF;
 }
 
 .modal-topo h2 {
-  font-family: 'Fraunces', serif;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
+  line-height: 1.3;
   color: var(--text-dark);
 }
 
 .modal-fechar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  padding: 0;
   background: none;
   border: none;
+  border-radius: 8px;
   font-size: 22px;
+  line-height: 1;
   color: var(--text-soft);
   cursor: pointer;
-  line-height: 1;
-  padding: 4px;
+  transition: background 0.15s, color 0.15s;
 }
 
-.modal-fechar:hover { color: var(--text-dark); }
+.modal-fechar:hover { background: #F3F5F8; color: var(--text-dark); }
 
 .modal-rodape {
+  position: sticky;
+  bottom: -24px;
+  z-index: 2;
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 10px;
+  margin: 20px -28px -24px;
+  padding: 14px 28px;
+  background: #F7F9FB;
+  border-top: 1px solid #E3E9EF;
+  border-radius: 0 0 16px 16px;
+}
+
+.modal-rodape .btn-primario,
+.modal-rodape .btn-secundario {
+  min-height: 40px;
+  padding: 0 18px;
 }
 
 .form-grid {

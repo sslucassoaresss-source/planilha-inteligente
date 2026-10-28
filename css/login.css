@@ -9,139 +9,246 @@
   min-height: 100vh;
 }
 
-/* ── Painel esquerdo ── */
+/* ── Painel esquerdo: a marca, em azul forte ── */
 .brand-panel {
-  flex: 1.1;
-  background: linear-gradient(180deg, #DCEBF6 0%, #C4DCED 100%);
+  flex: 1.05;
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 56px 64px;
+  gap: 40px;
+  padding: 48px 56px;
+  color: #FFFFFF;
+  background: linear-gradient(160deg, #3D7EA6 0%, #28597A 100%);
 }
 
+/* Dois círculos suaves no fundo dão profundidade sem chamar atenção */
+.brand-panel::before,
+.brand-panel::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.brand-panel::before {
+  width: 520px;
+  height: 520px;
+  right: -220px;
+  top: -180px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0) 70%);
+}
+
+.brand-panel::after {
+  width: 420px;
+  height: 420px;
+  left: -160px;
+  bottom: -200px;
+  background: radial-gradient(circle, rgba(46, 139, 106, 0.35), rgba(46, 139, 106, 0) 70%);
+}
+
+.brand-panel > * { position: relative; }
+
 .brand-mark {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   font-family: 'Fraunces', serif;
   font-size: 20px;
   font-weight: 600;
-  color: var(--accent-deep);
 }
 
-.brand-copy { max-width: 380px; }
+.brand-mark img {
+  border-radius: 9px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.brand-copy { max-width: 440px; }
 
 .brand-copy h1 {
   font-family: 'Fraunces', serif;
   font-weight: 600;
-  font-size: clamp(26px, 3vw, 36px);
-  line-height: 1.2;
-  margin-bottom: 16px;
-  color: var(--text-dark);
+  font-size: clamp(28px, 3vw, 38px);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  margin-bottom: 14px;
 }
 
 .brand-copy p {
   font-size: 15px;
-  color: var(--text-soft);
-  line-height: 1.65;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.82);
 }
+
+.brand-lista {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 32px;
+}
+
+.brand-lista li {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.brand-lista strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.brand-lista span:not(.brand-icone) {
+  display: block;
+  margin-top: 1px;
+  font-size: 13.5px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.brand-icone {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.brand-icone-azul { background: #5B9BC4; border-color: rgba(255, 255, 255, 0.28); }
+.brand-icone-verde { background: #2E8B6A; border-color: rgba(255, 255, 255, 0.28); }
 
 .brand-footer {
   font-size: 13px;
-  color: var(--text-soft);
+  color: rgba(255, 255, 255, 0.65);
 }
 
-/* ── Painel direito ── */
+/* ── Painel direito: o formulário num cartão ── */
 .form-panel {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px;
+  padding: 40px 24px;
 }
 
-.form-card { width: 100%; max-width: 380px; }
-
-.eyebrow {
-  font-size: 13px;
-  color: var(--text-soft);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  margin-bottom: 8px;
+.form-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 36px 36px 32px;
+  background: var(--card);
+  border: 1px solid #E3E9EF;
+  border-radius: 18px;
+  box-shadow: 0 12px 32px rgba(16, 32, 45, 0.08), 0 1px 3px rgba(16, 32, 45, 0.06);
 }
+
+/* Logo dentro do cartão só aparece no celular */
+.form-marca {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 28px;
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--accent-deep);
+}
+
+.form-marca img { border-radius: 8px; }
 
 .form-card h2 {
   font-family: 'Fraunces', serif;
   font-size: 28px;
   font-weight: 600;
-  margin-bottom: 32px;
+  line-height: 1.15;
   color: var(--text-dark);
+}
+
+.form-sub {
+  margin: 6px 0 26px;
+  font-size: 14px;
+  color: var(--text-soft);
 }
 
 /* ── Campos do login ── */
-.field { margin-bottom: 20px; }
+.field { margin-bottom: 18px; }
 
 .field input {
   width: 100%;
-  padding: 13px 14px;
-  border: 1px solid var(--line);
+  min-height: 46px;
+  padding: 0 14px;
   border-radius: 10px;
-  background: var(--card);
-  font-family: inherit;
-  font-size: 14px;
-  color: var(--text-dark);
-  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.field input::placeholder { color: #A9C2D1; }
+/* Senha com o botão de mostrar/esconder dentro do campo */
+.campo-senha { position: relative; }
+.campo-senha input { padding-right: 48px; }
 
-.field input:focus {
-  outline: none;
-  border-color: var(--accent-deep);
-  box-shadow: 0 0 0 3px rgba(61, 126, 166, 0.15);
-}
-
-/* ── Linha lembrar / esqueci ── */
-.row-between {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 28px;
-}
-
-.remember {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
+.ver-senha {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: none;
   color: var(--text-soft);
   cursor: pointer;
 }
 
-.remember input { accent-color: var(--accent-deep); }
+.ver-senha:hover { background: #F3F5F8; color: var(--text-dark); }
+.ver-senha[aria-pressed="true"] { color: var(--accent-deep); }
 
-.forgot {
-  font-size: 13px;
-  color: var(--accent-deep);
-  text-decoration: none;
-}
-
-.forgot:hover { text-decoration: underline; }
-
-/* ── Botão de submit ── */
+/* ── Botão Entrar ── */
 button.submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   width: 100%;
-  padding: 14px;
+  min-height: 48px;
+  margin-top: 8px;
+  padding: 0 16px;
   background: var(--accent-deep);
   color: #fff;
   border: none;
   border-radius: 10px;
   font-family: inherit;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
+  box-shadow: 0 2px 6px rgba(61, 126, 166, 0.30);
   transition: background 0.15s, transform 0.1s;
 }
 
 button.submit:hover { background: #336E94; }
 button.submit:active { transform: scale(0.99); }
+
+button.submit:disabled {
+  cursor: progress;
+  opacity: 0.85;
+}
+
+/* Rodinha enquanto confere a senha */
+button.submit .girando {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: #FFFFFF;
+  border-radius: 50%;
+  animation: girar 0.7s linear infinite;
+}
+
+@keyframes girar { to { transform: rotate(360deg); } }
 
 /* ── Mensagem de erro ── */
 .error-msg {
@@ -150,31 +257,21 @@ button.submit:active { transform: scale(0.99); }
   border: 1px solid #EFC9C9;
   color: #A85454;
   font-size: 13px;
+  line-height: 1.45;
   padding: 10px 12px;
-  border-radius: 8px;
-  margin-bottom: 20px;
+  border-radius: 9px;
+  margin-bottom: 18px;
 }
 
 .error-msg.show { display: block; }
 
-/* ── Rodapé do form ── */
-.footnote {
-  margin-top: 28px;
-  font-size: 13px;
-  color: var(--text-soft);
-  text-align: center;
-}
-
-.footnote a {
-  color: var(--accent-deep);
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.footnote a:hover { text-decoration: underline; }
-
 /* ── Responsivo ── */
 @media (max-width: 860px) {
   .brand-panel { display: none; }
-  .form-panel { flex: 1; }
+  .form-marca { display: flex; }
+}
+
+@media (max-width: 480px) {
+  .form-panel { align-items: flex-start; padding: 28px 16px; }
+  .form-card { padding: 28px 22px 24px; border-radius: 16px; }
 }
