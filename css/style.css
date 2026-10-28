@@ -24,6 +24,9 @@
   box-sizing: border-box;
 }
 
+/* O atributo hidden sempre esconde (sem isto, um "display: flex" como o de .field vence e o elemento aparece) */
+[hidden] { display: none !important; }
+
 body {
   font-family: 'Space Grotesk', sans-serif;
   background: #F3F5F8;   /* fundo neutro: o azul e o verde ficam só nos blocos de cada frente */

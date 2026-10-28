@@ -1,6 +1,7 @@
 import { supabase, buscarTodasLinhas } from './supabase.js'
 import { mensagemErro } from './erros.js'
 import { esc } from './seguranca.js'
+import { prazoValido, PRAZOS_PRONTOS } from './prioridade.js'
 
 const { data: { session } } = await supabase.auth.getSession()
 if (!session) {
@@ -31,7 +32,38 @@ function fecharModal() {
   modalOverlay.classList.remove('aberto')
   formCliente.reset()
   document.getElementById('clienteId').value = ''
+  mostrarCampoDias()
   esconderSugestoesCidade()
+}
+
+// ── Prioridade de visita: Semanal/Quinzenal/Mensal ou "Outro prazo" (aí aparece o campo de dias) ──
+const selectPrioridade = document.getElementById('prioridade')
+const inputPrioridadeDias = document.getElementById('prioridadeDias')
+
+function mostrarCampoDias() {
+  const outro = selectPrioridade.value === 'outro'
+  document.getElementById('campoPrioridadeDias').hidden = !outro
+  // Campo escondido não pode guardar número inválido: o navegador travaria o Salvar sem mostrar por quê
+  if (!outro) inputPrioridadeDias.value = ''
+}
+
+selectPrioridade.addEventListener('change', () => {
+  mostrarCampoDias()
+  if (selectPrioridade.value === 'outro') inputPrioridadeDias.focus()
+})
+
+// Valor que vai para o banco: número de dias ou null; undefined = prazo digitado inválido
+function lerPrioridade() {
+  if (!selectPrioridade.value) return null
+  if (selectPrioridade.value !== 'outro') return Number(selectPrioridade.value)
+  return prazoValido(inputPrioridadeDias.value) ?? undefined
+}
+
+function preencherPrioridade(dias) {
+  const prazo = prazoValido(dias)
+  selectPrioridade.value = !prazo ? '' : (PRAZOS_PRONTOS[prazo] ? String(prazo) : 'outro')
+  inputPrioridadeDias.value = prazo && !PRAZOS_PRONTOS[prazo] ? prazo : ''
+  mostrarCampoDias()
 }
 
 document.getElementById('btnNovoCliente').addEventListener('click', () => abrirModal())
@@ -285,6 +317,13 @@ formCliente.addEventListener('submit', async (e) => {
     }
   }
 
+  const prioridade = lerPrioridade()
+  if (prioridade === undefined) {
+    alert('Prazo de visita inválido. Digite um número inteiro de dias, de 1 a 365.')
+    inputPrioridadeDias.focus()
+    return
+  }
+
   const dados = {
     user_id:     userId,
     nome:        document.getElementById('nome').value.trim(),
@@ -297,6 +336,7 @@ formCliente.addEventListener('submit', async (e) => {
     telefone:    document.getElementById('telefone').value.trim(),
     desconto:    parseFloat(document.getElementById('desconto').value) || 0,
     observacoes: document.getElementById('observacoes').value.trim(),
+    visitar_a_cada_dias: prioridade,
   }
 
   btnSalvar.textContent = 'Salvando...'
@@ -335,6 +375,7 @@ function editarCliente(id, lista) {
   document.getElementById('telefone').value     = cliente.telefone || ''
   document.getElementById('desconto').value     = cliente.desconto || ''
   document.getElementById('observacoes').value  = cliente.observacoes || ''
+  preencherPrioridade(cliente.visitar_a_cada_dias)
 
   abrirModal('Editar Cliente')
 }

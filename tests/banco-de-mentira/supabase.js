@@ -301,6 +301,27 @@ if (localStorage.getItem('seed') === 'cores') {
   // c8: nenhuma visita nem venda -> nunca comprou
 }
 
+// ── Cenário da prioridade de visita (seed=prioridade): datas relativas a HOJE ──
+// Atendimento = qualquer visita (até "Não comprou"), venda de estoque ou entrega feita; sem atendimento, conta do cadastro.
+if (localStorage.getItem('seed') === 'prioridade') {
+  const hoje = new Date()
+  const dia = (delta) => { const x = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + delta); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}` }
+  const cadastro = (delta) => `${dia(delta)}T12:00:00Z`
+  const cli = (id, nome, prazo, criado) => db.clientes.push({ id, user_id: 'u1', nome, cidade: 'Campinas', telefone: '', observacoes: '', desconto: 0, visitar_a_cada_dias: prazo, created_at: criado })
+  const vis = (id, cliente_id, data_visita, comprou) => db.visitas.push({ id, user_id: 'u1', cliente_id, data_visita, comprou, desconto_aplicado: 0, observacao: null, created_at: `${data_visita}T09:00:00Z` })
+  const venda = (id, cliente_id, data_venda) => db.vendas_estoque.push({ id, user_id: 'u1', cliente_id, visita_id: null, data_venda, prazo_dias: null, vencimento: null })
+  Object.assign(db.clientes[0], { visitar_a_cada_dias: 7, created_at: cadastro(-200) })   // Pet Shop do Lulu
+  Object.assign(db.clientes[1], { visitar_a_cada_dias: 7, created_at: cadastro(-200) })   // Agro Zeta
+  vis('q1', 'c1', dia(-3), true)                                   // semanal, 3 dias → em dia (faltam 4)
+  vis('q2', 'c2', dia(-7), false)                                  // semanal, "Não comprou" há 7 dias → visitar hoje
+  cli('c3', 'Semanal Atrasado', 7, cadastro(-200)); venda('q3', 'c3', dia(-10))                          // venda de estoque há 10 → atrasado 3
+  cli('c4', 'Quinzenal da Entrega', 15, cadastro(-200)); vis('q4', 'c4', dia(-40), true); venda('q4e', 'c4', dia(-16))  // entrega feita (venda) há 16 → atrasado 1
+  cli('c5', 'Mensal Nunca Visitado', 30, cadastro(-45))            // sem atendimento, cadastrado há 45 → atrasado 15
+  cli('c6', 'Mensal Recém Cadastrado', 30, cadastro(-5))           // sem atendimento, cadastrado há 5 → em dia (faltam 25)
+  cli('c7', 'A Cada Dez Dias', 10, cadastro(-200)); vis('q7', 'c7', dia(-12), true)                      // prazo livre 10, há 12 → atrasado 2
+  cli('c8', 'Sem Prioridade', null, cadastro(-200)); vis('q8', 'c8', dia(-90), true)                     // sem prioridade: nunca avisa
+}
+
 // ── Cenário de cobranças (seed=cobrancas): datas relativas a HOJE ──
 if (localStorage.getItem('seed') === 'cobrancas') {
   const hoje = new Date()
