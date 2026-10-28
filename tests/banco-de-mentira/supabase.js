@@ -283,6 +283,24 @@ if (localStorage.getItem('seed') === 'clientes') {
   vis('v5', 'c5', '2026-11-01', true); venda('s5', 'c5', '2026-11-01')
 }
 
+// ── Cenário das bolinhas de última compra (seed=cores): datas relativas a HOJE, com os limites 15/16 e 30/31 ──
+if (localStorage.getItem('seed') === 'cores') {
+  const hoje = new Date()
+  const dia = (delta) => { const x = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + delta); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}` }
+  const cli = (id, nome) => db.clientes.push({ id, user_id: 'u1', nome, cidade: 'Campinas', telefone: '', observacoes: '', desconto: 0 })
+  const vis = (id, cliente_id, data_visita, comprou) => db.visitas.push({ id, user_id: 'u1', cliente_id, data_visita, comprou, desconto_aplicado: 0, observacao: null, created_at: `${data_visita}T09:00:00Z` })
+  const venda = (id, cliente_id, data_venda) => db.vendas_estoque.push({ id, user_id: 'u1', cliente_id, visita_id: null, data_venda, prazo_dias: null, vencimento: null })
+  cli('c3', 'Dezesseis Dias'); cli('c4', 'Trinta Dias'); cli('c5', 'Trinta e Um Dias'); cli('c6', 'Dois Meses'); cli('c7', 'Só Não Comprou'); cli('c8', 'Nunca Visitado')
+  vis('k1', 'c1', dia(-3), true)                              // verde (3 dias, empresas)
+  venda('k2', 'c2', dia(-15))                                 // verde no limite (15 dias, estoque)
+  vis('k3', 'c3', dia(-16), true)                             // amarela (16 dias)
+  venda('k4', 'c4', dia(-30))                                 // amarela no limite (30 dias)
+  vis('k5', 'c5', dia(-31), true)                             // vermelha (31 dias)
+  vis('k6', 'c6', dia(-60), true); vis('k6n', 'c6', dia(-2), false)   // vermelha: a visita "Não comprou" recente não conta
+  vis('k7', 'c7', dia(-5), false)                             // nunca comprou (só "Não comprou")
+  // c8: nenhuma visita nem venda -> nunca comprou
+}
+
 // ── Cenário de cobranças (seed=cobrancas): datas relativas a HOJE ──
 if (localStorage.getItem('seed') === 'cobrancas') {
   const hoje = new Date()

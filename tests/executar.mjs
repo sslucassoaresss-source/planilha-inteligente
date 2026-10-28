@@ -30,6 +30,8 @@ const TESTES = [
   { nome: 'avisos-botao', arquivo: 'avisos-botao.mjs', tipo: 'navegador', desc: 'Botão "Ativar avisos" (iPhone, permissão negada, falhas)' },
   { nome: 'console-limpo', arquivo: 'console-limpo.mjs', tipo: 'navegador', desc: 'Nenhuma página gera erro de JavaScript' },
   { nome: 'login', arquivo: 'login.mjs', tipo: 'navegador', desc: 'Tela de login (mostrar senha, "Entrando…", senha errada × falha de rede)' },
+  { nome: 'clientes-bolinhas', arquivo: 'clientes-bolinhas.mjs', tipo: 'navegador', desc: 'Clientes: bolinha de cor da última compra, resumo por cor e filtro' },
+  { nome: 'clientes-cores', arquivo: 'clientes-cores.mjs', tipo: 'node', desc: 'Contas das bolinhas (dias entre datas e limites 15/16 e 30/31)' },
   { nome: 'funcao-avisos-calculo', arquivo: 'funcao-avisos-calculo.mjs', tipo: 'node', desc: 'Cálculo do aviso diário (fuso de Brasília, vencidas, hoje, amanhã)' },
   { nome: 'funcao-avisos', arquivo: 'funcao-avisos.mjs', tipo: 'node', pacotes: ['web-push'], desc: 'Função avisos-diarios inteira (segredo, modos de teste, aparelhos expirados)' },
 ]

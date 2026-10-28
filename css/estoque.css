@@ -391,6 +391,95 @@
 .est-origem-estoque  { color: #2E7D5A; }
 .est-origem-ambos    { color: var(--text-soft); }
 
+/* Bolinha de cor pela distância da última compra (js/clientes-cores.js) */
+.cc-bolinha {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  margin-right: 7px;
+  border-radius: 50%;
+  vertical-align: 1px;
+}
+
+.cc-verde    { background: #2E9E6E; box-shadow: 0 0 0 3px rgba(46, 158, 110, 0.16); }
+.cc-amarela  { background: #E0A93B; box-shadow: 0 0 0 3px rgba(224, 169, 59, 0.18); }
+.cc-vermelha { background: #D2544F; box-shadow: 0 0 0 3px rgba(210, 84, 79, 0.16); }
+.cc-cinza    { background: #B8C4CE; }
+
+/* A bolinha ao lado do nome só aparece no celular (lá a coluna "Última compra" fica fora da tela) */
+.cc-no-nome { display: none; }
+
+@media (max-width: 700px) {
+  .cc-no-nome { display: inline-block; }
+  #listaClientes td:first-child { min-width: 150px; }   /* bolinha na mesma linha do nome */
+}
+
+/* Resumo por cor acima da tabela; cada cor é um botão que filtra a lista */
+.cc-resumo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.cc-resumo-titulo {
+  margin-right: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5E7687;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cc-filtro {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  padding: 6px 12px;
+  background: var(--card);
+  border: 1px solid #D5DEE7;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.cc-filtro strong {
+  margin-left: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.cc-filtro:hover { background: #F3F5F8; border-color: #BFCCD9; }
+
+.cc-filtro.ativo {
+  background: var(--text-dark);
+  border-color: var(--text-dark);
+  color: #FFFFFF;
+}
+
+.cc-limpar {
+  padding: 6px 4px;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-deep);
+  cursor: pointer;
+}
+
+.cc-limpar:hover { text-decoration: underline; }
+
+/* Filtro ativo: esconde as linhas das outras cores */
+#listaClientes[data-filtro-faixa="verde"] tr:not([data-faixa="verde"]),
+#listaClientes[data-filtro-faixa="amarela"] tr:not([data-faixa="amarela"]),
+#listaClientes[data-filtro-faixa="vermelha"] tr:not([data-faixa="vermelha"]),
+#listaClientes[data-filtro-faixa="cinza"] tr:not([data-faixa="cinza"]) { display: none; }
+
 /* ═══════════════════════════════════════
    Dashboard: faixa de alerta e painéis "Quem me deve" / "Quem eu devo"
 ═══════════════════════════════════════ */
