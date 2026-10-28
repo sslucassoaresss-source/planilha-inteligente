@@ -3,13 +3,6 @@
    Planilha Inteligente
 ═══════════════════════════════════════ */
 
-.pagina-desc {
-  font-size: 14px;
-  color: var(--text-soft);
-  margin-bottom: 8px;
-  margin-top: -16px;
-}
-
 .pagina-topo-acoes {
   display: flex;
   align-items: center;

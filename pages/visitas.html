@@ -40,6 +40,18 @@
       <select id="selectMes"></select>
     </div>
 
+    <!-- ═══ Representação (azul): visitas do mês ═══ -->
+    <section class="frente frente-azul">
+    <div class="secao-cab">
+      <span class="secao-icone" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/></svg>
+      </span>
+      <div class="secao-textos">
+        <h2>Visitas do mês</h2>
+        <span class="secao-sub">Pedidos das empresas que você representa.</span>
+      </div>
+    </div>
+
     <div class="resumo-dia">
       <div class="resumo-item">
         <span class="resumo-label">Visitas hoje</span>
@@ -75,11 +87,18 @@
         <tbody id="listaVisitas"></tbody>
       </table>
     </div>
+    </section>
 
-    <!-- Vendas de produtos do estoque do mês (js/estoque-visitas.js) -->
-    <section class="est-secao-vendas" id="estSecaoVendas">
-      <div class="est-bloco-topo">
-        <h3>Vendas de produtos do mês</h3>
+    <!-- Vendas de produtos do estoque do mês, em verde (js/estoque-visitas.js) -->
+    <section class="est-secao-vendas frente frente-verde" id="estSecaoVendas">
+      <div class="secao-cab">
+        <span class="secao-icone" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+        </span>
+        <div class="secao-textos">
+          <h2>Vendas de produtos do mês</h2>
+          <span class="secao-sub">Sua revenda: o que saiu do seu estoque.</span>
+        </div>
       </div>
       <p class="est-resumo" id="estResumoVendas" style="display:none"></p>
       <div class="tabela-wrapper">

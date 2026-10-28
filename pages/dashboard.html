@@ -32,12 +32,27 @@
   <main class="pagina" id="conteudo" style="display:none">
 
     <div class="pagina-topo">
-      <h1>Dashboard</h1>
+      <div class="pagina-titulo">
+        <h1>Dashboard</h1>
+        <p class="pagina-sub">O resumo do mês das suas duas frentes de trabalho</p>
+      </div>
       <div class="filtro-mes">
         <select id="selectMes"></select>
-        <button type="button" id="btnExcelMes" class="btn-secundario" title="Baixa o relatório do mês escolhido em Excel">⬇ Relatório do mês (Excel)</button>
-        <button type="button" id="btnBackupCompleto" class="btn-secundario" title="Baixa uma cópia de tudo que está cadastrado, em Excel">⬇ Backup completo (Excel)</button>
+        <button type="button" id="btnExcelMes" class="btn-secundario" title="Baixa o relatório do mês escolhido em Excel"><svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>Relatório do mês (Excel)</button>
+        <button type="button" id="btnBackupCompleto" class="btn-secundario" title="Baixa uma cópia de tudo que está cadastrado, em Excel"><svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>Backup completo (Excel)</button>
         <span id="avisosArea" class="avisos-area"></span>
+      </div>
+    </div>
+
+    <!-- ═══ Representação (azul): bloco inteiro com os 4 cards ═══ -->
+    <section class="frente frente-azul">
+    <div class="secao-cab">
+      <span class="secao-icone" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/></svg>
+      </span>
+      <div class="secao-textos">
+        <h2>Representação</h2>
+        <span class="secao-sub">empresas que você representa · visitas e comissão</span>
       </div>
     </div>
 
@@ -64,12 +79,18 @@
         <div class="card-sub">no período</div>
       </div>
     </div>
+    </section>
 
-    <!-- ═══ Estoque (revenda): 4 cards, separados da representação (js/estoque-dashboard.js) ═══ -->
-    <section class="est-dash" id="estDashboard">
-      <div class="est-dash-titulo">
-        <h2>Estoque</h2>
-        <span class="est-dash-sub">sua revenda · vendido e lucro seguem o mês escolhido acima</span>
+    <!-- ═══ Estoque (revenda, verde): 4 cards, separados da representação (js/estoque-dashboard.js) ═══ -->
+    <section class="est-dash frente frente-verde" id="estDashboard">
+      <div class="secao-cab">
+        <span class="secao-icone" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+        </span>
+        <div class="secao-textos">
+          <h2>Estoque</h2>
+          <span class="secao-sub">sua revenda · vendido e lucro seguem o mês escolhido acima</span>
+        </div>
       </div>
 
       <!-- Faixa de alerta: cobranças e contas vencidas ou que vencem hoje -->

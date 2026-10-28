@@ -6,28 +6,11 @@
    nas classes do empresas.js (.btn-editar, etc.).
 ═══════════════════════════════════════ */
 
-.est-secao {
-  margin-top: 56px;
-  padding-top: 32px;
-  border-top: 2px solid var(--line);
-}
+/* A seção é um bloco verde (.frente .frente-verde, em style.css) */
+.est-secao { margin-top: 8px; }
 
-.est-titulo h2 {
-  font-family: 'Fraunces', serif;
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--text-dark);
-}
-
-.est-desc {
-  font-size: 14px;
-  color: var(--text-soft);
-  margin: 6px 0 28px;
-}
-
-.est-bloco {
-  margin-bottom: 36px;
-}
+.est-bloco { margin-bottom: 28px; }
+.est-bloco:last-child { margin-bottom: 0; }
 
 .est-bloco-topo {
   display: flex;
@@ -38,8 +21,7 @@
 }
 
 .est-bloco-topo h3 {
-  font-family: 'Fraunces', serif;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--text-dark);
 }
@@ -60,23 +42,24 @@
 .est-negativo { color: #A85454; font-weight: 600; }
 .est-inativo td { color: var(--text-soft); }
 
-/* Botões de ação nas tabelas (mesmo visual de Editar/Excluir) */
+/* Botões de ação nas tabelas (mesmo visual discreto de Editar/Excluir, em style.css) */
 .est-btn-editar,
 .est-btn-excluir {
   padding: 5px 12px;
-  border-radius: 6px;
+  border-radius: 7px;
   font-family: inherit;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  border: none;
-  transition: background 0.15s;
+  background: var(--card);
+  border: 1px solid #D5DEE7;
+  transition: background 0.15s, border-color 0.15s;
 }
 
-.est-btn-editar { background: var(--bg); color: var(--accent-deep); }
-.est-btn-editar:hover { background: #D0E7F5; }
-.est-btn-excluir { background: #FBEAEA; color: #A85454; }
-.est-btn-excluir:hover { background: #F5D0D0; }
+.est-btn-editar { color: var(--text-dark); }
+.est-btn-editar:hover { background: #F3F5F8; border-color: #BFCCD9; }
+.est-btn-excluir { color: #B04A4A; }
+.est-btn-excluir:hover { background: #FBEAEA; border-color: #EBC5C5; }
 
 .badge-parcial {
   background: #FFF3E0;
@@ -215,7 +198,10 @@
   color: #2E7D5A;
 }
 
-.est-secao-vendas { margin-top: 44px; }
+.est-secao-vendas { margin-top: 8px; }
+
+/* Nome do cliente sem quebrar no meio ("Mundo / Animal") */
+.est-tabela td:nth-child(2) { min-width: 150px; }
 
 /* A tela de Visitas esconde as colunas 4 e 5 de toda ".tabela" no celular;
    nesta lista elas precisam continuar aparecendo. */
@@ -256,29 +242,10 @@
 
 .est-dash { margin-bottom: 36px; }
 
-.est-dash-titulo {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-  margin-bottom: 14px;
-}
-
-.est-dash-titulo h2 {
-  font-family: 'Fraunces', serif;
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--text-dark);
-}
-
-.est-dash-sub {
-  font-size: 13px;
-  color: var(--text-soft);
-}
-
-/* Os cards do Estoque usam o mesmo desenho dos de representação, com a borda verde */
-.est-dash .cards { margin-bottom: 0; }
-.est-dash .card-acento { border-top-color: #2E8B6A; }
+/* Os cards do Estoque usam o mesmo desenho dos de representação (dashboard.css, .frente); aqui só os botões verdes */
+.est-dash .est-btn-card { color: #2E7D5A; border-color: #B7DCCB; }
+.est-dash .est-btn-card:hover { background: #DFF5EC; }
+.est-dash .est-btn-editar { background: #DFF5EC; color: #2E7D5A; }
 
 .est-card-destaque {
   margin-top: 8px;
@@ -337,10 +304,6 @@
 }
 
 /* ── Ajuste de tamanho dos cards de Estoque: mais compactos, botões no canto ── */
-.est-dash .card { padding: 14px 18px; }
-.est-dash .card-label { margin-bottom: 0; font-size: 11px; }
-.est-dash .card-valor { font-size: 22px; }
-.est-dash .card-sub { margin-top: 4px; }
 
 .est-card-topo {
   display: flex;
@@ -713,11 +676,12 @@
    Rotas: seção "Entregas" (js/entregas.js)
 ═══════════════════════════════════════ */
 
+/* Entregas são da revenda: bloco verde, como o estoque nas outras telas */
 .ent-secao {
   margin-bottom: 20px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 12px;
+  background: var(--f-fundo);
+  border: 1px solid var(--f-borda);
+  border-radius: 16px;
 }
 
 .ent-resumo {
@@ -742,10 +706,9 @@
 .ent-secao[open] > .ent-resumo::before { content: '▾'; }
 
 .ent-resumo-titulo {
-  font-family: 'Fraunces', serif;
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 600;
-  color: var(--text-dark);
+  color: var(--f-escura);
 }
 
 .ent-resumo-texto {

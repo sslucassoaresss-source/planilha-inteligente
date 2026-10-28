@@ -158,8 +158,9 @@
 /* ── Card de cidade ── */
 .cidade-card {
   background: var(--card);
-  border: 1px solid var(--line);
+  border: 1px solid #DCE4EB;
   border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
   margin-bottom: 16px;
   overflow: hidden;
 }

@@ -25,7 +25,7 @@
 
 body {
   font-family: 'Space Grotesk', sans-serif;
-  background: var(--bg);
+  background: #F3F5F8;   /* fundo neutro: o azul e o verde ficam só nos blocos de cada frente */
   color: var(--text-dark);
   min-height: 100vh;
 }
@@ -141,10 +141,92 @@ body {
 
 .pagina-topo h1 {
   font-family: 'Fraunces', serif;
-  font-size: 26px;
+  font-size: 30px;
   font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
   color: var(--text-dark);
 }
+
+/* ── Frentes do negócio: bloco inteiro azul (representação) ou verde (estoque) ── */
+.frente {
+  margin-bottom: 24px;
+  padding: 20px;
+  border: 1px solid var(--f-borda);
+  border-radius: 16px;
+  background: var(--f-fundo);
+}
+
+.frente-azul {
+  --f-cor: #3D7EA6;
+  --f-escura: #28597A;
+  --f-hover: #326C91;
+  --f-fundo: #E8F1FA;
+  --f-borda: #C9DDEE;
+  --f-sombra: rgba(61, 126, 166, 0.28);
+}
+
+.frente-verde {
+  --f-cor: #2E8B6A;
+  --f-escura: #1F6A4F;
+  --f-hover: #267558;
+  --f-fundo: #E7F5EE;
+  --f-borda: #C4E3D3;
+  --f-sombra: rgba(46, 139, 106, 0.28);
+  /* Dentro do bloco verde, as cores-base do app também viram verde: links, destaques,
+     fundos claros e bordas de tudo que está lá dentro seguem a frente sem regra extra. */
+  --accent: #4FA585;
+  --accent-deep: #1F6A4F;
+  --bg: #EEF7F2;
+  --line: #C4E3D3;
+}
+
+.frente-verde .btn-primario { background: var(--f-cor); }
+.frente-verde .btn-primario:hover { background: var(--f-hover); }
+
+.secao-cab {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.secao-icone {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  color: #FFFFFF;
+  background: var(--f-cor);
+  box-shadow: 0 2px 8px var(--f-sombra);
+}
+
+.secao-textos { flex: 1; min-width: 0; }
+
+.secao-textos h2 {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--f-escura);
+}
+
+.secao-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+/* Dentro de uma frente: botão principal, tabelas e resumos na cor dela */
+.frente .btn-primario { background: var(--f-cor); }
+.frente .btn-primario:hover { background: var(--f-hover); }
+.frente .tabela-wrapper { border-color: var(--f-borda); }
+.frente .resumo-comissao,
+.frente .est-resumo { border-color: var(--f-borda); }
+.frente .resumo-comissao strong,
+.frente .est-resumo strong { color: var(--f-escura); }
 
 /* ── Botões ── */
 .btn-primario {
@@ -289,39 +371,41 @@ body {
 .tabela-wrapper {
   overflow-x: auto;
   border-radius: 12px;
-  border: 1px solid var(--line);
+  border: 1px solid #DCE4EB;
   background: var(--card);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
 }
 
 .tabela {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
+  font-variant-numeric: tabular-nums;   /* algarismos com a mesma largura: valores alinhados */
 }
 
-.tabela thead { background: var(--bg); }
+.tabela thead { background: #F7F9FB; }
 
 .tabela th {
-  padding: 12px 16px;
+  padding: 11px 16px;
   text-align: left;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
-  color: var(--text-soft);
+  color: #5E7687;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border-bottom: 1px solid var(--line);
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #E3E9EF;
   white-space: nowrap;
 }
 
 .tabela td {
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--bg);
+  padding: 13px 16px;
+  border-bottom: 1px solid #EEF2F5;
   color: var(--text-dark);
   vertical-align: middle;
 }
 
 .tabela tbody tr:last-child td { border-bottom: none; }
-.tabela tbody tr:hover td { background: #F5FAFD; }
+.tabela tbody tr:hover td { background: #F7FAFC; }
 
 /* ── Vazio ── */
 .vazio {
@@ -354,22 +438,24 @@ body {
 /* ── Botões de ação na tabela ── */
 .acoes { display: flex; gap: 8px; }
 
+/* Discretos: contorno fino; a cor aparece no texto e ao passar o mouse, sem disputar com os dados */
 .btn-editar,
 .btn-excluir {
   padding: 5px 12px;
-  border-radius: 6px;
+  border-radius: 7px;
   font-family: inherit;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  border: none;
-  transition: background 0.15s;
+  background: var(--card);
+  border: 1px solid #D5DEE7;
+  transition: background 0.15s, border-color 0.15s;
 }
 
-.btn-editar { background: var(--bg); color: var(--accent-deep); }
-.btn-editar:hover { background: #D0E7F5; }
-.btn-excluir { background: #FBEAEA; color: #A85454; }
-.btn-excluir:hover { background: #F5D0D0; }
+.btn-editar { color: var(--text-dark); }
+.btn-editar:hover { background: #F3F5F8; border-color: #BFCCD9; }
+.btn-excluir { color: #B04A4A; }
+.btn-excluir:hover { background: #FBEAEA; border-color: #EBC5C5; }
 
 /* ── Responsivo ── */
 @media (max-width: 700px) {
@@ -439,6 +525,13 @@ body {
 
   .form-grid { grid-template-columns: 1fr; }
   .field.span-2 { grid-column: span 1; }
+
+  .pagina-topo h1 { font-size: 26px; }
+  .frente { padding: 12px; border-radius: 14px; }
+  .tabela th,
+  .tabela td { padding-left: 10px; padding-right: 10px; }
+  .secao-textos h2 { font-size: 18px; }
+  .secao-icone { width: 36px; height: 36px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
