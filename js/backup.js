@@ -13,6 +13,7 @@
 // Cores das abas: azul = empresas que ele representa · verde = estoque (revenda) · cinza = clientes e rotas.
 
 import { buscarTodasLinhas } from './supabase.js'
+import { calcularCarteira, sobraDaMeta } from './carteira.js'
 
 const URL_EXCELJS = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js'
 const SRI_EXCELJS = 'sha512-dlPw+ytv/6JyepmelABrgeYgHI0O+frEwgfnPdXDTOIZz+eDgfW07QXG02/O8COfivBdGNINy+Vex+lYmJ5rxw=='
@@ -362,6 +363,8 @@ async function lerEstoque() {
       try { return [t, await ler(t)] } catch { return [t, null] }
     }),
     (async () => { try { return ['clientes', await ler('clientes', { select: 'id, nome' })] } catch { return ['clientes', null] } })(),
+    // Acertos da carteira: se não der para ler, só as linhas da carteira ficam de fora (o resto sai normal)
+    (async () => { try { return ['carteira_acertos', await ler('carteira_acertos')] } catch { return ['carteira_acertos', []] } })(),
   ])
   const dados = Object.fromEntries(pares)
   const falhas = Object.keys(dados).filter((t) => dados[t] === null)
@@ -454,20 +457,28 @@ const textoDosProdutos = (itens, produtoPorId) =>
 function numerosDoEstoque(est, org, inicio, fim) {
   const vendidoNoMes = somar(org.vendas.filter((v) => v.data_venda >= inicio && v.data_venda <= fim), (v) => v.total)
   let lucroDoMes = 0
-  let lucroTotal = 0
   org.vendas.forEach((v) => lucroPorPagamento(v).forEach((x) => {
-    lucroTotal += x.lucro
     const dia = String(x.pagamento.data_pagamento).slice(0, 10)
     if (dia >= inicio && dia <= fim) lucroDoMes += x.lucro
   }))
-  const retirado = somar(est.retiradas_lucro, (r) => Number(r.valor))
   const retiradoNoMes = somar(est.retiradas_lucro.filter((r) => r.data_retirada >= inicio && r.data_retirada <= fim), (r) => Number(r.valor))
+  // Carteira e "pode retirar": a mesma conta dos cards do Dashboard (js/carteira.js)
+  const meta = arredonda2(somar(est.metas_estoque, (m) => Number(m.quantidade) * Number(m.preco_unitario)))
+  const carteira = calcularCarteira({
+    acertos: est.carteira_acertos || [],
+    pagamentosVenda: est.pagamentos_venda,
+    pagamentosCompra: est.pagamentos_compra,
+    retiradas: est.retiradas_lucro,
+  })
+  const sobra = carteira ? sobraDaMeta(carteira.saldo, meta) : null
   return {
+    carteira,
+    podeRetirar: sobra ? sobra.podeRetirar : 0,
+    faltaParaMeta: sobra ? sobra.falta : 0,
     valorEstoque: arredonda2(somar(est.produtos, (p) => Math.max(0, org.saldo[p.id] || 0) * Number(p.preco_custo))),
     vendidoNoMes: arredonda2(vendidoNoMes),
     lucroDoMes: arredonda2(lucroDoMes),
     retiradoNoMes: arredonda2(retiradoNoMes),
-    podeRetirar: Math.max(0, arredonda2(lucroTotal - retirado)),
     aReceber: arredonda2(somar(org.vendas.filter((v) => v.falta > 0.004), (v) => v.falta)),
     aPagar: arredonda2(somar(org.compras.filter((c) => c.falta > 0.004), (c) => c.falta)),
     entregasPendentes: org.entregas.filter((e) => situacaoDaEntrega(e) !== 'Concluída').length,
@@ -608,7 +619,15 @@ async function gerarRelatorioMes() {
         { rotulo: 'Vendido de produtos no mês', valor: n.vendidoNoMes, tipo: 'moeda', nota: 'Conta na hora da venda, mesmo que o cliente ainda não tenha pago.' },
         { rotulo: 'Lucro recebido no mês', valor: n.lucroDoMes, tipo: 'moeda', nota: 'Só do dinheiro que já entrou. O pagamento cobre primeiro o custo; o que passar disso é lucro.' },
         { rotulo: 'Retirado no mês', valor: n.retiradoNoMes, tipo: 'moeda', nota: 'Lucro que você tirou para você neste mês.' },
-        { rotulo: 'Pode retirar agora', valor: n.podeRetirar, tipo: 'moeda', nota: 'Todo o lucro já recebido (desde o começo) menos tudo o que você já retirou.' },
+        ...(n.carteira ? [
+          { rotulo: 'Na carteira (dinheiro + Pix)', valor: n.carteira.saldo, tipo: 'moeda', nota: 'O valor do último "Acertar", mais as vendas recebidas, menos as compras pagas e as retiradas depois dele.' },
+          {
+            rotulo: 'Pode retirar agora', valor: n.podeRetirar, tipo: 'moeda',
+            nota: n.faltaParaMeta > 0
+              ? `Nada sobra: faltam ${n.faltaParaMeta.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} para a próxima meta.`
+              : 'O que a carteira tem acima da próxima meta.',
+          },
+        ] : []),
         { rotulo: 'Clientes ainda me devem', valor: n.aReceber, tipo: 'moeda', nota: 'Em aberto hoje, de qualquer mês.' },
         { rotulo: 'Eu ainda devo aos fornecedores', valor: n.aPagar, tipo: 'moeda', nota: 'Em aberto hoje, de qualquer mês.' },
         {

@@ -89,9 +89,18 @@
         </span>
         <div class="secao-textos">
           <h2>Estoque</h2>
-          <span class="secao-sub">sua revenda · vendido e lucro seguem o mês escolhido acima</span>
+          <span class="secao-sub">sua revenda · as vendas e o lucro seguem o mês escolhido acima</span>
         </div>
+        <!-- Lê em voz alta carteira, pode retirar e meta (só aparece se o aparelho tiver voz) -->
+        <button type="button" class="est-btn-ouvir" id="estBtnOuvir" hidden title="Ouvir os números principais">🔊 Ouvir</button>
       </div>
+
+      <!-- Pró-labore: do dia 5 em diante, até registrar a retirada do mês (abre a janela de retirada) -->
+      <button type="button" class="est-faixa est-faixa-prolabore" id="estFaixaProLabore" style="display:none">
+        <span aria-hidden="true">💵</span>
+        <span id="estFaixaProLaboreTexto"></span>
+        <span class="est-faixa-ir">Registrar ›</span>
+      </button>
 
       <!-- Faixa de alerta: cobranças e contas vencidas ou que vencem hoje -->
       <a href="#estCobrancas" class="est-faixa" id="estFaixa" style="display:none">
@@ -106,35 +115,45 @@
         <span class="est-faixa-ir">Abrir Rotas ›</span>
       </a>
 
+      <!-- Carteira primeiro: é o número que o Caio usa para decidir (js/carteira.js) -->
       <div class="cards">
         <div class="card card-acento">
-          <div class="est-card-topo"><div class="card-label">Mercadoria em estoque</div></div>
+          <div class="est-card-topo">
+            <div class="card-label"><span class="est-icone" aria-hidden="true">💰</span>Na carteira</div>
+            <button type="button" class="est-btn-card" id="estBtnAcertar" title="Digitar quanto você tem hoje (dinheiro + Pix)">Acertar</button>
+          </div>
+          <div class="card-valor" id="estCarteira">—</div>
+          <div class="card-sub" id="estSubCarteira">dinheiro + Pix</div>
+        </div>
+        <div class="card card-acento" id="estCardRetirar">
+          <div class="est-card-topo">
+            <div class="card-label"><span class="est-icone" id="estIconeRetirar" aria-hidden="true">✅</span>Pode retirar</div>
+            <button type="button" class="est-btn-card" id="estBtnRetirada" title="Registrar uma retirada (pró-labore)">+ Retirada</button>
+          </div>
+          <div class="card-valor" id="estRetiravel">—</div>
+          <div class="card-sub" id="estSubRetiravel">sobra depois da meta</div>
+        </div>
+        <div class="card card-acento">
+          <div class="est-card-topo"><div class="card-label"><span class="est-icone" aria-hidden="true">📦</span>Mercadoria em estoque</div></div>
           <div class="card-valor" id="estValorEstoque">—</div>
           <div class="card-sub" id="estSubEstoque">pelo preço de custo</div>
         </div>
         <div class="card card-acento">
-          <div class="est-card-topo"><div class="card-label">Vendido no mês</div></div>
-          <div class="card-valor" id="estVendido">—</div>
-          <div class="card-sub" id="estSubVendido">vendas de produtos</div>
-        </div>
-        <div class="card card-acento">
           <div class="est-card-topo">
-            <div class="card-label">Meu lucro</div>
-            <button type="button" class="est-btn-card" id="estBtnRetirada" title="Registrar uma retirada de lucro">+ Retirada</button>
-          </div>
-          <div class="card-valor" id="estLucro">—</div>
-          <div class="card-sub">já recebido neste mês</div>
-          <div class="est-card-destaque">Pode retirar agora: <strong id="estRetiravel">—</strong></div>
-        </div>
-        <div class="card card-acento">
-          <div class="est-card-topo">
-            <div class="card-label">Próxima meta</div>
+            <div class="card-label"><span class="est-icone" aria-hidden="true">🎯</span>Próxima meta</div>
             <button type="button" class="est-btn-card" id="estBtnMeta" title="Montar ou editar a meta de compra">Editar</button>
           </div>
           <div class="card-valor" id="estMeta">—</div>
           <div class="card-sub" id="estSubMeta">dinheiro para a próxima compra</div>
         </div>
       </div>
+
+      <!-- Vendas e lucro do mês: pequenos, de propósito (pedido do Caio: o número grande confundia) -->
+      <p class="est-linha-mes">
+        Vendas do mês: <strong id="estVendido">—</strong> <span id="estSubVendido"></span>
+        <span class="est-linha-sep">·</span>
+        Lucro do mês: <strong id="estLucro">—</strong>
+      </p>
 
       <!-- Quem me deve / Quem eu devo (só a revenda; a comissão das empresas fica em Empresas) -->
       <div class="est-cobrancas" id="estCobrancas">
@@ -208,10 +227,32 @@
   </main>
 
   <!-- Janelinhas do Estoque -->
+  <div class="modal-overlay frente-verde" id="estModalCarteira">
+    <div class="modal">
+      <div class="modal-topo">
+        <h2>Acertar a carteira</h2>
+        <button type="button" class="modal-fechar" data-fechar>&times;</button>
+      </div>
+      <form id="estFormCarteira">
+        <p class="est-carteira-pergunta">Quanto você tem <strong>hoje</strong>?</p>
+        <p class="est-sub" style="margin-bottom: 14px">Some o dinheiro em espécie e o Pix.</p>
+        <div class="field">
+          <label for="estCartValor">Valor (R$) *</label>
+          <input type="number" id="estCartValor" step="0.01" min="0" required inputmode="decimal" placeholder="Ex: 4172,17">
+        </div>
+        <p class="est-sub" id="estCartUltimo" style="margin-top: 12px"></p>
+        <div class="modal-rodape">
+          <button type="button" class="btn-secundario" data-fechar>Cancelar</button>
+          <button type="submit" class="btn-primario" id="estBtnSalvarCarteira">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div class="modal-overlay frente-verde" id="estModalRetirada">
     <div class="modal">
       <div class="modal-topo">
-        <h2>Registrar retirada de lucro</h2>
+        <h2>Registrar retirada</h2>
         <button type="button" class="modal-fechar" data-fechar>&times;</button>
       </div>
       <form id="estFormRetirada">

@@ -255,6 +255,89 @@
 
 .est-card-destaque strong { color: #2E7D5A; }
 
+/* Card "Pode retirar": verde quando sobra, vermelho quando falta para a meta (cor + frase, não só cor) */
+.est-card-ok .card-valor { color: #1F7A52; }
+.est-card-ok .card-sub   { color: #2E7D5A; font-weight: 600; }
+.frente .card.est-card-falta { border-color: #EBC5C5; background: #FFF7F7; }
+.est-card-falta .card-valor { color: #B04A4A; }
+.est-card-falta .card-sub   { color: #A8403C; font-weight: 600; }
+
+/* ── Pensado para a dislexia do Caio: ícone fixo por card, textos pequenos maiores e mais espaçados ── */
+.est-icone {
+  margin-right: 7px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.est-dash .card-sub {
+  font-size: 13.5px;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+}
+
+/* Vendas e lucro do mês: pequenos em destaque, mas fáceis de ler, embaixo dos cards */
+.est-linha-mes {
+  margin: 12px 2px 0;
+  font-size: 14.5px;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  color: var(--text-soft);
+}
+
+/* Botão 🔊 Ouvir, no canto do cabeçalho do Estoque */
+.est-btn-ouvir {
+  flex-shrink: 0;
+  min-height: 38px;
+  padding: 0 14px;
+  background: var(--card);
+  border: 1px solid var(--f-borda);
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--f-escura);
+  cursor: pointer;
+}
+
+.est-btn-ouvir:hover { background: #DFF5EC; }
+
+/* Aviso do pró-labore: é um botão (abre a retirada); verde quando dá para retirar, vermelho quando falta */
+button.est-faixa {
+  width: 100%;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* (button.est-faixa... para vencer o amarelo padrão de .est-faixa, que vem mais abaixo no arquivo) */
+button.est-faixa.est-faixa-prolabore { background: #E6F5EE; border-color: #B7DCCB; color: #1F6A4F; }
+button.est-faixa.est-faixa-prolabore:hover { background: #DFF5EC; }
+button.est-faixa.est-faixa-prolabore.est-faixa-falta { background: #FBEAEA; border-color: #EBC5C5; color: #A8403C; }
+
+/* Janela de pergunta (js/pergunta.js): letra grande, frases uma embaixo da outra */
+.pergunta-overlay { z-index: 210; }
+.pergunta-modal { max-width: 440px; }
+
+.pergunta-linhas p {
+  margin-bottom: 6px;
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--text-dark);
+}
+
+.btn-primario.pergunta-perigo { background: #B04A4A; }
+.btn-primario.pergunta-perigo:hover { background: #963D3D; }
+
+.est-linha-mes strong { color: var(--text-dark); font-variant-numeric: tabular-nums; }
+.est-linha-sep { margin: 0 8px; }
+
+/* Janela "Acertar a carteira": a pergunta em letra grande */
+.est-carteira-pergunta {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
 .est-btn-card {
   margin-top: 12px;
   padding: 6px 12px;

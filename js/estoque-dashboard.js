@@ -14,6 +14,8 @@
 
 import { supabase, buscarTodasLinhas } from './supabase.js'
 import { mensagemErro } from './erros.js'
+import { calcularCarteira, sobraDaMeta, lembrarProLabore } from './carteira.js'
+import { perguntar } from './pergunta.js'
 
 // Ponte com o gráfico "Vendas por dia" do dashboard.js: devolve, para um mês, o quanto
 // foi vendido de produtos do estoque em cada dia (a parte VERDE das barras). Existe desde
@@ -52,22 +54,26 @@ function iniciar(userId) {
   let retiradas = []
   let metas = []
   let entregas = []   // só para o aviso de "entrega sem dia" / atrasada
+  let acertos = []    // acertos da carteira (o valor que o Caio digita em "Acertar")
+  let carteiraFalhou = false
 
   async function carregar() {
-    const [p, v, c, r, m, en] = await Promise.all([
+    const [p, v, c, r, m, en, ac] = await Promise.all([
       supabase.from('produtos').select('*').order('nome'),
       buscarTodasLinhas('vendas_estoque', {
         select: '*, clientes(nome), venda_estoque_itens(produto_id, quantidade, preco_unitario, custo_unitario, produtos(nome, unidade)), pagamentos_venda(valor, data_pagamento, created_at)',
         order: 'id',
       }),
       buscarTodasLinhas('compras_estoque', {
-        select: '*, fornecedores(nome), produtos(nome, unidade), pagamentos_compra(valor)',
+        select: '*, fornecedores(nome), produtos(nome, unidade), pagamentos_compra(valor, created_at)',
         order: 'id',
       }),
       supabase.from('retiradas_lucro').select('*').order('data_retirada', { ascending: false }),
       supabase.from('metas_estoque').select('*').order('created_at'),
       // Entregas (só o necessário para o aviso). Se falhar, o resto do Dashboard segue normal.
       supabase.from('entregas').select('id, data_entrega, entrega_paradas(feita)'),
+      // Acertos da carteira. Se falhar, o card mostra "indisponível" e o resto segue normal.
+      supabase.from('carteira_acertos').select('*').order('created_at', { ascending: false }),
     ])
     const erro = p.error || v.error || c.error || r.error || m.error
     if (erro) {
@@ -83,6 +89,9 @@ function iniciar(userId) {
     metas = m.data
     if (en.error) console.error('Erro ao carregar as entregas para o aviso:', en.error)
     entregas = en.error ? [] : en.data
+    if (ac.error) console.error('Erro ao carregar a carteira:', ac.error)
+    carteiraFalhou = !!ac.error
+    acertos = ac.error ? [] : ac.data
     return true
   }
 
@@ -143,23 +152,30 @@ function iniciar(userId) {
       s + (v.venda_estoque_itens || []).reduce((t, i) => t + Number(i.quantidade) * Number(i.preco_unitario), 0), 0)
 
     let lucroDoMes = 0
-    let lucroTotal = 0
     vendas.forEach((v) => lucroLiberadoPorPagamento(v).forEach((x) => {
-      lucroTotal += x.valor
       if (x.data >= inicio && x.data <= fim) lucroDoMes += x.valor
     }))
-    const retirado = retiradas.reduce((s, r) => s + Number(r.valor), 0)
-    const retiravel = Math.max(0, arredonda2(lucroTotal - retirado))
 
-    const meta = metas.reduce((s, m) => s + Number(m.quantidade) * Number(m.preco_unitario), 0)
+    const meta = arredonda2(metas.reduce((s, m) => s + Number(m.quantidade) * Number(m.preco_unitario), 0))
+
+    // Carteira (dinheiro + Pix) e o que dá para retirar sem faltar para a próxima meta (regras em carteira.js)
+    const carteira = calcularCarteira({
+      acertos,
+      pagamentosVenda: vendas.flatMap((v) => v.pagamentos_venda || []),
+      pagamentosCompra: compras.flatMap((c) => c.pagamentos_compra || []),
+      retiradas,
+    })
+    const sobra = carteira ? sobraDaMeta(carteira.saldo, meta) : null
 
     return {
       valorEstoque: arredonda2(valorEstoque),
       vendido: arredonda2(vendido),
       nVendas: vendasDoMes.length,
       lucroDoMes: arredonda2(lucroDoMes),
-      retiravel,
-      meta: arredonda2(meta),
+      meta,
+      carteira,
+      retiravel: sobra ? sobra.podeRetirar : 0,
+      falta: sobra ? sobra.falta : 0,
     }
   }
 
@@ -171,11 +187,13 @@ function iniciar(userId) {
     $('estValorEstoque').textContent = fmt(c.valorEstoque)
     $('estSubEstoque').textContent = 'pelo preço de custo'
 
+    // Vendas e lucro do mês: só uma linha pequena embaixo dos cards
     $('estVendido').textContent = fmt(c.vendido)
-    $('estSubVendido').textContent = c.nVendas === 1 ? '1 venda de produtos' : `${c.nVendas} vendas de produtos`
-
+    $('estSubVendido').textContent = c.nVendas === 1 ? '(1 venda)' : `(${c.nVendas} vendas)`
     $('estLucro').textContent = fmt(c.lucroDoMes)
-    $('estRetiravel').textContent = fmt(c.retiravel)
+
+    desenharCarteira(c)
+    desenharProLabore(c)
 
     $('estMeta').textContent = fmt(c.meta)
     if (metas.length === 0) {
@@ -192,6 +210,91 @@ function iniciar(userId) {
     desenharFaixaEntregas()
     return c
   }
+
+  // Cards "Na carteira" e "Pode retirar": um número grande, uma frase curta, cor de bom/ruim
+  function desenharCarteira(c) {
+    const cardRetirar = $('estCardRetirar')
+    cardRetirar.classList.remove('est-card-ok', 'est-card-falta')
+    $('estIconeRetirar').textContent = '✅'
+    if (carteiraFalhou) {
+      $('estCarteira').textContent = '—'
+      $('estSubCarteira').textContent = 'não foi possível carregar'
+      $('estRetiravel').textContent = '—'
+      $('estSubRetiravel').textContent = 'carteira indisponível'
+      return
+    }
+    if (!c.carteira) {
+      $('estCarteira').textContent = '—'
+      $('estSubCarteira').textContent = 'Toque em Acertar e digite quanto você tem hoje'
+      $('estRetiravel').textContent = '—'
+      $('estSubRetiravel').textContent = 'acerte a carteira primeiro'
+      return
+    }
+    $('estCarteira').textContent = fmt(c.carteira.saldo)
+    $('estSubCarteira').textContent = 'dinheiro + Pix'
+    $('estRetiravel').textContent = fmt(c.retiravel)
+    if (c.falta > 0) {
+      cardRetirar.classList.add('est-card-falta')
+      $('estIconeRetirar').textContent = '⚠️'
+      $('estSubRetiravel').textContent = `faltam ${fmt(c.falta)} para a meta`
+    } else {
+      cardRetirar.classList.add('est-card-ok')
+      $('estIconeRetirar').textContent = '✅'
+      $('estSubRetiravel').textContent = 'sobra depois da meta'
+    }
+  }
+
+  // Aviso do pró-labore (dia 5): do dia 5 em diante, até registrar a retirada do mês
+  function desenharProLabore(c) {
+    const faixa = $('estFaixaProLabore')
+    const mostrar = !!c.carteira && lembrarProLabore(dataLocalStr(new Date()), retiradas)
+    faixa.style.display = mostrar ? 'flex' : 'none'
+    if (!mostrar) return
+    faixa.classList.toggle('est-faixa-falta', c.falta > 0)
+    $('estFaixaProLaboreTexto').textContent = c.falta > 0
+      ? `Pró-labore do mês: ainda faltam ${fmt(c.falta)} para a meta.`
+      : `Pró-labore do mês: você pode retirar ${fmt(c.retiravel)}.`
+  }
+
+  // 🔊 Ouvir: o celular lê em voz alta os números principais (sem internet e sem serviço pago)
+  const vozDisponivel = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window
+
+  function falado(valor) {
+    const centavos = Math.round(Math.abs(Number(valor) || 0) * 100)
+    const reais = Math.floor(centavos / 100)
+    const resto = centavos % 100
+    const texto = `${reais} ${reais === 1 ? 'real' : 'reais'}`
+    return resto ? `${texto} e ${resto} ${resto === 1 ? 'centavo' : 'centavos'}` : texto
+  }
+
+  function textoParaOuvir(c) {
+    if (carteiraFalhou) return 'Não consegui carregar a carteira agora.'
+    if (!c.carteira) return 'Você ainda não acertou a carteira. Toque em Acertar e digite quanto você tem hoje.'
+    const partes = [`Na carteira: ${falado(c.carteira.saldo)}.`]
+    partes.push(c.falta > 0
+      ? `Para retirar, ainda faltam ${falado(c.falta)} para a próxima meta.`
+      : `Pode retirar: ${falado(c.retiravel)}.`)
+    if (c.meta > 0) partes.push(`Próxima meta: ${falado(c.meta)}.`)
+    return partes.join(' ')
+  }
+
+  if (vozDisponivel) {
+    const botaoOuvir = $('estBtnOuvir')
+    botaoOuvir.hidden = false
+    botaoOuvir.addEventListener('click', () => {
+      // Tocar de novo enquanto fala: para
+      if (window.speechSynthesis.speaking) { window.speechSynthesis.cancel(); return }
+      const fala = new SpeechSynthesisUtterance(textoParaOuvir(calcular()))
+      fala.lang = 'pt-BR'
+      fala.rate = 0.95
+      const voz = window.speechSynthesis.getVoices().find((v) => /^pt(-|_)BR/i.test(v.lang))
+      if (voz) fala.voice = voz
+      window.speechSynthesis.speak(fala)
+    })
+  }
+
+  // O aviso do pró-labore abre direto a janela de retirada
+  $('estFaixaProLabore').addEventListener('click', () => $('estBtnRetirada').click())
 
   // Aviso das entregas (o "rota sem dia" do Caio, só para entregas): sem dia marcado ou atrasadas
   function desenharFaixaEntregas() {
@@ -424,7 +527,7 @@ function iniciar(userId) {
   })
 
   // ── Janelinhas ──────────────────────────────────────────────
-  const MODAIS = ['estModalRetirada', 'estModalMeta', 'estModalPag', 'estModalObs']
+  const MODAIS = ['estModalCarteira', 'estModalRetirada', 'estModalMeta', 'estModalPag', 'estModalObs']
   const abrir = (id) => $(id).classList.add('aberto')
   const fechar = (id) => $(id).classList.remove('aberto')
   MODAIS.forEach((id) => {
@@ -432,6 +535,40 @@ function iniciar(userId) {
     $(id).querySelectorAll('[data-fechar]').forEach((b) => b.addEventListener('click', () => fechar(id)))
   })
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') MODAIS.forEach(fechar) })
+
+  // ── Acertar a carteira (o Caio digita quanto tem hoje: dinheiro + Pix) ──
+  $('estBtnAcertar').addEventListener('click', () => {
+    const c = calcular()
+    $('estCartValor').value = c.carteira ? c.carteira.saldo : ''
+    $('estCartUltimo').textContent = c.carteira
+      ? `Último acerto: ${fmt(c.carteira.base)} em ${dataBR(dataLocalStr(new Date(c.carteira.acertadoEm)))}`
+      : ''
+    abrir('estModalCarteira')
+    $('estCartValor').focus()
+    $('estCartValor').select()
+  })
+
+  $('estFormCarteira').addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const valor = arredonda2($('estCartValor').value)
+    if (!(valor >= 0)) return
+    const botao = $('estBtnSalvarCarteira')
+    botao.disabled = true
+    botao.textContent = 'Salvando...'
+    const { error } = await supabase.from('carteira_acertos').insert({ user_id: userId, valor })
+    botao.disabled = false
+    botao.textContent = 'Salvar'
+    if (error) { console.error('Erro ao acertar a carteira:', error); alert(mensagemErro(error)); return }
+    fechar('estModalCarteira')
+    await recarregar()
+  })
+
+  // Texto curto no topo da janela de retirada
+  function textoRetirada(c) {
+    if (!c.carteira) return 'Acerte a carteira primeiro (botão <strong>Acertar</strong>) para saber quanto pode tirar.'
+    if (c.falta > 0) return `Agora não sobra nada: faltam <strong>${fmt(c.falta)}</strong> para a próxima meta.`
+    return `Você pode tirar até <strong>${fmt(c.retiravel)}</strong> sem faltar para a próxima meta.`
+  }
 
   // ── Registrar retirada ──────────────────────────────────────
   function desenharRetiradas() {
@@ -450,7 +587,7 @@ function iniciar(userId) {
 
   $('estBtnRetirada').addEventListener('click', () => {
     const c = calcular()
-    $('estRetInfo').innerHTML = `Lucro que você pode retirar agora: <strong>${fmt(c.retiravel)}</strong>`
+    $('estRetInfo').innerHTML = textoRetirada(c)
     $('estRetValor').value = c.retiravel > 0 ? c.retiravel : ''
     $('estRetData').value = dataLocalStr(new Date())
     $('estRetObs').value = ''
@@ -463,10 +600,15 @@ function iniciar(userId) {
     e.preventDefault()
     const valor = arredonda2($('estRetValor').value)
     if (!(valor > 0)) return
-    const disponivel = calcular().retiravel
-    if (valor > disponivel + 0.004 &&
-        !confirm(`Você está retirando ${fmt(valor)}, mas o lucro disponível é ${fmt(disponivel)}.\nO excedente sai do dinheiro que deveria ficar para repor o estoque.\n\nRegistrar mesmo assim?`)) {
-      return
+    const c = calcular()
+    const disponivel = c.retiravel
+    if (c.carteira && valor > disponivel + 0.004) {
+      const ok = await perguntar({
+        titulo: 'Vai faltar para a meta',
+        linhas: [`Você vai tirar ${fmt(valor)}.`, `Só sobram ${fmt(disponivel)}.`, `Vão faltar ${fmt(valor - disponivel)} para a próxima compra.`],
+        sim: 'Sim, tirar mesmo assim', nao: 'Não', perigo: true, verde: true,
+      })
+      if (!ok) return
     }
     const botao = $('estBtnSalvarRetirada')
     botao.disabled = true
@@ -487,12 +629,24 @@ function iniciar(userId) {
   $('estListaRetiradas').addEventListener('click', async (e) => {
     const botao = e.target.closest('[data-est-retirada]')
     if (!botao) return
-    if (!confirm('Excluir esta retirada? O valor volta para "pode retirar agora".')) return
+    const retirada = retiradas.find((r) => String(r.id) === botao.dataset.estRetirada)
+    // Só volta para a carteira o que foi lançado DEPOIS do último "Acertar" (o acerto já conta o que veio antes)
+    const carteira = calcular().carteira
+    const depoisDoAcerto = carteira && Date.parse(retirada?.created_at) > Date.parse(carteira.acertadoEm)
+    let efeito = 'Ela sai da lista de retiradas.'
+    if (depoisDoAcerto) efeito = `Os ${fmt(retirada?.valor)} voltam para a carteira.`
+    else if (carteira) efeito = 'A carteira não muda: esta retirada é de antes do último Acertar.'
+    const ok = await perguntar({
+      titulo: 'Apagar esta retirada?',
+      linhas: [efeito],
+      sim: 'Sim, apagar', nao: 'Não', perigo: true, verde: true,
+    })
+    if (!ok) return
     const { error } = await supabase.from('retiradas_lucro').delete().eq('id', botao.dataset.estRetirada)
     if (error) { console.error('Erro ao excluir retirada:', error); alert(mensagemErro(error, 'excluir')); return }
     await recarregar()
     const c = calcular()
-    $('estRetInfo').innerHTML = `Lucro que você pode retirar agora: <strong>${fmt(c.retiravel)}</strong>`
+    $('estRetInfo').innerHTML = textoRetirada(c)
     desenharRetiradas()
   })
 

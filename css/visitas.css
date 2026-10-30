@@ -89,12 +89,12 @@
   gap: 4px;
 }
 
+/* Sem maiúsculas, como os títulos dos cards do Dashboard (mais fácil de ler) */
 .resumo-label {
-  font-size: 12px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--f-escura, var(--text-soft));
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.01em;
 }
 
 .resumo-valor {

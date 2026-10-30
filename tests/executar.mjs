@@ -34,6 +34,8 @@ const TESTES = [
   { nome: 'clientes-cores', arquivo: 'clientes-cores.mjs', tipo: 'node', desc: 'Contas das bolinhas (dias entre datas e limites 15/16 e 30/31)' },
   { nome: 'clientes-prioridade', arquivo: 'clientes-prioridade.mjs', tipo: 'navegador', desc: 'Prioridade de visita: selo, aviso, filtro, janela do cliente e Dashboard' },
   { nome: 'prioridade', arquivo: 'prioridade.mjs', tipo: 'node', desc: 'Contas da prioridade (em dia, hoje, atrasado, nunca atendido, ordem)' },
+  { nome: 'carteira-tela', arquivo: 'carteira-tela.mjs', tipo: 'navegador', desc: 'Dashboard: Na carteira e Pode retirar (Acertar, Pagar, Receber, Retirada)' },
+  { nome: 'carteira', arquivo: 'carteira.mjs', tipo: 'node', desc: 'Contas da carteira (acerto, entradas e saídas depois dele, sobra da meta)' },
   { nome: 'funcao-avisos-calculo', arquivo: 'funcao-avisos-calculo.mjs', tipo: 'node', desc: 'Cálculo do aviso diário (fuso de Brasília, vencidas, hoje, amanhã)' },
   { nome: 'funcao-avisos', arquivo: 'funcao-avisos.mjs', tipo: 'node', pacotes: ['web-push'], desc: 'Função avisos-diarios inteira (segredo, modos de teste, aparelhos expirados)' },
 ]

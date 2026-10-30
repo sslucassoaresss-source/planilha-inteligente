@@ -34,6 +34,7 @@ const db = {
   venda_estoque_itens: [],
   pagamentos_venda: [],
   retiradas_lucro: [],
+  carteira_acertos: [],
   metas_estoque: [],
   lembretes: [], push_subscriptions: [],
   entregas: [],
