@@ -1,4 +1,4 @@
-// Teste de Encerrar / Reativar / Excluir empresa (banco em memória). Uso: node empresas-encerrar.mjs <url-base> <perfil> <pasta-png>
+// Teste de Encerrar / Reativar empresa (banco em memória). Uso: node empresas-encerrar.mjs <url-base> <perfil> <pasta-png>
 import { spawn } from 'node:child_process'
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
@@ -35,7 +35,7 @@ await cmd('Page.enable'); await cmd('Runtime.enable')
 const banco = async () => JSON.parse(await js(`JSON.stringify({ empresas: __db.empresas, recebidas: __db.comissoes_recebidas, itens: __db.itens_venda })`))
 const empresa = async (nome) => (await banco()).empresas.find((e) => e.nome === nome)
 const acharLinha = (nome) => `[...document.querySelectorAll('#listaEmpresas tr')].find((t) => t.querySelector('strong')?.textContent === ${JSON.stringify(nome)})`
-const linha = (nome) => js(`(() => { const tr = ${acharLinha(nome)}; return tr ? { texto: tr.innerText, encerrada: tr.classList.contains('est-inativo'), botoes: [...tr.querySelectorAll('button')].map((b) => b.textContent.trim()) } : null })()`)
+const linha = (nome) => js(`(() => { const tr = ${acharLinha(nome)}; return tr ? { texto: tr.innerText, encerrada: tr.querySelector('.badge')?.textContent === 'Encerrada', cinza: tr.classList.contains('est-inativo'), botoes: [...tr.querySelectorAll('button')].map((b) => b.textContent.trim()) } : null })()`)
 const clicarNaLinha = async (nome, texto) => {
   await js(`[...${acharLinha(nome)}.querySelectorAll('button')].find((b) => b.textContent.trim() === ${JSON.stringify(texto)}).click(); 1`)
   await sleep(500)
@@ -59,43 +59,30 @@ await cmd('Emulation.setDeviceMetricsOverride', { width: 1100, height: 900, devi
 await ir(`${base}/`)
 await abrir('empresas')
 
-// ── A) Sem a coluna "ativa" no banco: toda empresa aparece como ativa, com "Encerrar" ──
+// ── A) Sem a coluna "ativa" no banco: toda empresa aparece como ativa, com "Encerrar"; não existe mais "Excluir" ──
 let l1 = await linha('Racao Forte')
 confere('empresa sem a coluna "ativa" aparece como ativa, com botão Encerrar', l1 && !l1.encerrada && l1.botoes.includes('Encerrar') && !l1.botoes.includes('Reativar'), JSON.stringify(l1?.botoes))
+confere('nenhuma empresa tem botão Excluir', await js(`![...document.querySelectorAll('#listaEmpresas button')].some((b) => /excluir/i.test(b.textContent))`))
 
-// ── B) Excluir empresa SEM venda, mas com "Recebido" gravado (o caso do Caio) ──
-await clicarNaLinha('Areia Boa', 'Excluir')
+// ── B) Encerrar empresa com venda: nada é apagado e o mês continua igual ──
+await clicarNaLinha('Racao Forte', 'Encerrar')
 let p = await pergunta()
-confere('excluir sem venda: pergunta "Excluir a empresa?" (sem o confirm antigo)', p?.titulo === 'Excluir a empresa?' && (await js(`__confirms.length`)) === 0, JSON.stringify(p))
+confere('Encerrar: pergunta explica que os meses passados ficam iguais', p?.titulo === 'Encerrar a empresa?' && p.texto.includes('meses passados'), JSON.stringify(p))
 await responder(false)
-confere('"Não": nada foi apagado', !!(await empresa('Areia Boa')) && (await banco()).recebidas.some((r) => r.empresa_id === 'e2'))
-await clicarNaLinha('Areia Boa', 'Excluir'); await responder(true)
+confere('"Não": continua ativa', (await empresa('Racao Forte'))?.ativa !== false)
+await clicarNaLinha('Racao Forte', 'Encerrar'); await responder(true)
 let b = await banco()
-confere('"Sim": empresa e a marcação de "Recebido" dela saíram, sem erro', !b.empresas.some((e) => e.id === 'e2') && !b.recebidas.some((r) => r.empresa_id === 'e2') && (await js(`__alertas.length`)) === 0, await js(`JSON.stringify(__alertas)`))
-confere('a outra empresa e a marcação dela continuam', b.empresas.some((e) => e.id === 'e1') && b.recebidas.some((r) => r.empresa_id === 'e1'))
-confere('a lista da tela foi atualizada', !(await linha('Areia Boa')))
-
-// ── C) Excluir empresa COM venda: não apaga, oferece encerrar ──
-await clicarNaLinha('Racao Forte', 'Excluir')
-p = await pergunta()
-confere('excluir com venda: avisa que tem vendas e oferece "Encerrar a empresa"', p?.titulo === 'Essa empresa tem vendas' && p.sim === 'Encerrar a empresa', JSON.stringify(p))
-await responder(false)
-confere('"Cancelar": continua ativa e com tudo', (await empresa('Racao Forte'))?.ativa !== false && (await banco()).itens.some((i) => i.empresa_id === 'e1'))
-await clicarNaLinha('Racao Forte', 'Excluir'); await responder(true)
-b = await banco()
-confere('"Encerrar a empresa": ficou encerrada, nada foi apagado', b.empresas.find((e) => e.id === 'e1')?.ativa === false && b.itens.some((i) => i.empresa_id === 'e1') && b.recebidas.some((r) => r.empresa_id === 'e1'))
+confere('"Sim": ficou encerrada, venda e "Recebido" continuam no banco', b.empresas.find((e) => e.id === 'e1')?.ativa === false && b.itens.some((i) => i.empresa_id === 'e1') && b.recebidas.some((r) => r.empresa_id === 'e1'))
 l1 = await linha('Racao Forte')
 confere('na tela: selo "Encerrada", botão Reativar, venda e comissão do mês continuam', l1?.encerrada && l1.texto.includes('Encerrada') && l1.botoes.includes('Reativar') && !l1.botoes.includes('Encerrar') && l1.texto.includes('150,00') && l1.texto.includes('15,00'), l1?.texto.replace(/\s+/g, ' '))
+confere('selo cinza neutro e linha sem o cinza de "Recebido"/inativo', !l1.cinza && (await js(`!!${acharLinha('Racao Forte')}.querySelector('.badge.est-selo-neutro') && !${acharLinha('Racao Forte')}.querySelector('.badge-nao')`)))
 confere('encerrada vai para o fim da lista', await js(`[...document.querySelectorAll('#listaEmpresas tr strong')].map((s) => s.textContent).at(-1) === 'Racao Forte'`))
 confere('o "Recebido" do mês continua marcado', await js(`document.querySelector('.check-recebido[data-empresa-id="e1"]').checked`))
+confere('o resumo do mês continua com a comissão dela', await js(`document.getElementById('resumoComissao').innerText.includes('15,00')`))
+confere('"Editar" de empresa encerrada continua abrindo a janela', await js(`(() => { [...${acharLinha('Racao Forte')}.querySelectorAll('button')].find((x) => x.textContent.trim() === 'Editar').click(); const ok = document.getElementById('modalOverlay').classList.contains('aberto') && document.getElementById('nome').value === 'Racao Forte'; document.getElementById('btnCancelar').click(); return ok })()`))
 await cmd('Page.captureScreenshot', { format: 'png' }).then((s) => writeFileSync(join(saida, 'empresa-encerrada.png'), Buffer.from(s.result.data, 'base64')))
 
-// ── D) Excluir empresa encerrada com venda: só explica ──
-await js(`window.__alertas = []; 1`)
-await clicarNaLinha('Racao Forte', 'Excluir')
-confere('excluir encerrada com venda: explica e não apaga', (await js(`__alertas.length === 1 && __alertas[0].includes('não dá para excluir')`)) && !(await pergunta()) && !!(await empresa('Racao Forte')), await js(`JSON.stringify(__alertas)`))
-
-// ── E) Visitas: encerrada some da venda nova, mas aparece na edição da venda antiga ──
+// ── C) Visitas: encerrada some da venda nova, mas aparece na edição da venda antiga ──
 await abrir('visitas', { e1: false })
 let opcoes = await opcoesVendaNova()
 confere('venda nova: Racao Forte (encerrada) não aparece, as ativas sim', !opcoes.some((o) => o.includes('Racao Forte')) && opcoes.some((o) => o.includes('Petisco Bom')) && opcoes.some((o) => o.includes('Areia Boa')), JSON.stringify(opcoes))
@@ -103,9 +90,9 @@ await abrir('visitas', { e1: false })
 await js(`document.querySelector('.btn-editar[data-id="vx1"]').click(); 1`)
 await sleep(600)
 const edicao = JSON.parse(await js(`(() => { const s = document.querySelector('#listaItens .item-empresa'); return JSON.stringify({ valor: s?.value, texto: s?.selectedOptions[0]?.textContent, opcoes: [...s.options].map((o) => o.textContent) }) })()`))
-confere('editar a venda antiga: Racao Forte continua escolhida, marcada "(encerrada)"', edicao.valor === 'e1' && edicao.texto.includes('(encerrada)'), JSON.stringify(edicao))
+confere('editar a venda antiga: Racao Forte continua escolhida, marcada "(encerrada)"', edicao.valor === 'e1' && edicao.texto === 'Racao Forte (encerrada)', JSON.stringify(edicao))
 
-// ── F) Reativar ──
+// ── D) Reativar ──
 await abrir('empresas', { e1: false })
 await clicarNaLinha('Racao Forte', 'Reativar')
 p = await pergunta()
@@ -117,32 +104,18 @@ await abrir('visitas', { e1: true })
 opcoes = await opcoesVendaNova()
 confere('ativa (ativa = true): aparece na venda nova', opcoes.some((o) => o.includes('Racao Forte') && !o.includes('encerrada')), JSON.stringify(opcoes))
 
-// ── G) Encerrar pelo botão: "Não" não muda nada; "Sim" encerra ──
+// ── E) Banco sem a coluna "ativa": mensagem clara, nada muda ──
 await abrir('empresas')
-await clicarNaLinha('Petisco Bom', 'Encerrar')
-p = await pergunta()
-confere('Encerrar: pergunta explica que os meses passados ficam iguais', p?.titulo === 'Encerrar a empresa?' && p.texto.includes('meses passados'), JSON.stringify(p))
-await responder(false)
-confere('"Não": continua ativa', (await empresa('Petisco Bom'))?.ativa !== false)
-await clicarNaLinha('Petisco Bom', 'Encerrar'); await responder(true)
-confere('"Sim": encerrada', (await empresa('Petisco Bom'))?.ativa === false)
-
-// ── H) Banco sem a coluna "ativa": mensagem clara, nada muda ──
 await js(`window.__alertas = []; window.__falhar = { tabela: 'empresas', op: 'update', code: 'PGRST204' }; 1`)
 await clicarNaLinha('Racao Forte', 'Encerrar'); await responder(true)
 confere('sem a coluna no banco: avisa que o banco não está preparado', (await js(`__alertas.length === 1 && __alertas[0].includes('não está preparado')`)) && (await empresa('Racao Forte'))?.ativa !== false, await js(`JSON.stringify(__alertas)`))
 
-// ── I) Falha comum ao encerrar: mensagem de erro de sempre ──
+// ── F) Falha comum ao encerrar: mensagem de erro de sempre ──
 await js(`window.__alertas = []; window.__falhar = { tabela: 'empresas', op: 'update', code: '42501' }; 1`)
 await clicarNaLinha('Racao Forte', 'Encerrar'); await responder(true)
 confere('falha do servidor ao encerrar: avisa e não muda', (await js(`__alertas.length === 1 && __alertas[0].includes('Erro ao encerrar')`)) && (await empresa('Racao Forte'))?.ativa !== false, await js(`JSON.stringify(__alertas)`))
 
-// ── J) Falha ao conferir as vendas antes de excluir: não apaga nada ──
-await js(`window.__alertas = []; window.__falhar = { tabela: 'itens_venda', op: 'select', code: '42501' }; 1`)
-await clicarNaLinha('Areia Boa', 'Excluir')
-confere('falha ao conferir vendas: avisa, não pergunta e não apaga', (await js(`__alertas.length === 1`)) && !(await pergunta()) && !!(await empresa('Areia Boa')), await js(`JSON.stringify(__alertas)`))
-
-// ── K) Celular: sem rolagem lateral na página ──
+// ── G) Celular: sem rolagem lateral na página ──
 await cmd('Emulation.setDeviceMetricsOverride', { width: 375, height: 800, deviceScaleFactor: 2, mobile: true })
 await abrir('empresas', { e1: false })
 confere('celular: página sem rolagem lateral', await js(`document.documentElement.scrollWidth <= window.innerWidth + 1`), String(await js(`document.documentElement.scrollWidth`)))

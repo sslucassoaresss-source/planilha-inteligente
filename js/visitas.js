@@ -181,7 +181,7 @@ function adicionarLinhaItem(empresaId = '', valor = '', comissaoManual = null) {
   todasEmpresas.filter(emp => emp.ativa !== false || emp.id === empresaId).forEach(emp => {
     const opt = document.createElement('option')
     opt.value = emp.id
-    opt.textContent = `${emp.nome} (${emp.percentual_comissao || 0}%)${emp.ativa === false ? ' (encerrada)' : ''}`
+    opt.textContent = emp.ativa === false ? `${emp.nome} (encerrada)` : `${emp.nome} (${emp.percentual_comissao || 0}%)`
     selectEmpresa.appendChild(opt)
   })
 
