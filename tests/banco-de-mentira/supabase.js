@@ -179,6 +179,7 @@ class Consulta {
       for (const l of alvo) {
         if (this.t === 'produtos' && (db.compras_estoque.some((c) => c.produto_id === l.id) || db.venda_estoque_itens.some((i) => i.produto_id === l.id))) return { data: null, error: erroFK() }
         if (this.t === 'clientes' && db.vendas_estoque.some((v) => v.cliente_id === l.id)) return { data: null, error: erroFK() }
+        if (this.t === 'empresas' && (db.comissoes_recebidas.some((c) => c.empresa_id === l.id) || db.itens_venda.some((i) => i.empresa_id === l.id))) return { data: null, error: erroFK() }
       }
       alvo.forEach((l) => {
         db[this.t].splice(db[this.t].indexOf(l), 1)
@@ -200,7 +201,7 @@ class Consulta {
           db.compras_estoque.forEach((c) => { if (c.fornecedor_id === l.id) c.fornecedor_id = null })
         }
       })
-      ;['pagamentos_compra', 'venda_estoque_itens', 'pagamentos_venda', 'itens_venda', 'entrega_paradas', 'entrega_itens'].forEach((k) => { window.__db[k] = db[k] })
+      ;['pagamentos_compra', 'venda_estoque_itens', 'pagamentos_venda', 'itens_venda', 'entrega_paradas', 'entrega_itens', 'comissoes_recebidas'].forEach((k) => { window.__db[k] = db[k] })
       return { data: null, error: null }
     }
     return { data: null, error: null }
@@ -321,6 +322,22 @@ if (localStorage.getItem('seed') === 'prioridade') {
   cli('c6', 'Mensal Recém Cadastrado', 30, cadastro(-5))           // sem atendimento, cadastrado há 5 → em dia (faltam 25)
   cli('c7', 'A Cada Dez Dias', 10, cadastro(-200)); vis('q7', 'c7', dia(-12), true)                      // prazo livre 10, há 12 → atrasado 2
   cli('c8', 'Sem Prioridade', null, cadastro(-200)); vis('q8', 'c8', dia(-90), true)                     // sem prioridade: nunca avisa
+}
+
+// ── Cenário de encerrar empresa (seed=empresas): Racao Forte com venda e "Recebido" no mês; Areia Boa sem venda,
+// só com a marcação de "Recebido" (o banco recusava excluir por causa dela). "empresas-ativa" ({"e1": false}) muda a situação.
+if (localStorage.getItem('seed') === 'empresas') {
+  const hoje = new Date()
+  const mes = hoje.getMonth() + 1; const ano = hoje.getFullYear()
+  const d = `${ano}-${String(mes).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`
+  db.empresas.push({ id: 'e3', user_id: 'u1', nome: 'Petisco Bom', percentual_comissao: 8 })
+  db.visitas.push({ id: 'vx1', user_id: 'u1', cliente_id: 'c1', data_visita: d, comprou: true, desconto_aplicado: 0, observacao: null, created_at: `${d}T09:00:00Z` })
+  db.itens_venda.push({ id: 'ix1', user_id: 'u1', visita_id: 'vx1', empresa_id: 'e1', valor: 150, comissao_manual: null })
+  db.comissoes_recebidas.push({ id: 'cr1', user_id: 'u1', empresa_id: 'e1', mes, ano, recebido: true, recebido_em: `${d}T10:00:00Z` })
+  db.comissoes_recebidas.push({ id: 'cr2', user_id: 'u1', empresa_id: 'e2', mes, ano, recebido: false, recebido_em: null })
+  Object.entries(JSON.parse(localStorage.getItem('empresas-ativa') || '{}')).forEach(([id, ativa]) => {
+    const e = db.empresas.find((x) => x.id === id); if (e) e.ativa = ativa
+  })
 }
 
 // ── Cenário de cobranças (seed=cobrancas): datas relativas a HOJE ──

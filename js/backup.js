@@ -915,10 +915,11 @@ async function gerarBackupCompleto() {
   aba({
     nome: 'Empresas', cor: 'azul', titulo: 'Empresas que você representa',
     descricao: 'As empresas e o percentual de comissão de cada uma.',
-    linhas: empresas, conhecidas: ['nome', 'percentual_comissao'],
+    linhas: empresas, conhecidas: ['nome', 'percentual_comissao', 'ativa'],
     colunas: [
       { titulo: 'Empresa', valor: (l) => l.nome },
       { titulo: '% de comissão', tipo: 'percentual', valor: (l) => l.percentual_comissao },
+      { titulo: 'Situação', tipo: 'texto', valor: (l) => (l.ativa === false ? 'Encerrada' : 'Ativa') },
     ],
   })
   aba({

@@ -1,6 +1,10 @@
 import { supabase } from './supabase.js'
 import { mensagemErro } from './erros.js'
 import { esc } from './seguranca.js'
+import { perguntar } from './pergunta.js'
+
+// Sem a coluna "ativa" no banco (antes do SQL rodar), toda empresa conta como ativa
+const estaAtiva = (empresa) => empresa.ativa !== false
 
 const { data: { session } } = await supabase.auth.getSession()
 if (!session) {
@@ -138,14 +142,19 @@ async function carregarEmpresas() {
     ? 'Nenhuma venda registrada neste mês ainda.'
     : `Comissão do mês: <strong>${fmt(comissaoTotal)}</strong> · Ainda não recebido: <strong>${fmt(comissaoNaoRecebida)}</strong>`
 
-  data.forEach(empresa => {
+  // Encerradas vão para o fim da lista
+  const ordenadas = [...data.filter(estaAtiva), ...data.filter(e => !estaAtiva(e))]
+
+  ordenadas.forEach(empresa => {
     const totais = totaisPorEmpresa[empresa.id] || { vendido: 0, comissao: 0 }
     const recebido = !!recebidoPorEmpresa[empresa.id]
+    const ativa = estaAtiva(empresa)
 
     const tr = document.createElement('tr')
     if (recebido) tr.classList.add('recebido')
+    if (!ativa) tr.classList.add('est-inativo')
     tr.innerHTML = `
-      <td><strong>${esc(empresa.nome)}</strong></td>
+      <td><strong>${esc(empresa.nome)}</strong>${ativa ? '' : ' <span class="badge badge-nao">Encerrada</span>'}</td>
       <td>${empresa.percentual_comissao || 0}%</td>
       <td>${fmt(totais.vendido)}</td>
       <td>${fmt(totais.comissao)}</td>
@@ -153,6 +162,9 @@ async function carregarEmpresas() {
       <td>
         <div class="acoes">
           <button class="btn-editar" data-id="${empresa.id}">Editar</button>
+          ${ativa
+            ? `<button class="btn-editar btn-encerrar" data-id="${empresa.id}">Encerrar</button>`
+            : `<button class="btn-editar btn-reativar" data-id="${empresa.id}">Reativar</button>`}
           <button class="btn-excluir" data-id="${empresa.id}">Excluir</button>
         </div>
       </td>
@@ -160,12 +172,22 @@ async function carregarEmpresas() {
     listaEmpresas.appendChild(tr)
   })
 
-  document.querySelectorAll('.btn-editar').forEach(btn => {
+  const porId = (id) => data.find(e => e.id === id)
+
+  document.querySelectorAll('.btn-editar:not(.btn-encerrar):not(.btn-reativar)').forEach(btn => {
     btn.addEventListener('click', () => editarEmpresa(btn.dataset.id, data))
   })
 
+  document.querySelectorAll('.btn-encerrar').forEach(btn => {
+    btn.addEventListener('click', () => encerrarEmpresa(porId(btn.dataset.id)))
+  })
+
+  document.querySelectorAll('.btn-reativar').forEach(btn => {
+    btn.addEventListener('click', () => reativarEmpresa(porId(btn.dataset.id)))
+  })
+
   document.querySelectorAll('.btn-excluir').forEach(btn => {
-    btn.addEventListener('click', () => excluirEmpresa(btn.dataset.id))
+    btn.addEventListener('click', () => excluirEmpresa(porId(btn.dataset.id)))
   })
 
   document.querySelectorAll('.check-recebido').forEach(chk => {
@@ -242,12 +264,94 @@ function editarEmpresa(id, lista) {
   abrirModal('Editar Empresa')
 }
 
-async function excluirEmpresa(id) {
-  const confirmar = confirm('Tem certeza que deseja excluir esta empresa?\nIsso pode afetar vendas já registradas.')
+// PGRST204 (Supabase) ou 42703 (Postgres): a coluna "ativa" ainda não existe no banco
+const faltaColunaAtiva = (error) => ['PGRST204', '42703'].includes(error?.code)
+
+async function mudarSituacao(empresa, ativa, acao) {
+  const { error } = await supabase.from('empresas').update({ ativa }).eq('id', empresa.id)
+  if (error) {
+    console.error(`Erro ao ${acao} a empresa:`, error)
+    alert(faltaColunaAtiva(error)
+      ? `Não deu para ${acao}: o banco ainda não está preparado para isso. Avise quem cuida do sistema.`
+      : mensagemErro(error, acao))
+    return false
+  }
+  carregarEmpresas()
+  return true
+}
+
+async function encerrarEmpresa(empresa) {
+  if (!empresa) return
+  const ok = await perguntar({
+    titulo: 'Encerrar a empresa?',
+    linhas: [
+      `${empresa.nome} sai da lista na hora de lançar venda nova.`,
+      'Os meses passados ficam iguais: vendas, comissão e "Recebido".',
+      'Dá para reativar quando quiser.',
+    ],
+    sim: 'Sim, encerrar',
+    nao: 'Não',
+  })
+  if (ok) await mudarSituacao(empresa, false, 'encerrar')
+}
+
+async function reativarEmpresa(empresa) {
+  if (!empresa) return
+  const ok = await perguntar({
+    titulo: 'Reativar a empresa?',
+    linhas: [`${empresa.nome} volta para a lista na hora de lançar venda nova.`],
+    sim: 'Sim, reativar',
+    nao: 'Não',
+  })
+  if (ok) await mudarSituacao(empresa, true, 'reativar')
+}
+
+// Empresa com venda não é apagada (o histórico de comissão iria junto): oferece encerrar.
+// Sem venda, as marcações de "Recebido" dela saem antes, senão o banco recusa o delete.
+async function excluirEmpresa(empresa) {
+  if (!empresa) return
+
+  const vendas = await supabase.from('itens_venda').select('id').eq('empresa_id', empresa.id).range(0, 0)
+  if (vendas.error) { console.error('Erro ao conferir as vendas da empresa:', vendas.error); alert(mensagemErro(vendas.error, 'excluir')); return }
+
+  if (vendas.data.length > 0) {
+    if (!estaAtiva(empresa)) {
+      alert(`${empresa.nome} tem vendas registradas, por isso não dá para excluir.\nEla já está encerrada: os meses passados ficam guardados.`)
+      return
+    }
+    const encerrar = await perguntar({
+      titulo: 'Essa empresa tem vendas',
+      linhas: [
+        'Excluir apagaria o histórico de vendas e comissão dela.',
+        'Você pode encerrar: ela sai da lista de venda nova e os meses passados ficam guardados.',
+      ],
+      sim: 'Encerrar a empresa',
+      nao: 'Cancelar',
+    })
+    if (encerrar) await mudarSituacao(empresa, false, 'encerrar')
+    return
+  }
+
+  const confirmar = await perguntar({
+    titulo: 'Excluir a empresa?',
+    linhas: [`${empresa.nome} não tem vendas registradas.`, 'Ela será apagada de vez.'],
+    sim: 'Sim, excluir',
+    nao: 'Não',
+    perigo: true,
+  })
   if (!confirmar) return
 
-  const { error } = await supabase.from('empresas').delete().eq('id', id)
-  if (error) { console.error('Erro ao excluir:', error); alert('Erro ao excluir. Tente novamente.'); return }
+  const marcacoes = await supabase.from('comissoes_recebidas').delete().eq('empresa_id', empresa.id)
+  if (marcacoes.error) { console.error('Erro ao apagar as marcações de recebido:', marcacoes.error); alert(mensagemErro(marcacoes.error, 'excluir')); return }
+
+  const { error } = await supabase.from('empresas').delete().eq('id', empresa.id)
+  if (error) {
+    console.error('Erro ao excluir:', error)
+    alert(error.code === '23503'
+      ? `Não deu para excluir: ${empresa.nome} ainda está ligada a outros registros. Use "Encerrar".`
+      : mensagemErro(error, 'excluir'))
+    return
+  }
 
   carregarEmpresas()
 }

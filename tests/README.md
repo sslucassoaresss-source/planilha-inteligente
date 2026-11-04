@@ -48,6 +48,7 @@ Quando os dois falham nesses commits e passam no commit atual, você sabe que os
 | `editar-compra` | Botão Editar nas Compras: pagamento (caixinha "Continua paga por inteiro"), bloqueios, aviso de estoque negativo e falhas. |
 | `editar-venda` | Botão Editar nas Vendas (solta e ligada a visita): pagamentos, custo preservado, estoque, falhas. |
 | `excluir-visita` | Excluir visita que tem venda de estoque: as 3 opções e as falhas. |
+| `empresas-encerrar` | Empresas: Encerrar e Reativar (some da venda nova, meses passados intactos), Excluir sem venda (apaga junto a marcação de "Recebido") e com venda (oferece encerrar), banco sem a coluna `ativa` e falhas. |
 | `calendario` | Entregas com dia marcado aparecem no calendário de Rotas. |
 | `avisos-botao` | Botão "Ativar avisos": iPhone sem instalar, permissão negada, falha ao gravar. |
 | `console-limpo` | Nenhuma página gera erro de JavaScript. |
