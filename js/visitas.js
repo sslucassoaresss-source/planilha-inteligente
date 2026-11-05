@@ -56,7 +56,7 @@ async function carregarClientes() {
 async function carregarEmpresas() {
   const { data, error } = await supabase
     .from('empresas')
-    .select('id, nome, percentual_comissao')
+    .select('*')
     .order('nome')
 
   if (error) return
@@ -177,10 +177,11 @@ function adicionarLinhaItem(empresaId = '', valor = '', comissaoManual = null) {
   const inputValor = row.querySelector('.item-valor')
   const inputComissao = row.querySelector('.item-comissao-manual')
 
-  todasEmpresas.forEach(emp => {
+  // Empresa encerrada só aparece na edição de uma venda antiga que já é dela
+  todasEmpresas.filter(emp => emp.ativa !== false || emp.id === empresaId).forEach(emp => {
     const opt = document.createElement('option')
     opt.value = emp.id
-    opt.textContent = `${emp.nome} (${emp.percentual_comissao || 0}%)`
+    opt.textContent = emp.ativa === false ? `${emp.nome} (encerrada)` : `${emp.nome} (${emp.percentual_comissao || 0}%)`
     selectEmpresa.appendChild(opt)
   })
 

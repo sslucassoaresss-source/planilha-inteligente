@@ -323,6 +323,21 @@ if (localStorage.getItem('seed') === 'prioridade') {
   cli('c8', 'Sem Prioridade', null, cadastro(-200)); vis('q8', 'c8', dia(-90), true)                     // sem prioridade: nunca avisa
 }
 
+// ── Cenário de encerrar empresa (seed=empresas): Racao Forte com venda e "Recebido" no mês.
+// "empresas-ativa" ({"e1": false}) muda a situação de cada empresa ao carregar.
+if (localStorage.getItem('seed') === 'empresas') {
+  const hoje = new Date()
+  const mes = hoje.getMonth() + 1; const ano = hoje.getFullYear()
+  const d = `${ano}-${String(mes).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`
+  db.empresas.push({ id: 'e3', user_id: 'u1', nome: 'Petisco Bom', percentual_comissao: 8 })
+  db.visitas.push({ id: 'vx1', user_id: 'u1', cliente_id: 'c1', data_visita: d, comprou: true, desconto_aplicado: 0, observacao: null, created_at: `${d}T09:00:00Z` })
+  db.itens_venda.push({ id: 'ix1', user_id: 'u1', visita_id: 'vx1', empresa_id: 'e1', valor: 150, comissao_manual: null })
+  db.comissoes_recebidas.push({ id: 'cr1', user_id: 'u1', empresa_id: 'e1', mes, ano, recebido: true, recebido_em: `${d}T10:00:00Z` })
+  Object.entries(JSON.parse(localStorage.getItem('empresas-ativa') || '{}')).forEach(([id, ativa]) => {
+    const e = db.empresas.find((x) => x.id === id); if (e) e.ativa = ativa
+  })
+}
+
 // ── Cenário de cobranças (seed=cobrancas): datas relativas a HOJE ──
 if (localStorage.getItem('seed') === 'cobrancas') {
   const hoje = new Date()
