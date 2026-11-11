@@ -22,9 +22,9 @@
 
 /* ── Alertas ── */
 .alerta {
-  background: #FFF8E1;
-  border: 1px solid #FFD54F;
-  color: #7A5C00;
+  background: var(--amarelo-fundo-2);
+  border: 1px solid var(--amarelo-borda-forte);
+  color: var(--amarelo-texto-b);
   font-size: 14px;
   padding: 12px 16px;
   border-radius: 10px;
@@ -124,8 +124,8 @@
   padding: 4px 6px;
   border: none;
   border-radius: 5px;
-  background: #E8F4FC;
-  color: var(--accent-deep);
+  background: var(--azul-claro);
+  color: var(--accent-texto);
   font-family: inherit;
   font-size: 11px;
   font-weight: 500;
@@ -137,7 +137,7 @@
 }
 
 .calendario-rota-pill:hover {
-  background: #D0E7F5;
+  background: var(--azul-claro-hover);
 }
 
 .calendario-rota-remover {
@@ -152,13 +152,13 @@
 }
 
 .calendario-rota-remover:hover {
-  color: #A85454;
+  color: var(--vermelho-texto);
 }
 
 /* ── Card de cidade ── */
 .cidade-card {
   background: var(--card);
-  border: 1px solid #DCE4EB;
+  border: 1px solid var(--borda-cartao);
   border-radius: 12px;
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
   margin-bottom: 16px;
@@ -213,9 +213,9 @@
 }
 
 .cidade-count.alerta-count {
-  background: #FFF3CD;
-  border-color: #FFD54F;
-  color: #7A5C00;
+  background: var(--amarelo-fundo);
+  border-color: var(--amarelo-borda-forte);
+  color: var(--amarelo-texto-b);
   font-weight: 600;
 }
 
@@ -233,9 +233,9 @@
 
 .data-badge {
   font-size: 13px;
-  color: var(--accent-deep);
+  color: var(--accent-texto);
   font-weight: 500;
-  background: #E8F4FC;
+  background: var(--azul-claro);
   padding: 4px 10px;
   border-radius: 6px;
   white-space: nowrap;
@@ -247,13 +247,13 @@
 }
 
 .data-badge.data-futura {
-  color: #2E7D5A;
-  background: #DFF5EC;
+  color: var(--verde-texto);
+  background: var(--verde-fundo);
 }
 
 .data-badge.data-passada {
-  color: #A85454;
-  background: #FBEAEA;
+  color: var(--vermelho-texto);
+  background: var(--vermelho-fundo);
 }
 
 .btn-definir {
@@ -264,14 +264,14 @@
   font-family: inherit;
   font-size: 13px;
   font-weight: 500;
-  color: var(--accent-deep);
+  color: var(--accent-texto);
   cursor: pointer;
   transition: background 0.15s;
   white-space: nowrap;
 }
 
 .btn-definir:hover {
-  background: #E8F4FC;
+  background: var(--azul-claro);
 }
 
 .chevron {
@@ -340,8 +340,8 @@
   height: 26px;
   border: none;
   border-radius: 6px;
-  background: #E8F4FC;
-  color: var(--accent-deep);
+  background: var(--azul-claro);
+  color: var(--accent-texto);
   font-size: 14px;
   cursor: pointer;
   flex-shrink: 0;
@@ -349,7 +349,7 @@
 }
 
 .btn-duplicar-rota:hover {
-  background: #D0E7F5;
+  background: var(--azul-claro-hover);
 }
 
 .btn-excluir-rota-completa {
@@ -357,8 +357,8 @@
   height: 26px;
   border: none;
   border-radius: 6px;
-  background: #FBEAEA;
-  color: #A85454;
+  background: var(--vermelho-fundo);
+  color: var(--vermelho-texto);
   font-size: 13px;
   cursor: pointer;
   flex-shrink: 0;
@@ -366,7 +366,7 @@
 }
 
 .btn-excluir-rota-completa:hover {
-  background: #F5D0D0;
+  background: var(--vermelho-fundo-hover);
 }
 
 .btn-nova-rota {
@@ -412,7 +412,7 @@
   background: var(--bg);
   border: 1px solid var(--line);
   font-size: 12px;
-  color: var(--accent-deep);
+  color: var(--accent-texto);
   text-decoration: none;
   font-family: inherit;
   font-weight: 500;
@@ -421,14 +421,14 @@
 }
 
 .btn-maps:hover {
-  background: #D0E7F5;
+  background: var(--azul-claro-hover);
 }
 
 /* ── Badge "rota fixa" ── */
 .badge-fixa {
   font-size: 11px;
-  color: #2E7D5A;
-  background: #DFF5EC;
+  color: var(--verde-texto);
+  background: var(--verde-fundo);
   padding: 3px 9px;
   border-radius: 20px;
   font-weight: 600;
@@ -447,7 +447,7 @@
 
 .cliente-row.arrastando {
   opacity: 0.4;
-  background: #E8F4FC;
+  background: var(--azul-claro);
 }
 
 .cliente-row.drag-over {
@@ -465,7 +465,7 @@
 .ordem-numero {
   font-size: 12px;
   font-weight: 700;
-  color: var(--accent-deep);
+  color: var(--accent-texto);
   background: var(--bg);
   width: 22px;
   height: 22px;
@@ -493,8 +493,8 @@
   height: 26px;
   border: none;
   border-radius: 6px;
-  background: #FBEAEA;
-  color: #A85454;
+  background: var(--vermelho-fundo);
+  color: var(--vermelho-texto);
   font-size: 13px;
   cursor: pointer;
   flex-shrink: 0;
@@ -502,7 +502,7 @@
 }
 
 .btn-remover-rota:hover {
-  background: #F5D0D0;
+  background: var(--vermelho-fundo-hover);
 }
 
 /* ── Adicionar cliente à rota ── */
@@ -553,7 +553,7 @@
 }
 
 .btn-add-cliente-rota:disabled {
-  background: var(--text-soft);
+  background: var(--solido-desligado);
   cursor: not-allowed;
   opacity: 0.65;
 }
@@ -591,7 +591,7 @@
 }
 
 .sugestao-item:hover {
-  background: #E8F4FC;
+  background: var(--azul-claro);
 }
 
 /* Cidade do cliente na sugestão: discreta quando é a mesma cidade da rota,
@@ -602,8 +602,8 @@
 }
 
 .sugestao-cidade-outra {
-  color: #8A5A00;
-  background: #FFF3CD;
+  color: var(--amarelo-texto-2);
+  background: var(--amarelo-fundo);
   padding: 1px 6px;
   margin-left: 6px;
   border-radius: 20px;

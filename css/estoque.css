@@ -39,7 +39,7 @@
   color: var(--text-soft);
 }
 
-.est-negativo { color: #A85454; font-weight: 600; }
+.est-negativo { color: var(--vermelho-texto); font-weight: 600; }
 .est-inativo td { color: var(--text-soft); }
 
 /* Botões de ação nas tabelas (mesmo visual discreto de Editar/Excluir, em style.css) */
@@ -52,18 +52,18 @@
   font-weight: 600;
   cursor: pointer;
   background: var(--card);
-  border: 1px solid #D5DEE7;
+  border: 1px solid var(--borda-campo);
   transition: background 0.15s, border-color 0.15s;
 }
 
 .est-btn-editar { color: var(--text-dark); }
-.est-btn-editar:hover { background: #F3F5F8; border-color: #BFCCD9; }
-.est-btn-excluir { color: #B04A4A; }
-.est-btn-excluir:hover { background: #FBEAEA; border-color: #EBC5C5; }
+.est-btn-editar:hover { background: var(--hover-neutro); border-color: var(--borda-campo-hover); }
+.est-btn-excluir { color: var(--vermelho-texto-forte); }
+.est-btn-excluir:hover { background: var(--vermelho-fundo); border-color: var(--vermelho-borda-2); }
 
 .badge-parcial {
-  background: #FFF3E0;
-  color: #A24F00;
+  background: var(--laranja-fundo);
+  color: var(--laranja-texto);
 }
 
 /* Janelinhas (modais) */
@@ -93,15 +93,15 @@
 }
 
 .est-total strong {
-  color: var(--accent-deep);
+  color: var(--accent-texto);
   font-size: 16px;
 }
 
 .est-aviso {
   grid-column: span 2;
   font-size: 13px;
-  color: #A24F00;
-  background: #FFF3E0;
+  color: var(--laranja-texto);
+  background: var(--laranja-fundo);
   border-radius: 8px;
   padding: 10px 12px;
 }
@@ -152,7 +152,7 @@
 }
 
 .est-btn-remover {
-  background: #FBEAEA;
+  background: var(--vermelho-fundo);
   border: none;
   border-radius: 6px;
   padding: 7px 9px;
@@ -161,7 +161,7 @@
   transition: background 0.15s;
 }
 
-.est-btn-remover:hover { background: #F5D0D0; }
+.est-btn-remover:hover { background: var(--vermelho-fundo-hover); }
 
 .est-linha-info {
   grid-column: 1 / -1;
@@ -171,7 +171,7 @@
 }
 
 .est-linha-info.est-excede {
-  color: #A85454;
+  color: var(--vermelho-texto);
   font-weight: 600;
 }
 
@@ -193,9 +193,9 @@
 
 /* Etiqueta "Meu estoque" na tabela de visitas */
 .empresa-tag.est-tag {
-  background: #E6F5EE;
-  border-color: #BFE3D0;
-  color: #2E7D5A;
+  background: var(--verde-fundo-2);
+  border-color: var(--verde-borda-2);
+  color: var(--verde-texto);
 }
 
 .est-secao-vendas { margin-top: 8px; }
@@ -234,7 +234,7 @@
   margin-bottom: 16px;
 }
 
-.est-resumo strong { color: var(--accent-deep); }
+.est-resumo strong { color: var(--accent-texto); }
 
 /* ═══════════════════════════════════════
    Dashboard: seção "Estoque" (4 cards)
@@ -243,9 +243,9 @@
 .est-dash { margin-bottom: 36px; }
 
 /* Os cards do Estoque usam o mesmo desenho dos de representação (dashboard.css, .frente); aqui só os botões verdes */
-.est-dash .est-btn-card { color: #2E7D5A; border-color: #B7DCCB; }
-.est-dash .est-btn-card:hover { background: #DFF5EC; }
-.est-dash .est-btn-editar { background: #DFF5EC; color: #2E7D5A; }
+.est-dash .est-btn-card { color: var(--verde-texto); border-color: var(--verde-borda); }
+.est-dash .est-btn-card:hover { background: var(--verde-fundo); }
+.est-dash .est-btn-editar { background: var(--verde-fundo); color: var(--verde-texto); }
 
 .est-card-destaque {
   margin-top: 8px;
@@ -253,14 +253,14 @@
   color: var(--text-dark);
 }
 
-.est-card-destaque strong { color: #2E7D5A; }
+.est-card-destaque strong { color: var(--verde-texto); }
 
 /* Card "Pode retirar": verde quando sobra, vermelho quando falta para a meta (cor + frase, não só cor) */
-.est-card-ok .card-valor { color: #1F7A52; }
-.est-card-ok .card-sub   { color: #2E7D5A; font-weight: 600; }
-.frente .card.est-card-falta { border-color: #EBC5C5; background: #FFF7F7; }
-.est-card-falta .card-valor { color: #B04A4A; }
-.est-card-falta .card-sub   { color: #A8403C; font-weight: 600; }
+.est-card-ok .card-valor { color: var(--verde-texto-forte); }
+.est-card-ok .card-sub   { color: var(--verde-texto); font-weight: 600; }
+.frente .card.est-card-falta { border-color: var(--vermelho-borda-2); background: var(--vermelho-fundo-leve); }
+.est-card-falta .card-valor { color: var(--vermelho-texto-forte); }
+.est-card-falta .card-sub   { color: var(--vermelho-texto-2); font-weight: 600; }
 
 /* ── Pensado para a dislexia do Caio: ícone fixo por card, textos pequenos maiores e mais espaçados ── */
 .est-icone {
@@ -295,11 +295,11 @@
   font-family: inherit;
   font-size: 14px;
   font-weight: 600;
-  color: var(--f-escura);
+  color: var(--f-escura-texto);
   cursor: pointer;
 }
 
-.est-btn-ouvir:hover { background: #DFF5EC; }
+.est-btn-ouvir:hover { background: var(--verde-fundo); }
 
 /* Aviso do pró-labore: é um botão (abre a retirada); verde quando dá para retirar, vermelho quando falta */
 button.est-faixa {
@@ -310,9 +310,9 @@ button.est-faixa {
 }
 
 /* (button.est-faixa... para vencer o amarelo padrão de .est-faixa, que vem mais abaixo no arquivo) */
-button.est-faixa.est-faixa-prolabore { background: #E6F5EE; border-color: #B7DCCB; color: #1F6A4F; }
-button.est-faixa.est-faixa-prolabore:hover { background: #DFF5EC; }
-button.est-faixa.est-faixa-prolabore.est-faixa-falta { background: #FBEAEA; border-color: #EBC5C5; color: #A8403C; }
+button.est-faixa.est-faixa-prolabore { background: var(--verde-fundo-2); border-color: var(--verde-borda); color: var(--verde-texto-5); }
+button.est-faixa.est-faixa-prolabore:hover { background: var(--verde-fundo); }
+button.est-faixa.est-faixa-prolabore.est-faixa-falta { background: var(--vermelho-fundo); border-color: var(--vermelho-borda-2); color: var(--vermelho-texto-2); }
 
 /* Janela de pergunta (js/pergunta.js): letra grande, frases uma embaixo da outra */
 .pergunta-overlay { z-index: 210; }
@@ -347,12 +347,12 @@ button.est-faixa.est-faixa-prolabore.est-faixa-falta { background: #FBEAEA; bord
   font-family: inherit;
   font-size: 12px;
   font-weight: 600;
-  color: var(--accent-deep);
+  color: var(--accent-texto);
   cursor: pointer;
   transition: background 0.15s;
 }
 
-.est-btn-card:hover { background: #E8F4FC; }
+.est-btn-card:hover { background: var(--azul-claro); }
 
 /* Lista de retiradas (janelinha "Registrar retirada") */
 .est-retiradas { margin: 4px 0 18px; }
@@ -470,8 +470,8 @@ button.est-faixa.est-faixa-prolabore.est-faixa-falta { background: #FBEAEA; bord
   font-size: 11px;
 }
 
-.est-origem-empresas { color: var(--accent-deep); }
-.est-origem-estoque  { color: #2E7D5A; }
+.est-origem-empresas { color: var(--accent-texto); }
+.est-origem-estoque  { color: var(--verde-texto); }
 .est-origem-ambos    { color: var(--text-soft); }
 
 /* Bolinha de cor pela distância da última compra (js/clientes-cores.js) */
@@ -511,7 +511,7 @@ button.est-faixa.est-faixa-prolabore.est-faixa-falta { background: #FBEAEA; bord
   margin-right: 4px;
   font-size: 12px;
   font-weight: 600;
-  color: #5E7687;
+  color: var(--texto-cabecalho);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -522,7 +522,7 @@ button.est-faixa.est-faixa-prolabore.est-faixa-falta { background: #FBEAEA; bord
   gap: 0;
   padding: 6px 12px;
   background: var(--card);
-  border: 1px solid #D5DEE7;
+  border: 1px solid var(--borda-campo);
   border-radius: 999px;
   font-family: inherit;
   font-size: 13px;
@@ -536,12 +536,12 @@ button.est-faixa.est-faixa-prolabore.est-faixa-falta { background: #FBEAEA; bord
   font-variant-numeric: tabular-nums;
 }
 
-.cc-filtro:hover { background: #F3F5F8; border-color: #BFCCD9; }
+.cc-filtro:hover { background: var(--hover-neutro); border-color: var(--borda-campo-hover); }
 
 .cc-filtro.ativo {
-  background: var(--text-dark);
-  border-color: var(--text-dark);
-  color: #FFFFFF;
+  background: var(--inverso-fundo);
+  border-color: var(--inverso-fundo);
+  color: var(--inverso-texto);
 }
 
 .cc-limpar {
@@ -551,7 +551,7 @@ button.est-faixa.est-faixa-prolabore.est-faixa-falta { background: #FBEAEA; bord
   font-family: inherit;
   font-size: 13px;
   font-weight: 600;
-  color: var(--accent-deep);
+  color: var(--accent-texto);
   cursor: pointer;
 }
 
@@ -568,9 +568,9 @@ button.est-faixa.est-faixa-prolabore.est-faixa-falta { background: #FBEAEA; bord
   white-space: nowrap;
 }
 
-.cp-em-dia   { background: #E8F1FA; color: #28597A; }
-.cp-hoje     { background: #FFF3D6; color: #8A5A00; }
-.cp-atrasado { background: #FBE4E3; color: #A8403C; }
+.cp-em-dia   { background: var(--azul-selo-fundo); color: var(--azul-selo-texto); }
+.cp-hoje     { background: var(--amarelo-fundo-3); color: var(--amarelo-texto-2); }
+.cp-atrasado { background: var(--vermelho-fundo-2); color: var(--vermelho-texto-2); }
 
 .cp-aviso {
   display: flex;
@@ -579,11 +579,11 @@ button.est-faixa.est-faixa-prolabore.est-faixa-falta { background: #FBEAEA; bord
   gap: 8px 12px;
   margin-bottom: 14px;
   padding: 11px 14px;
-  background: #FFF6E5;
-  border: 1px solid #F2D98C;
+  background: var(--amarelo-fundo-4);
+  border: 1px solid var(--amarelo-borda);
   border-radius: 10px;
   font-size: 14px;
-  color: #6B4A00;
+  color: var(--amarelo-texto-3);
 }
 
 .cp-aviso-texto { flex: 1; min-width: 220px; }
@@ -591,16 +591,16 @@ button.est-faixa.est-faixa-prolabore.est-faixa-falta { background: #FBEAEA; bord
 .cp-aviso-botao {
   padding: 6px 12px;
   background: var(--card);
-  border: 1px solid #E8C877;
+  border: 1px solid var(--amarelo-borda-2);
   border-radius: 8px;
   font-family: inherit;
   font-size: 13px;
   font-weight: 600;
-  color: #6B4A00;
+  color: var(--amarelo-texto-3);
   cursor: pointer;
 }
 
-.cp-aviso-botao:hover { background: #FFF0CC; }
+.cp-aviso-botao:hover { background: var(--amarelo-fundo-hover); }
 
 #listaClientes[data-filtro-prioridade="atrasado"] tr:not([data-prioridade="atrasado"]) { display: none; }
 
@@ -620,16 +620,16 @@ button.est-faixa.est-faixa-prolabore.est-faixa-falta { background: #FBEAEA; bord
   gap: 10px;
   margin-bottom: 14px;
   padding: 11px 16px;
-  background: #FFF3CD;
-  border: 1px solid #F2D98C;
+  background: var(--amarelo-fundo);
+  border: 1px solid var(--amarelo-borda);
   border-radius: 10px;
-  color: #7A5B00;
+  color: var(--amarelo-texto);
   font-size: 14px;
   font-weight: 600;
   text-decoration: none;
 }
 
-.est-faixa:hover { background: #FFEEB8; }
+.est-faixa:hover { background: var(--amarelo-fundo-hover-2); }
 
 .est-cobrancas {
   display: grid;
@@ -652,7 +652,7 @@ button.est-faixa.est-faixa-prolabore.est-faixa-falta { background: #FBEAEA; bord
 .est-painel-total {
   font-size: 13px;
   font-weight: 600;
-  color: var(--accent-deep);
+  color: var(--accent-texto);
 }
 
 .est-cob-lista {
@@ -676,8 +676,8 @@ button.est-faixa.est-faixa-prolabore.est-faixa-falta { background: #FBEAEA; bord
   background: var(--card);
 }
 
-.est-cob-atraso  { border-left-color: #D98A8A; background: #FFF8F8; }
-.est-cob-hoje    { border-left-color: #E0A93B; background: #FFFBF1; }
+.est-cob-atraso  { border-left-color: #D98A8A; background: var(--vermelho-fundo-leve-2); }
+.est-cob-hoje    { border-left-color: #E0A93B; background: var(--amarelo-fundo-leve); }
 .est-cob-breve   { border-left-color: #EBCB7A; }
 .est-cob-futuro,
 .est-cob-semprazo { border-left-color: var(--line); }
@@ -876,7 +876,7 @@ button.est-faixa.est-faixa-prolabore.est-faixa-falta { background: #FBEAEA; bord
 }
 
 .est-lembrete-busca .sugestao-item:last-child { border-bottom: none; }
-.est-lembrete-busca .sugestao-item:hover { background: #E8F4FC; }
+.est-lembrete-busca .sugestao-item:hover { background: var(--azul-claro); }
 
 .est-lembrete-busca .sugestao-vazia {
   padding: 10px 13px;
@@ -927,7 +927,7 @@ button.est-faixa.est-faixa-prolabore.est-faixa-falta { background: #FBEAEA; bord
 .ent-resumo-titulo {
   font-size: 18px;
   font-weight: 600;
-  color: var(--f-escura);
+  color: var(--f-escura-texto);
 }
 
 .ent-resumo-texto {
@@ -936,7 +936,7 @@ button.est-faixa.est-faixa-prolabore.est-faixa-falta { background: #FBEAEA; bord
 }
 
 .ent-resumo-alerta {
-  color: #7A5B00;
+  color: var(--amarelo-texto);
   font-weight: 600;
 }
 
@@ -958,10 +958,10 @@ button.est-faixa.est-faixa-prolabore.est-faixa-falta { background: #FBEAEA; bord
 .ent-aviso {
   margin-bottom: 14px;
   padding: 10px 14px;
-  background: #FFF3CD;
-  border: 1px solid #F2D98C;
+  background: var(--amarelo-fundo);
+  border: 1px solid var(--amarelo-borda);
   border-radius: 10px;
-  color: #7A5B00;
+  color: var(--amarelo-texto);
   font-size: 14px;
   font-weight: 600;
 }
@@ -980,8 +980,8 @@ button.est-faixa.est-faixa-prolabore.est-faixa-falta { background: #FBEAEA; bord
   background: var(--card);
 }
 
-.ent-card-semdia    { border-left-color: #E0A93B; background: #FFFBF1; }
-.ent-card-atrasada  { border-left-color: #D98A8A; background: #FFF8F8; }
+.ent-card-semdia    { border-left-color: #E0A93B; background: var(--amarelo-fundo-leve); }
+.ent-card-atrasada  { border-left-color: #D98A8A; background: var(--vermelho-fundo-leve-2); }
 .ent-card-concluida { border-left-color: #2E8B6A; opacity: 0.85; }
 
 .ent-card-topo {
@@ -1019,7 +1019,7 @@ button.est-faixa.est-faixa-prolabore.est-faixa-falta { background: #FBEAEA; bord
   color: var(--text-dark);
 }
 
-.ent-levar strong { color: var(--accent-deep); }
+.ent-levar strong { color: var(--accent-texto); }
 
 .ent-paradas-lista {
   display: flex;
@@ -1137,7 +1137,7 @@ button.est-faixa.est-faixa-prolabore.est-faixa-falta { background: #FBEAEA; bord
 .ent-btn-feita { flex-shrink: 0; }
 
 .ent-feita .ent-btn-feita { opacity: 1; }
-.ent-parada-lista.ent-feita { opacity: 1; background: #F1FAF5; }
+.ent-parada-lista.ent-feita { opacity: 1; background: var(--verde-fundo-leve); }
 
 @media (max-width: 600px) {
   .ent-parada-linha { flex-direction: column; align-items: stretch; }
@@ -1162,8 +1162,8 @@ button.est-faixa.est-faixa-prolabore.est-faixa-falta { background: #FBEAEA; bord
   padding: 4px 6px;
   border: none;
   border-radius: 5px;
-  background: #E1F3EA;
-  color: #1F6B50;
+  background: var(--verde-fundo-3);
+  color: var(--verde-texto-2);
   font-family: inherit;
   font-size: 11px;
   font-weight: 600;
@@ -1173,11 +1173,11 @@ button.est-faixa.est-faixa-prolabore.est-faixa-falta { background: #FBEAEA; bord
   text-overflow: ellipsis;
   transition: background 0.15s;
 }
-.ent-cal-pill:hover { background: #CBEBDB; }
-.ent-cal-atrasada { background: #FBE4E4; color: #9B4141; }
-.ent-cal-atrasada:hover { background: #F6D2D2; }
-.ent-cal-feita { background: #EEF2F5; color: #6C8A9C; font-weight: 500; }
-.ent-cal-feita:hover { background: #E1E8ED; }
+.ent-cal-pill:hover { background: var(--verde-fundo-hover); }
+.ent-cal-atrasada { background: var(--vermelho-fundo-3); color: var(--vermelho-texto-3); }
+.ent-cal-atrasada:hover { background: var(--vermelho-fundo-hover-2); }
+.ent-cal-feita { background: var(--cinza-fundo); color: var(--text-soft); font-weight: 500; }
+.ent-cal-feita:hover { background: var(--cinza-fundo-hover); }
 .ent-card-destaque { box-shadow: 0 0 0 3px rgba(46, 139, 106, 0.45); transition: box-shadow 0.3s; }
 
 @media (max-width: 640px) {
@@ -1190,7 +1190,7 @@ button.est-faixa.est-faixa-prolabore.est-faixa-falta { background: #FBEAEA; bord
 
 /* ── Janela "Excluir visita" (visita com venda de produtos do estoque) ── */
 .est-exc-rodape { flex-wrap: wrap; justify-content: flex-end; }
-.est-exc-venda { background: #E6F5EE; border-left: 5px solid #2E8B6A; border-radius: 10px; padding: 10px 14px; margin: 12px 0; font-size: 14px; line-height: 1.45; }
+.est-exc-venda { background: var(--verde-fundo-2); border-left: 5px solid #2E8B6A; border-radius: 10px; padding: 10px 14px; margin: 12px 0; font-size: 14px; line-height: 1.45; }
 .est-exc-venda .empresas-tags { margin-top: 6px; }
 .est-exc-nota { font-size: 13px; color: var(--text-soft); margin: 0 0 16px; }
 @media (max-width: 640px) {

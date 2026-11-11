@@ -15,6 +15,80 @@
   --success:     #4CAF82;
   --danger:      #D98A8A;
   --anel:        rgba(61, 126, 166, 0.18);   /* anel de foco dos campos (verde dentro do estoque) */
+  --accent-texto: var(--accent-deep);        /* o azul quando é TEXTO (no escuro fica mais claro; o fundo dos botões não muda) */
+
+  /* Superfícies, bordas e textos neutros */
+  --fundo-pagina:      #F3F5F8;
+  --hover-neutro:      #F3F5F8;
+  --superficie-suave:  #F7F9FB;
+  --hover-linha:       #F7FAFC;
+  --borda-campo:       #D5DEE7;
+  --borda-campo-hover: #BFCCD9;
+  --borda-suave:       #E3E9EF;
+  --borda-linha:       #EEF2F5;
+  --borda-cartao:      #DCE4EB;
+  --cinza-fundo:       #EEF2F5;
+  --cinza-fundo-hover: #E1E8ED;
+  --texto-rotulo:      #3A5568;
+  --texto-placeholder: #9AAFBE;
+  --texto-cabecalho:   #5E7687;
+  --azul-claro:        #E8F4FC;
+  --azul-claro-hover:  #D0E7F5;
+  --azul-selo-fundo:   #E8F1FA;
+  --azul-selo-texto:   #28597A;
+  --inverso-fundo:     #1F3B4D;   /* fundo escuro com texto claro (balão do gráfico, filtro ativo); inverte no escuro */
+  --inverso-texto:     #FFFFFF;
+  --solido-desligado:  #6C8A9C;   /* botão sólido desligado */
+
+  /* Verde (pago, em dia, estoque) */
+  --verde-fundo:       #DFF5EC;
+  --verde-fundo-2:     #E6F5EE;
+  --verde-fundo-3:     #E1F3EA;
+  --verde-fundo-leve:  #F1FAF5;
+  --verde-fundo-hover: #CBEBDB;
+  --verde-borda:       #B7DCCB;
+  --verde-borda-2:     #BFE3D0;
+  --verde-borda-3:     #A3D9BE;
+  --verde-texto:       #2E7D5A;
+  --verde-texto-forte: #1F7A52;
+  --verde-texto-2:     #1F6B50;
+  --verde-texto-3:     #1E6B47;
+  --verde-texto-4:     #175A3B;
+  --verde-texto-5:     #1F6A4F;
+
+  /* Vermelho (atrasado, excluir, erro) */
+  --vermelho-fundo:         #FBEAEA;
+  --vermelho-fundo-2:       #FBE4E3;
+  --vermelho-fundo-3:       #FBE4E4;
+  --vermelho-fundo-leve:    #FFF7F7;
+  --vermelho-fundo-leve-2:  #FFF8F8;
+  --vermelho-fundo-hover:   #F5D0D0;
+  --vermelho-fundo-hover-2: #F6D2D2;
+  --vermelho-borda:         #EFC9C9;
+  --vermelho-borda-2:       #EBC5C5;
+  --vermelho-texto:         #A85454;
+  --vermelho-texto-2:       #A8403C;
+  --vermelho-texto-3:       #9B4141;
+  --vermelho-texto-forte:   #B04A4A;
+
+  /* Amarelo e laranja (aviso, vence hoje) */
+  --amarelo-fundo:         #FFF3CD;
+  --amarelo-fundo-2:       #FFF8E1;
+  --amarelo-fundo-3:       #FFF3D6;
+  --amarelo-fundo-4:       #FFF6E5;
+  --amarelo-fundo-leve:    #FFFBF1;
+  --amarelo-fundo-hover:   #FFF0CC;
+  --amarelo-fundo-hover-2: #FFEEB8;
+  --amarelo-borda:         #F2D98C;
+  --amarelo-borda-2:       #E8C877;
+  --amarelo-borda-forte:   #FFD54F;
+  --amarelo-texto:         #7A5B00;
+  --amarelo-texto-b:       #7A5C00;
+  --amarelo-texto-2:       #8A5A00;
+  --amarelo-texto-3:       #6B4A00;
+  --amarelo-texto-4:       #5C4400;
+  --laranja-fundo:         #FFF3E0;
+  --laranja-texto:         #A24F00;
 }
 
 /* ── Reset ── */
@@ -29,7 +103,7 @@
 
 body {
   font-family: 'Space Grotesk', sans-serif;
-  background: #F3F5F8;   /* fundo neutro: o azul e o verde ficam só nos blocos de cada frente */
+  background: var(--fundo-pagina);   /* fundo neutro: o azul e o verde ficam só nos blocos de cada frente */
   color: var(--text-dark);
   min-height: 100vh;
 }
@@ -52,7 +126,7 @@ body {
   font-family: 'Fraunces', serif;
   font-size: 17px;
   font-weight: 600;
-  color: var(--accent-deep);
+  color: var(--accent-texto);
   white-space: nowrap;
 }
 
@@ -79,7 +153,7 @@ body {
 
 .topbar-nav a.active {
   background: var(--bg);
-  color: var(--accent-deep);
+  color: var(--accent-texto);
   font-weight: 600;
 }
 
@@ -97,9 +171,9 @@ body {
 }
 
 .btn-sair:hover {
-  background: #FBEAEA;
-  border-color: #EFC9C9;
-  color: #A85454;
+  background: var(--vermelho-fundo);
+  border-color: var(--vermelho-borda);
+  color: var(--vermelho-texto);
 }
 
 /* Botão de ocultar valores (criado por js/privacidade.js, fica antes do "Sair") */
@@ -120,14 +194,67 @@ body {
 
 .btn-olho:hover {
   background: var(--bg);
-  color: var(--accent-deep);
+  color: var(--accent-texto);
 }
 
 .btn-olho[aria-pressed="true"] {
   background: var(--bg);
-  color: var(--accent-deep);
+  color: var(--accent-texto);
   border-color: var(--accent-deep);
 }
+
+/* Botão do tema (criado por js/tema.js, antes do olho) e a janelinha que ele abre */
+.tema-caixa { position: relative; }
+.btn-tema[aria-expanded="true"] { background: var(--bg); color: var(--accent-texto); }
+
+.tema-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 150;
+  width: 220px;
+  padding: 8px;
+  background: var(--card);
+  border: 1px solid var(--borda-suave);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(16, 32, 45, 0.18), 0 2px 6px rgba(16, 32, 45, 0.08);
+}
+
+.tema-menu fieldset { border: 0; padding: 0; margin: 0; }
+
+.tema-menu legend {
+  padding: 4px 10px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+.tema-opcao {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text-dark);
+  cursor: pointer;
+}
+
+.tema-opcao:hover { background: var(--hover-neutro); }
+
+/* O círculo do rádio fica escondido (sem sumir do leitor de tela); a linha escolhida ganha cor e um ✓ */
+.tema-opcao input { position: absolute; opacity: 0; pointer-events: none; }
+.tema-opcao-icone { display: inline-flex; color: var(--text-soft); }
+.tema-opcao-nome { flex: 1; display: flex; flex-direction: column; line-height: 1.25; }
+.tema-opcao-nome small { font-size: 12px; font-weight: 400; color: var(--text-soft); }
+
+.tema-opcao:has(input:checked) { background: var(--bg); color: var(--accent-texto); font-weight: 600; }
+.tema-opcao:has(input:checked) .tema-opcao-icone { color: var(--accent-texto); }
+.tema-opcao:has(input:checked)::after { content: '✓'; font-weight: 700; }
+.tema-opcao:has(input:focus-visible) { outline: 2px solid var(--accent-texto); outline-offset: 2px; }
 
 /* ── Página interna ── */
 .pagina {
@@ -168,6 +295,7 @@ body {
   --f-fundo: #E8F1FA;
   --f-borda: #C9DDEE;
   --f-sombra: rgba(61, 126, 166, 0.28);
+  --f-escura-texto: #28597A;
 }
 
 .frente-verde {
@@ -181,9 +309,111 @@ body {
      fundos claros e bordas de tudo que está lá dentro seguem a frente sem regra extra. */
   --accent: #4FA585;
   --accent-deep: #1F6A4F;
+  --accent-texto: #1F6A4F;
+  --f-escura-texto: #1F6A4F;
   --bg: #EEF7F2;
   --line: #C4E3D3;
   --anel: rgba(46, 139, 106, 0.18);
+}
+
+/* ── Tema escuro "azul-noite" (js/tema.js põe data-theme="dark" no <html>) ──
+   Só as cores mudam. Botões sólidos (azul e verde com texto branco), bolinhas e barras
+   coloridas continuam iguais nos dois temas. */
+:root[data-theme="dark"] {
+  color-scheme: dark;   /* campos, calendário e barras de rolagem do navegador também ficam escuros */
+
+  --bg:          #1D2B3B;
+  --card:        #16212E;
+  --line:        #2B3D52;
+  --text-dark:   #E6EEF5;
+  --text-soft:   #93A9BB;
+  --accent-texto: #8CC1E6;
+  --anel:        rgba(140, 193, 230, 0.28);
+
+  --fundo-pagina:      #0D1520;
+  --hover-neutro:      #213244;
+  --superficie-suave:  #1A2634;
+  --hover-linha:       #1B2837;
+  --borda-campo:       #33475D;
+  --borda-campo-hover: #44607A;
+  --borda-suave:       #24364A;
+  --borda-linha:       #1F2F40;
+  --borda-cartao:      #24364A;
+  --cinza-fundo:       #213244;
+  --cinza-fundo-hover: #2B3D52;
+  --texto-rotulo:      #C5D4E0;
+  --texto-placeholder: #627A8E;
+  --texto-cabecalho:   #93A9BB;
+  --azul-claro:        #1B3247;
+  --azul-claro-hover:  #24425E;
+  --azul-selo-fundo:   #1B3247;
+  --azul-selo-texto:   #9CCBEB;
+  --inverso-fundo:     #E6EEF5;
+  --inverso-texto:     #0D1520;
+  --solido-desligado:  #3A5068;
+
+  --verde-fundo:       #163A2B;
+  --verde-fundo-2:     #163A2B;
+  --verde-fundo-3:     #163A2B;
+  --verde-fundo-leve:  #13291F;
+  --verde-fundo-hover: #1F4D3A;
+  --verde-borda:       #2A5E47;
+  --verde-borda-2:     #2A5E47;
+  --verde-borda-3:     #2A5E47;
+  --verde-texto:       #7DD3AC;
+  --verde-texto-forte: #8EE0B9;
+  --verde-texto-2:     #7DD3AC;
+  --verde-texto-3:     #7DD3AC;
+  --verde-texto-4:     #8EE0B9;
+  --verde-texto-5:     #7DD3AC;
+
+  --vermelho-fundo:         #3D1F22;
+  --vermelho-fundo-2:       #3D1F22;
+  --vermelho-fundo-3:       #3D1F22;
+  --vermelho-fundo-leve:    #2A1A1C;
+  --vermelho-fundo-leve-2:  #2A1A1C;
+  --vermelho-fundo-hover:   #4E2629;
+  --vermelho-fundo-hover-2: #4E2629;
+  --vermelho-borda:         #5E3236;
+  --vermelho-borda-2:       #5E3236;
+  --vermelho-texto:         #F2A7A7;
+  --vermelho-texto-2:       #F4A39C;
+  --vermelho-texto-3:       #F2A7A7;
+  --vermelho-texto-forte:   #F49B9B;
+
+  --amarelo-fundo:         #3A3016;
+  --amarelo-fundo-2:       #3A3016;
+  --amarelo-fundo-3:       #3A3016;
+  --amarelo-fundo-4:       #3A3016;
+  --amarelo-fundo-leve:    #2B2514;
+  --amarelo-fundo-hover:   #4A3D1B;
+  --amarelo-fundo-hover-2: #4A3D1B;
+  --amarelo-borda:         #6B5622;
+  --amarelo-borda-2:       #6B5622;
+  --amarelo-borda-forte:   #8C7224;
+  --amarelo-texto:         #F3D27B;
+  --amarelo-texto-b:       #F3D27B;
+  --amarelo-texto-2:       #F5C26B;
+  --amarelo-texto-3:       #F3D27B;
+  --amarelo-texto-4:       #F3D27B;
+  --laranja-fundo:         #3D2A17;
+  --laranja-texto:         #F7B77C;
+}
+
+:root[data-theme="dark"] .frente-azul {
+  --f-fundo: #15283D;
+  --f-borda: #24405E;
+  --f-escura-texto: #9CCBEB;
+}
+
+:root[data-theme="dark"] .frente-verde {
+  --f-fundo: #12291F;
+  --f-borda: #21493A;
+  --f-escura-texto: #7DD3AC;
+  --accent-texto: #7DD3AC;
+  --bg: #183428;
+  --line: #285641;
+  --anel: rgba(125, 211, 172, 0.25);
 }
 
 .frente-verde .btn-primario { background: var(--f-cor); }
@@ -214,7 +444,7 @@ body {
   font-size: 20px;
   font-weight: 600;
   line-height: 1.2;
-  color: var(--f-escura);
+  color: var(--f-escura-texto);
 }
 
 .secao-sub {
@@ -231,7 +461,7 @@ body {
 .frente .resumo-comissao,
 .frente .est-resumo { border-color: var(--f-borda); }
 .frente .resumo-comissao strong,
-.frente .est-resumo strong { color: var(--f-escura); }
+.frente .est-resumo strong { color: var(--f-escura-texto); }
 
 /* ── Botões ── */
 .btn-primario {
@@ -254,7 +484,7 @@ body {
   padding: 10px 20px;
   background: var(--card);
   color: var(--text-dark);
-  border: 1px solid #D5DEE7;
+  border: 1px solid var(--borda-campo);
   border-radius: 8px;
   font-family: inherit;
   font-size: 14px;
@@ -263,7 +493,7 @@ body {
   transition: background 0.15s, border-color 0.15s;
 }
 
-.btn-secundario:hover { background: #F3F5F8; border-color: #BFCCD9; }
+.btn-secundario:hover { background: var(--hover-neutro); border-color: var(--borda-campo-hover); }
 
 /* ── Campos de formulário ── */
 .field {
@@ -275,14 +505,14 @@ body {
 .field label {
   font-size: 13px;
   font-weight: 600;
-  color: #3A5568;
+  color: var(--texto-rotulo);
 }
 
 .field input,
 .field textarea,
 .field select {
   padding: 10px 12px;
-  border: 1px solid #D5DEE7;
+  border: 1px solid var(--borda-campo);
   border-radius: 9px;
   font-family: inherit;
   font-size: 14px;
@@ -298,12 +528,12 @@ body {
 
 .field input::placeholder,
 .field textarea::placeholder {
-  color: #9AAFBE;
+  color: var(--texto-placeholder);
 }
 
 .field input:hover,
 .field textarea:hover,
-.field select:hover { border-color: #BFCCD9; }
+.field select:hover { border-color: var(--borda-campo-hover); }
 
 .field input:focus,
 .field textarea:focus,
@@ -356,7 +586,7 @@ body {
   margin: -24px -28px 22px;
   padding: 18px 20px 16px 28px;
   background: var(--card);
-  border-bottom: 1px solid #E3E9EF;
+  border-bottom: 1px solid var(--borda-suave);
 }
 
 .modal-topo h2 {
@@ -383,7 +613,7 @@ body {
   transition: background 0.15s, color 0.15s;
 }
 
-.modal-fechar:hover { background: #F3F5F8; color: var(--text-dark); }
+.modal-fechar:hover { background: var(--hover-neutro); color: var(--text-dark); }
 
 .modal-rodape {
   position: sticky;
@@ -395,8 +625,8 @@ body {
   gap: 10px;
   margin: 20px -28px -24px;
   padding: 14px 28px;
-  background: #F7F9FB;
-  border-top: 1px solid #E3E9EF;
+  background: var(--superficie-suave);
+  border-top: 1px solid var(--borda-suave);
   border-radius: 0 0 16px 16px;
 }
 
@@ -419,7 +649,7 @@ body {
 .tabela-wrapper {
   overflow-x: auto;
   border-radius: 12px;
-  border: 1px solid #DCE4EB;
+  border: 1px solid var(--borda-cartao);
   background: var(--card);
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
 }
@@ -431,29 +661,29 @@ body {
   font-variant-numeric: tabular-nums;   /* algarismos com a mesma largura: valores alinhados */
 }
 
-.tabela thead { background: #F7F9FB; }
+.tabela thead { background: var(--superficie-suave); }
 
 .tabela th {
   padding: 11px 16px;
   text-align: left;
   font-size: 11.5px;
   font-weight: 600;
-  color: #5E7687;
+  color: var(--texto-cabecalho);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  border-bottom: 1px solid #E3E9EF;
+  border-bottom: 1px solid var(--borda-suave);
   white-space: nowrap;
 }
 
 .tabela td {
   padding: 13px 16px;
-  border-bottom: 1px solid #EEF2F5;
+  border-bottom: 1px solid var(--borda-linha);
   color: var(--text-dark);
   vertical-align: middle;
 }
 
 .tabela tbody tr:last-child td { border-bottom: none; }
-.tabela tbody tr:hover td { background: #F7FAFC; }
+.tabela tbody tr:hover td { background: var(--hover-linha); }
 
 /* ── Vazio ── */
 .vazio {
@@ -474,13 +704,13 @@ body {
 }
 
 .badge-sim {
-  background: #DFF5EC;
-  color: #2E7D5A;
+  background: var(--verde-fundo);
+  color: var(--verde-texto);
 }
 
 .badge-nao {
-  background: #FBEAEA;
-  color: #A85454;
+  background: var(--vermelho-fundo);
+  color: var(--vermelho-texto);
 }
 
 /* ── Botões de ação na tabela ── */
@@ -496,14 +726,14 @@ body {
   font-weight: 600;
   cursor: pointer;
   background: var(--card);
-  border: 1px solid #D5DEE7;
+  border: 1px solid var(--borda-campo);
   transition: background 0.15s, border-color 0.15s;
 }
 
 .btn-editar { color: var(--text-dark); }
-.btn-editar:hover { background: #F3F5F8; border-color: #BFCCD9; }
-.btn-excluir { color: #B04A4A; }
-.btn-excluir:hover { background: #FBEAEA; border-color: #EBC5C5; }
+.btn-editar:hover { background: var(--hover-neutro); border-color: var(--borda-campo-hover); }
+.btn-excluir { color: var(--vermelho-texto-forte); }
+.btn-excluir:hover { background: var(--vermelho-fundo); border-color: var(--vermelho-borda-2); }
 
 /* ── Responsivo ── */
 @media (max-width: 700px) {
@@ -533,8 +763,12 @@ body {
     padding: 6px 12px;
   }
 
-  .btn-olho {
+  .btn-olho,
+  .tema-caixa {
     order: 2;
+  }
+
+  .btn-olho {
     width: 32px;
     height: 32px;
   }

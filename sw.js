@@ -19,7 +19,7 @@
 // Ao mudar a lista abaixo, troque a VERSAO para o celular atualizar.
 // ============================================================
 
-const VERSAO = 'planilha-inteligente-v2';
+const VERSAO = 'planilha-inteligente-v3'; // v3: style.css ganhou o tema escuro
 const GUARDADOS = ['offline.html', 'css/style.css', 'favicon.svg', 'icones/icone-192.png'];
 
 // Instalação: guarda a tela "Sem conexão"

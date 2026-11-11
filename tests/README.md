@@ -49,6 +49,7 @@ Quando os dois falham nesses commits e passam no commit atual, você sabe que os
 | `editar-venda` | Botão Editar nas Vendas (solta e ligada a visita): pagamentos, custo preservado, estoque, falhas. |
 | `excluir-visita` | Excluir visita que tem venda de estoque: as 3 opções e as falhas. |
 | `empresas-encerrar` | Empresas: Encerrar e Reativar (some da venda nova, meses passados intactos com vendas, comissão e "Recebido"), sem botão Excluir, banco sem a coluna `ativa` e falhas. |
+| `tema` | Tema claro / escuro / automático: botão do topo e janelinha (mouse e teclado), escolha salva no aparelho, Automático seguindo o aparelho, escuro aplicado antes de desenhar (sem piscar), barra do celular, sem localStorage e celular. |
 | `calendario` | Entregas com dia marcado aparecem no calendário de Rotas. |
 | `avisos-botao` | Botão "Ativar avisos": iPhone sem instalar, permissão negada, falha ao gravar. |
 | `console-limpo` | Nenhuma página gera erro de JavaScript. |
