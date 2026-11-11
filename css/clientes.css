@@ -30,7 +30,7 @@
 }
 
 .sugestoes-cidade .sugestao-item:hover {
-  background: #E8F4FC;
+  background: var(--azul-claro);
 }
 
 /* ── Busca ── */
@@ -42,7 +42,7 @@
   width: 100%;
   height: 44px;
   padding: 0 14px;
-  border: 1px solid #D5DEE7;
+  border: 1px solid var(--borda-campo);
   border-radius: 10px;
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
   font-family: inherit;
@@ -71,7 +71,7 @@
   border-radius: 20px;
   border: 1px dashed var(--line);
   background: var(--bg);
-  color: var(--accent-deep);
+  color: var(--accent-texto);
   font-family: inherit;
   font-size: 12px;
   font-weight: 600;
@@ -81,7 +81,7 @@
 }
 
 .btn-desconto-rapido:hover {
-  background: #E8F4FC;
+  background: var(--azul-claro);
   border-color: var(--accent-deep);
   border-style: solid;
 }

@@ -142,7 +142,7 @@
   max-width: 400px;
   padding: 36px 36px 32px;
   background: var(--card);
-  border: 1px solid #E3E9EF;
+  border: 1px solid var(--borda-suave);
   border-radius: 18px;
   box-shadow: 0 12px 32px rgba(16, 32, 45, 0.08), 0 1px 3px rgba(16, 32, 45, 0.06);
 }
@@ -156,7 +156,7 @@
   font-family: 'Fraunces', serif;
   font-size: 18px;
   font-weight: 600;
-  color: var(--accent-deep);
+  color: var(--accent-texto);
 }
 
 .form-marca img { border-radius: 8px; }
@@ -205,8 +205,8 @@
   cursor: pointer;
 }
 
-.ver-senha:hover { background: #F3F5F8; color: var(--text-dark); }
-.ver-senha[aria-pressed="true"] { color: var(--accent-deep); }
+.ver-senha:hover { background: var(--hover-neutro); color: var(--text-dark); }
+.ver-senha[aria-pressed="true"] { color: var(--accent-texto); }
 
 /* ── Botão Entrar ── */
 button.submit {
@@ -253,9 +253,9 @@ button.submit .girando {
 /* ── Mensagem de erro ── */
 .error-msg {
   display: none;
-  background: #FBEAEA;
-  border: 1px solid #EFC9C9;
-  color: #A85454;
+  background: var(--vermelho-fundo);
+  border: 1px solid var(--vermelho-borda);
+  color: var(--vermelho-texto);
   font-size: 13px;
   line-height: 1.45;
   padding: 10px 12px;

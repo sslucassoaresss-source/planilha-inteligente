@@ -22,7 +22,7 @@
 
 .frente .card {
   padding: 16px 18px;
-  background: #FFFFFF;
+  background: var(--card);
   border: 1px solid var(--f-borda);
   border-radius: 12px;
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
@@ -35,7 +35,7 @@
   margin-bottom: 8px;
   font-size: 13.5px;
   letter-spacing: 0.01em;
-  color: var(--f-escura);
+  color: var(--f-escura-texto);
 }
 
 .frente .est-card-topo .card-label { margin-bottom: 0; }
@@ -62,7 +62,7 @@
   color: var(--text-dark);
 }
 
-.frente .est-painel-total { color: var(--f-escura); }
+.frente .est-painel-total { color: var(--f-escura-texto); }
 .frente .est-cob-futuro,
 .frente .est-cob-semprazo { border-left-color: var(--f-borda); }
 
@@ -80,12 +80,12 @@
   align-items: center;
   gap: 8px;
   padding: 0 14px;
-  background: #FFFFFF;
+  background: var(--card);
   color: var(--text-dark);
-  border-color: #D5DEE7;
+  border-color: var(--borda-campo);
 }
 
-.filtro-mes .btn-secundario:not(.avisos-btn):hover { background: #F3F5F8; border-color: #BFCCD9; }
+.filtro-mes .btn-secundario:not(.avisos-btn):hover { background: var(--hover-neutro); border-color: var(--borda-campo-hover); }
 .filtro-mes .btn-secundario svg { flex-shrink: 0; color: var(--text-soft); }
 
 @media (max-width: 600px) {
@@ -190,8 +190,8 @@
   bottom: calc(100% + 6px);
   left: 50%;
   transform: translateX(-50%);
-  background: var(--text-dark);
-  color: #fff;
+  background: var(--inverso-fundo);
+  color: var(--inverso-texto);
   font-size: 11px;
   padding: 3px 7px;
   border-radius: 4px;
@@ -252,8 +252,8 @@
 }
 
 .badge-desconto {
-  background: #DFF5EC;
-  color: #2E7D5A;
+  background: var(--verde-fundo);
+  color: var(--verde-texto);
 }
 
 /* ── Seletor de mês ── */

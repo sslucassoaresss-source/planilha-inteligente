@@ -47,6 +47,9 @@ Sales reps who cover a large territory usually end up juggling a spreadsheet for
 - Daily summary (visits today, purchases today, total sold today)
 - Persistent client notes surfaced automatically when logging a visit
 
+### 🌙 Aparência (Appearance)
+- Light, dark ("azul-noite") or automatic theme, chosen from the button at the top of every page and remembered per device; automatic follows the phone/computer setting
+
 ## Tech Stack
 
 - **Frontend:** HTML5, CSS3, JavaScript (ES6+, vanilla — no framework)

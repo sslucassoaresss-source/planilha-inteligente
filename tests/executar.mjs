@@ -35,6 +35,7 @@ const TESTES = [
   { nome: 'clientes-prioridade', arquivo: 'clientes-prioridade.mjs', tipo: 'navegador', desc: 'Prioridade de visita: selo, aviso, filtro, janela do cliente e Dashboard' },
   { nome: 'prioridade', arquivo: 'prioridade.mjs', tipo: 'node', desc: 'Contas da prioridade (em dia, hoje, atrasado, nunca atendido, ordem)' },
   { nome: 'empresas-encerrar', arquivo: 'empresas-encerrar.mjs', tipo: 'navegador', desc: 'Empresas: Encerrar e Reativar (meses passados intactos, sem botão Excluir, falhas)' },
+  { nome: 'tema', arquivo: 'tema.mjs', tipo: 'navegador', desc: 'Tema claro/escuro/automático: botão, janelinha, teclado, escolha salva, sem piscar' },
   { nome: 'carteira-tela', arquivo: 'carteira-tela.mjs', tipo: 'navegador', desc: 'Dashboard: Na carteira e Pode retirar (Acertar, Pagar, Receber, Retirada)' },
   { nome: 'carteira', arquivo: 'carteira.mjs', tipo: 'node', desc: 'Contas da carteira (acerto, entradas e saídas depois dele, sobra da meta)' },
   { nome: 'funcao-avisos-calculo', arquivo: 'funcao-avisos-calculo.mjs', tipo: 'node', desc: 'Cálculo do aviso diário (fuso de Brasília, vencidas, hoje, amanhã)' },
@@ -69,7 +70,7 @@ function readme() {
 // Monta uma cópia do app em "destino". Com "ref", usa os arquivos daquele ponto do Git (para a regressão).
 function montarApp(destino, ref) {
   mkdirSync(destino, { recursive: true })
-  const itens = ['js', 'css', 'pages', 'icones', 'index.html', 'favicon.svg']
+  const itens = ['js', 'css', 'pages', 'icones', 'index.html', 'offline.html', 'favicon.svg']
   if (!ref) {
     for (const i of itens) if (existsSync(join(RAIZ, i))) cpSync(join(RAIZ, i), join(destino, i), { recursive: true })
   } else {
