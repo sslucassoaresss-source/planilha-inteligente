@@ -1,6 +1,7 @@
 import { supabase, buscarTodasLinhas } from './supabase.js'
 import { mensagemErro } from './erros.js'
 import { esc } from './seguranca.js'
+import { perguntar } from './pergunta.js'
 
 const { data: { session } } = await supabase.auth.getSession()
 if (!session) {
@@ -36,6 +37,10 @@ for (let i = 0; i < 6; i++) {
   opt.textContent = label.charAt(0).toUpperCase() + label.slice(1)
   selectMes.appendChild(opt)
 }
+
+// visitas.html?mes=AAAA-MM (link do aviso de pedidos no Dashboard) abre naquele mês
+const mesPedido = new URLSearchParams(location.search).get('mes')
+if (mesPedido && [...selectMes.options].some(o => o.value === mesPedido)) selectMes.value = mesPedido
 
 selectMes.addEventListener('change', carregarVisitas)
 
@@ -154,9 +159,13 @@ inputBusca.addEventListener('blur', () => {
 })
 
 // ── Status: mostra/oculta bloco de itens ──────────────────────
+// "Esperando liberação" (valor 'aguardando'): pedido mandado para a distribuidora, ainda em análise.
+// Tem itens das empresas, como o "Comprou", mas só vira venda quando o Caio marca "Aprovado".
+// O bloco do estoque some nesse caso (pedido pendente é só das empresas representadas).
 document.getElementById('comprou').addEventListener('change', (e) => {
   const blocoItens = document.getElementById('blocoItens')
-  if (e.target.value === 'true') {
+  blocoItens.dataset.status = e.target.value
+  if (e.target.value === 'true' || e.target.value === 'aguardando') {
     blocoItens.style.display = 'block'
     if (document.querySelectorAll('.item-venda-row').length === 0) {
       adicionarLinhaItem()
@@ -237,6 +246,9 @@ function abrirModal(titulo = 'Nova Visita') {
   modalOverlay.classList.add('aberto')
 }
 
+// A visita em edição estava "Esperando liberação"? (para zerar a marca se o status mudar)
+let editandoAguardava = false
+
 function fecharModal() {
   modalOverlay.classList.remove('aberto')
   formVisita.reset()
@@ -244,6 +256,8 @@ function fecharModal() {
   document.getElementById('obsFixa').style.display = 'none'
   document.getElementById('descontoFixo').style.display = 'none'
   document.getElementById('blocoItens').style.display = 'none'
+  delete document.getElementById('blocoItens').dataset.status
+  editandoAguardava = false
   boxSugestoes.style.display = 'none'
   listaItens.innerHTML = ''
   clienteAtual = null
@@ -267,7 +281,9 @@ formVisita.addEventListener('submit', async (e) => {
 
   const id        = document.getElementById('visitaId').value
   const btnSalvar = document.getElementById('btnSalvar')
-  const comprou   = document.getElementById('comprou').value === 'true'
+  const status    = document.getElementById('comprou').value
+  const comprou   = status === 'true'
+  const aguardando = status === 'aguardando'
   const desconto  = clienteAtual?.desconto || 0
 
   // Produtos do ESTOQUE do Caio (js/estoque-visitas.js). Tudo opcional: se esse
@@ -280,7 +296,7 @@ formVisita.addEventListener('submit', async (e) => {
   const linhas = document.querySelectorAll('.item-venda-row')
   const itens = []
 
-  if (comprou) {
+  if (comprou || aguardando) {
     for (const row of linhas) {
       const empresaId = row.querySelector('.item-empresa').value
       const valorBruto = parseFloat(row.querySelector('.item-valor').value) || 0
@@ -290,8 +306,13 @@ formVisita.addEventListener('submit', async (e) => {
       itens.push({ empresa_id: empresaId, valor: valorBruto, comissao_manual: comissaoManual })
     }
 
+    if (aguardando && itens.length === 0) {
+      alert('Adicione pelo menos um item de empresa (empresa e valor) ao pedido que está esperando liberação.')
+      return
+    }
+
     // Vale também ter só produto do estoque (sem item de empresa representada)
-    if (itens.length === 0 && !vendaEstoque?.temItens) {
+    if (comprou && itens.length === 0 && !vendaEstoque?.temItens) {
       alert('Adicione pelo menos um item de venda com empresa e valor (ou um produto do seu estoque).')
       return
     }
@@ -303,9 +324,11 @@ formVisita.addEventListener('submit', async (e) => {
     data_visita:       document.getElementById('dataVisita').value,
     comprou,
     // O desconto fixo do cliente só vale para itens de empresa representada
-    desconto_aplicado: comprou && itens.length > 0 ? desconto : 0,
+    desconto_aplicado: (comprou || aguardando) && itens.length > 0 ? desconto : 0,
     observacao:        document.getElementById('observacao').value.trim() || null,
   }
+  // Só manda a coluna quando precisa: assim, sem ela no banco, as visitas comuns continuam salvando
+  if (aguardando || editandoAguardava) dadosVisita.aguardando_liberacao = aguardando
 
   btnSalvar.textContent = 'Salvando...'
   btnSalvar.disabled = true
@@ -328,7 +351,7 @@ formVisita.addEventListener('submit', async (e) => {
   }
 
   // Insere os itens de venda vinculados à visita
-  if (!error && comprou && itens.length > 0) {
+  if (!error && (comprou || aguardando) && itens.length > 0) {
     const itensComVisita = itens.map(item => ({
       user_id: userId,
       visita_id: visitaId,
@@ -359,7 +382,9 @@ formVisita.addEventListener('submit', async (e) => {
 
   if (error) {
     console.error('Erro ao salvar visita:', error)
-    alert(mensagemErro(error))
+    alert('aguardando_liberacao' in dadosVisita && faltaColunaAguardando(error)
+      ? 'Não deu para salvar como "Esperando liberação": o banco ainda não está preparado para isso. Avise quem cuida do sistema.'
+      : mensagemErro(error))
     return
   }
 
@@ -501,11 +526,20 @@ function renderizarTabela(visitas) {
         ).join('')}${tagEstoque}</div>`
       : '—'
 
+    // Pedido esperando liberação: bolinha amarela e, embaixo, a resposta da distribuidora
+    const status = v.aguardando_liberacao
+      ? `<span class="badge badge-espera"><span class="bolinha-espera" aria-hidden="true"></span>Esperando liberação</span>
+         <div class="acoes-espera">
+           <button type="button" class="btn-aprovado" data-id="${v.id}">Aprovado</button>
+           <button type="button" class="btn-nao-aprovado" data-id="${v.id}">Não aprovado</button>
+         </div>`
+      : `<span class="badge ${v.comprou ? 'badge-sim' : 'badge-nao'}">${v.comprou ? 'Comprou' : 'Não comprou'}</span>`
+
     const tr = document.createElement('tr')
     tr.innerHTML = `
       <td>${data}</td>
       <td><strong>${esc(v.clientes?.nome) || '—'}</strong></td>
-      <td><span class="badge ${v.comprou ? 'badge-sim' : 'badge-nao'}">${v.comprou ? 'Comprou' : 'Não comprou'}</span></td>
+      <td>${status}</td>
       <td>${tagsEmpresas}</td>
       <td>${valorFmt}</td>
       <td>
@@ -525,6 +559,74 @@ function renderizarTabela(visitas) {
   document.querySelectorAll('.btn-excluir').forEach(btn => {
     btn.addEventListener('click', () => excluirVisita(btn.dataset.id))
   })
+
+  lista.querySelectorAll('.btn-aprovado').forEach(btn => {
+    btn.addEventListener('click', () => aprovarPedido(visitas.find(v => v.id === btn.dataset.id)))
+  })
+
+  lista.querySelectorAll('.btn-nao-aprovado').forEach(btn => {
+    btn.addEventListener('click', () => pedidoNaoAprovado(visitas.find(v => v.id === btn.dataset.id)))
+  })
+}
+
+// ── Pedido esperando liberação: Aprovado / Não aprovado ───────
+// PGRST204 (Supabase) ou 42703 (Postgres): a coluna aguardando_liberacao ainda não existe no banco
+function faltaColunaAguardando(error) {
+  return ['PGRST204', '42703'].includes(error?.code)
+}
+
+const totalDoPedido = (v) => Math.max(0, (v.itens_venda || []).reduce((s, it) => s + (it.valor || 0), 0) - (v.desconto_aplicado || 0))
+const reais = (n) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+const diaMes = (iso) => iso.split('-').reverse().slice(0, 2).join('/')
+
+// Aprovado: vira venda e comissão NO DIA DA APROVAÇÃO (a data da visita passa a ser hoje)
+async function aprovarPedido(v) {
+  if (!v) return
+  const hojeStr = dataLocalStr(new Date())
+  const ok = await perguntar({
+    titulo: 'Pedido aprovado?',
+    linhas: [
+      `O pedido de ${v.clientes?.nome || 'cliente'} (${reais(totalDoPedido(v))}) vira venda, com a comissão.`,
+      hojeStr === v.data_visita
+        ? 'Conta hoje, dia da aprovação.'
+        : `Conta hoje (${diaMes(hojeStr)}), dia da aprovação: a visita sai de ${diaMes(v.data_visita)} e passa para hoje.`,
+    ],
+    sim: 'Sim, aprovado',
+    nao: 'Não',
+  })
+  if (!ok) return
+  const { error } = await supabase.from('visitas')
+    .update({ comprou: true, aguardando_liberacao: false, data_visita: hojeStr })
+    .eq('id', v.id)
+  if (error) { console.error('Erro ao aprovar o pedido:', error); alert(mensagemErro(error, 'aprovar')); return }
+  // Aprovado em outro mês: abre o mês de hoje, onde a venda agora está
+  const mesHoje = hojeStr.slice(0, 7)
+  if (selectMes.value !== mesHoje && [...selectMes.options].some(o => o.value === mesHoje)) selectMes.value = mesHoje
+  carregarVisitas()
+}
+
+// Não aprovado: apaga só o pedido; a visita fica como "Não comprou" (conta como visita feita)
+async function pedidoNaoAprovado(v) {
+  if (!v) return
+  const ok = await perguntar({
+    titulo: 'Pedido não aprovado?',
+    linhas: [
+      `O pedido de ${reais(totalDoPedido(v))} é apagado.`,
+      `A visita de ${diaMes(v.data_visita)} a ${v.clientes?.nome || 'cliente'} continua, como "Não comprou".`,
+    ],
+    sim: 'Sim, apagar o pedido',
+    nao: 'Não',
+    perigo: true,
+  })
+  if (!ok) return
+  // Primeiro a visita vira "Não comprou" (já não conta como pedido); depois saem os itens
+  const { error } = await supabase.from('visitas')
+    .update({ comprou: false, aguardando_liberacao: false, desconto_aplicado: 0 })
+    .eq('id', v.id)
+  if (error) { console.error('Erro ao marcar o pedido como não aprovado:', error); alert(mensagemErro(error, 'salvar')); return }
+  const resItens = await supabase.from('itens_venda').delete().eq('visita_id', v.id)
+  if (resItens.error) console.error('Erro ao apagar os itens do pedido não aprovado:', resItens.error)
+  carregarVisitas()
 }
 
 // ── Editar ────────────────────────────────────────────────────
@@ -535,7 +637,9 @@ function editarVisita(id, lista) {
   document.getElementById('visitaId').value   = v.id
   document.getElementById('clienteId').value  = v.cliente_id
   document.getElementById('dataVisita').value = v.data_visita
-  document.getElementById('comprou').value    = String(v.comprou)
+  document.getElementById('comprou').value    = v.aguardando_liberacao ? 'aguardando' : String(v.comprou)
+  editandoAguardava = !!v.aguardando_liberacao
+  document.getElementById('blocoItens').dataset.status = document.getElementById('comprou').value
   document.getElementById('observacao').value = v.observacao || ''
 
   clienteAtual = todosClientes.find(c => c.id === v.cliente_id) || null
@@ -556,7 +660,7 @@ function editarVisita(id, lista) {
 
   listaItens.innerHTML = ''
 
-  if (v.comprou) {
+  if (v.comprou || v.aguardando_liberacao) {
     document.getElementById('blocoItens').style.display = 'block'
 
     ;(v.itens_venda || []).forEach(item => {

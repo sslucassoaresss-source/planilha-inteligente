@@ -319,3 +319,47 @@
     grid-column: 1 / -1;
   }
 }
+/* ── Pedido esperando liberação ── */
+/* No formulário: aviso e sem o bloco do estoque (o pedido pendente é só das empresas) */
+.aviso-espera { display: none; }
+#blocoItens[data-status="aguardando"] .aviso-espera {
+  display: block;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--amarelo-borda);
+  border-radius: 10px;
+  background: var(--amarelo-fundo);
+  color: var(--amarelo-texto);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+#blocoItens[data-status="aguardando"] #estBlocoVenda { display: none; }
+
+/* Na lista: a resposta da distribuidora, logo embaixo da bolinha amarela */
+.acoes-espera { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+
+.btn-aprovado,
+.btn-nao-aprovado {
+  min-height: 32px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-aprovado {
+  border: 1px solid var(--verde-borda);
+  background: var(--verde-fundo);
+  color: var(--verde-texto);
+}
+.btn-aprovado:hover { background: var(--verde-fundo-hover); }
+
+.btn-nao-aprovado {
+  border: 1px solid var(--vermelho-borda-2);
+  background: var(--card);
+  color: var(--vermelho-texto-forte);
+}
+.btn-nao-aprovado:hover { background: var(--vermelho-fundo); }

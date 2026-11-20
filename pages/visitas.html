@@ -155,6 +155,7 @@
               <option value="">Selecione...</option>
               <option value="true">Comprou</option>
               <option value="false">Não comprou</option>
+              <option value="aguardando">Esperando liberação</option>
             </select>
           </div>
         </div>
@@ -172,6 +173,7 @@
 
         <!-- Itens de venda (só aparece se Comprou) -->
         <div class="itens-venda" id="blocoItens" style="display:none">
+          <p class="aviso-espera">Pedido esperando liberação: não conta como venda nem comissão até você marcar <strong>Aprovado</strong> na lista de visitas.</p>
           <div class="itens-venda-topo">
             <span class="itens-venda-titulo">Itens de empresas representadas</span>
             <button type="button" class="btn-add-item" id="btnAddItem">+ Item de empresa representada</button>

@@ -35,6 +35,7 @@ const TESTES = [
   { nome: 'clientes-prioridade', arquivo: 'clientes-prioridade.mjs', tipo: 'navegador', desc: 'Prioridade de visita: selo, aviso, filtro, janela do cliente e Dashboard' },
   { nome: 'prioridade', arquivo: 'prioridade.mjs', tipo: 'node', desc: 'Contas da prioridade (em dia, hoje, atrasado, nunca atendido, ordem)' },
   { nome: 'empresas-encerrar', arquivo: 'empresas-encerrar.mjs', tipo: 'navegador', desc: 'Empresas: Encerrar e Reativar (meses passados intactos, sem botão Excluir, falhas)' },
+  { nome: 'visitas-espera', arquivo: 'visitas-espera.mjs', tipo: 'navegador', desc: 'Visitas: pedido "Esperando liberação" (não conta como venda; Aprovado / Não aprovado; aviso no Dashboard)' },
   { nome: 'clientes-arquivar', arquivo: 'clientes-arquivar.mjs', tipo: 'navegador', desc: 'Clientes: Arquivar e Reativar (some das listas, buscas, rotas e avisos; histórico fica)' },
   { nome: 'tema',arquivo: 'tema.mjs', tipo: 'navegador', desc: 'Tema claro/escuro/automático: botão, janelinha, teclado, escolha salva, sem piscar' },
   { nome: 'carteira-tela', arquivo: 'carteira-tela.mjs', tipo: 'navegador', desc: 'Dashboard: Na carteira e Pode retirar (Acertar, Pagar, Receber, Retirada)' },
