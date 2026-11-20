@@ -896,7 +896,7 @@ async function gerarBackupCompleto() {
     nome: 'Clientes', cor: 'cinza', titulo: 'Clientes',
     descricao: 'Todas as lojas cadastradas. Use o filtro (setinha no cabeçalho) para procurar por nome ou cidade.',
     linhas: clientes,
-    conhecidas: ['nome', 'endereco', 'bairro', 'cidade', 'estado', 'telefone', 'desconto', 'observacoes', 'latitude', 'longitude'],
+    conhecidas: ['nome', 'endereco', 'bairro', 'cidade', 'estado', 'telefone', 'desconto', 'observacoes', 'latitude', 'longitude', 'ativo'],
     colunas: [
       { titulo: 'Nome', valor: (l) => l.nome },
       { titulo: 'Cidade', valor: (l) => l.cidade },
@@ -908,6 +908,7 @@ async function gerarBackupCompleto() {
       { titulo: 'Observações', valor: (l) => l.observacoes },
       { titulo: 'Coordenadas', valor: (l) => (l.latitude !== null && l.latitude !== undefined && l.longitude !== null && l.longitude !== undefined ? `${l.latitude}, ${l.longitude}` : '') },
       { titulo: 'Cadastrado em', tipo: 'data', opcional: true, valor: (l) => l.created_at },
+      { titulo: 'Situação', tipo: 'texto', valor: (l) => (l.ativo === false ? 'Arquivado' : 'Ativo') },
     ],
   })
 

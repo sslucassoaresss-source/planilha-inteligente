@@ -81,6 +81,7 @@ function iniciar() {
   // redesenhada recarrega os dados; numa simples busca, só remarca as linhas.
   let recarregarNaProxima = false
   document.getElementById('formCliente')?.addEventListener('submit', () => { recarregarNaProxima = true })
+  document.addEventListener('clientes-mudaram', () => { recarregarNaProxima = true }) // arquivou ou reativou
 
   new MutationObserver(() => {
     if (recarregarNaProxima) { recarregarNaProxima = false; carregar(); return }
@@ -89,7 +90,7 @@ function iniciar() {
 
   async function carregar() {
     const [clientes, visitas, vendas] = await Promise.all([
-      buscarTodasLinhas('clientes', { select: 'id, nome, visitar_a_cada_dias, created_at', order: 'id' }),
+      buscarTodasLinhas('clientes', { select: '*', order: 'id' }), // '*': não falha se created_at ou ativo não existirem
       buscarTodasLinhas('visitas', { select: 'cliente_id, data_visita', order: 'id' }),
       buscarTodasLinhas('vendas_estoque', { select: 'cliente_id, data_venda', order: 'id' }),
     ])
@@ -98,12 +99,13 @@ function iniciar() {
       return
     }
     const ultimos = ultimoAtendimentoPorCliente({ visitas: visitas.data, vendas: vendas.data })
+    const ativos = clientes.data.filter((c) => c.ativo !== false) // arquivados não têm prioridade
     situacoes = {}
-    clientes.data.forEach((c) => {
+    ativos.forEach((c) => {
       const s = situacaoPrioridade({ prazo: c.visitar_a_cada_dias, ultimoAtendimento: ultimos[c.id], cadastro: c.created_at, hoje })
       if (s) situacoes[c.id] = s
     })
-    listaAtrasados = atrasados(clientes.data, ultimos, hoje)
+    listaAtrasados = atrasados(ativos, ultimos, hoje)
     marcarTodas()
     aplicarFiltro()
     desenharAviso(listaAtrasados)

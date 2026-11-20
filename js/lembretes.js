@@ -80,9 +80,9 @@ function iniciar(userId) {
   function garantirClientes() {
     if (clientes) return Promise.resolve(clientes)
     if (!carregandoClientes) {
-      carregandoClientes = buscarTodasLinhas('clientes', { select: 'id, nome', order: 'id' }).then(({ data, error }) => {
+      carregandoClientes = buscarTodasLinhas('clientes', { select: '*', order: 'id' }).then(({ data, error }) => {
         if (error) { console.error('Erro ao carregar clientes:', error); carregandoClientes = null; return [] }
-        clientes = data.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+        clientes = data.filter((c) => c.ativo !== false).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')) // sem arquivados
         return clientes
       })
     }

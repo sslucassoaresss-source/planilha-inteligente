@@ -283,12 +283,14 @@ async function carregarRotas(chavesParaAbrir = []) {
   const ultimoDia   = `${ano}-${mes}-${String(diasNoMes).padStart(2, '0')}`
 
   // Todos os clientes (pra agrupar por cidade e alimentar o "+ adicionar")
-  const { data: clientes, error: errClientes } = await buscarTodasLinhas('clientes', { order: 'nome' })
+  const { data: todosOsClientes, error: errClientes } = await buscarTodasLinhas('clientes', { order: 'nome' })
 
   if (errClientes) {
     console.error('Erro ao carregar clientes:', errClientes)
     return
   }
+  // Arquivados somem das rotas (o vínculo com a rota fica guardado: reativar traz de volta)
+  const clientes = todosOsClientes.filter(c => c.ativo !== false)
 
   // Rotas fixas — não pertencem mais a nenhum mês, então sempre buscamos todas.
   const { data: rotas } = await supabase
@@ -368,7 +370,7 @@ async function carregarRotas(chavesParaAbrir = []) {
     if (errVinc) {
       console.error('Erro ao carregar clientes da rota:', errVinc)
     } else {
-      vinculos.forEach(v => {
+      vinculos.filter(v => v.clientes?.ativo !== false).forEach(v => {
         if (!rotaClientesPorRota[v.rota_id]) rotaClientesPorRota[v.rota_id] = []
         rotaClientesPorRota[v.rota_id].push(v)
       })
