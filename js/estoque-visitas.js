@@ -209,7 +209,10 @@ function coletar() {
   }
 
   if (!comprou) {
-    return vendaExistente ? apagarVenda('Você marcou "Não comprou".') : null
+    const motivo = $('comprou').value === 'aguardando'
+      ? 'Pedido esperando liberação é só das empresas que você representa (sem produtos do seu estoque).'
+      : 'Você marcou "Não comprou".'
+    return vendaExistente ? apagarVenda(motivo) : null
   }
 
   for (const l of linhas) {

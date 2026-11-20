@@ -203,9 +203,9 @@ function renderizarVisitasRecentes(visitas) {
         <div class="visita-nome">${esc(v.clientes?.nome) || '—'}</div>
         <div class="visita-data">${dataFormatada}</div>
       </div>
-      <span class="badge ${v.comprou ? 'badge-sim' : 'badge-nao'}">
-        ${v.comprou ? 'Comprou' : 'Não comprou'}
-      </span>
+      ${v.aguardando_liberacao
+        ? '<span class="badge badge-espera"><span class="bolinha-espera" aria-hidden="true"></span>Esperando liberação</span>'
+        : `<span class="badge ${v.comprou ? 'badge-sim' : 'badge-nao'}">${v.comprou ? 'Comprou' : 'Não comprou'}</span>`}
     `
     lista.appendChild(item)
   })

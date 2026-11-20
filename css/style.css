@@ -713,6 +713,23 @@ body {
   color: var(--vermelho-texto);
 }
 
+/* Pedido esperando liberação da distribuidora: bolinha amarela */
+.badge-espera {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--amarelo-fundo);
+  color: var(--amarelo-texto);
+}
+
+.bolinha-espera {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #E0A93B;
+  flex: none;
+}
+
 /* ── Botões de ação na tabela ── */
 .acoes { display: flex; gap: 8px; }
 

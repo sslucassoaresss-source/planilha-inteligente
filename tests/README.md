@@ -49,6 +49,7 @@ Quando os dois falham nesses commits e passam no commit atual, você sabe que os
 | `editar-venda` | Botão Editar nas Vendas (solta e ligada a visita): pagamentos, custo preservado, estoque, falhas. |
 | `excluir-visita` | Excluir visita que tem venda de estoque: as 3 opções e as falhas. |
 | `empresas-encerrar` | Empresas: Encerrar e Reativar (some da venda nova, meses passados intactos com vendas, comissão e "Recebido"), sem botão Excluir, banco sem a coluna `ativa` e falhas. |
+| `visitas-espera` | Visitas: pedido "Esperando liberação" (bolinha amarela). Não conta como venda nem comissão (Visitas, Dashboard, Empresas); "Aprovado" vira venda no dia da aprovação; "Não aprovado" apaga só o pedido e a visita fica como "Não comprou"; aviso no Dashboard com link para o mês do pedido. |
 | `clientes-arquivar` | Clientes: Arquivar e Reativar no lugar do Excluir. O arquivado some da lista, do resumo de cores, dos avisos de prioridade (Clientes e Dashboard), dos descontos, das buscas (visita, entrega, lembrete) e das rotas; vendas, cobranças, visitas e o vínculo com a rota ficam. Banco sem a coluna `ativo` e falhas. |
 | `tema` | Tema claro / escuro / automático: botão do topo e janelinha (mouse e teclado), escolha salva no aparelho, Automático seguindo o aparelho, escuro aplicado antes de desenhar (sem piscar), barra do celular, sem localStorage e celular. |
 | `calendario` | Entregas com dia marcado aparecem no calendário de Rotas. |

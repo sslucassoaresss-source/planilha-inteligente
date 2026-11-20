@@ -691,7 +691,7 @@ async function gerarRelatorioMes() {
       { titulo: 'Data', tipo: 'data', valor: (l) => l.v.data_visita },
       { titulo: 'Cliente', valor: (l) => l.v.clientes?.nome },
       { titulo: 'Cidade', valor: (l) => l.v.clientes?.cidade },
-      { titulo: 'Comprou?', tipo: 'simnao', valor: (l) => l.v.comprou },
+      { titulo: 'Comprou?', tipo: 'texto', valor: (l) => (l.v.aguardando_liberacao ? 'Esperando liberação' : l.v.comprou ? 'Sim' : 'Não') },
       { titulo: 'Subtotal', tipo: 'moeda', soma: true, valor: (l) => (l.v.comprou ? l.subtotal : null) },
       { titulo: 'Desconto', tipo: 'moeda', soma: true, valor: (l) => (l.v.comprou ? l.desconto : null) },
       { titulo: 'Total', tipo: 'moeda', soma: true, valor: (l) => (l.v.comprou ? l.total : null) },
@@ -926,12 +926,12 @@ async function gerarBackupCompleto() {
   aba({
     nome: 'Visitas', cor: 'azul', titulo: 'Visitas',
     descricao: 'Todas as visitas registradas, da mais recente para a mais antiga. "Comprou?" se refere às empresas que você representa.',
-    linhas: visitas, conhecidas: ['data_visita', 'comprou', 'desconto_aplicado', 'observacao'],
+    linhas: visitas, conhecidas: ['data_visita', 'comprou', 'aguardando_liberacao', 'desconto_aplicado', 'observacao'],
     colunas: [
       { titulo: 'Data', tipo: 'data', valor: (l) => l.data_visita },
       { titulo: 'Cliente', valor: (l) => clientePorId[l.cliente_id]?.nome },
       { titulo: 'Cidade', valor: (l) => clientePorId[l.cliente_id]?.cidade },
-      { titulo: 'Comprou?', tipo: 'simnao', valor: (l) => l.comprou },
+      { titulo: 'Comprou?', tipo: 'texto', valor: (l) => (l.aguardando_liberacao ? 'Esperando liberação' : l.comprou ? 'Sim' : 'Não') },
       { titulo: 'Desconto aplicado', tipo: 'moeda', soma: true, valor: (l) => (l.desconto_aplicado > 0 ? l.desconto_aplicado : null) },
       { titulo: 'Observação', valor: (l) => l.observacao },
     ],

@@ -517,6 +517,15 @@ if (localStorage.getItem('seed') === 'normal') {
   db.lembretes.push({ id: 'l1', user_id: 'u1', texto: 'Mandar cotação > "Agro D\'Água" & Cia', cliente_id: 'c1', feito: false, feito_em: null, created_at: agora })
 }
 
+// ── Pedidos esperando liberação (seed=pendentes): hoje, 1 pedido pendente de R$ 1.000 e 1 venda de R$ 100 ──
+if (localStorage.getItem('seed') === 'pendentes') {
+  const h = new Date(); const d = `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}-${String(h.getDate()).padStart(2, '0')}`
+  db.visitas.push({ id: 'pD', user_id: 'u1', cliente_id: 'c2', data_visita: d, comprou: false, aguardando_liberacao: true, desconto_aplicado: 0, observacao: null, created_at: `${d}T09:00:00Z` })
+  db.visitas.push({ id: 'cD', user_id: 'u1', cliente_id: 'c1', data_visita: d, comprou: true, aguardando_liberacao: false, desconto_aplicado: 0, observacao: null, created_at: `${d}T10:00:00Z` })
+  db.itens_venda.push({ id: 'ipD', user_id: 'u1', visita_id: 'pD', empresa_id: 'e1', valor: 1000, comissao_manual: null })
+  db.itens_venda.push({ id: 'icD', user_id: 'u1', visita_id: 'cD', empresa_id: 'e1', valor: 100, comissao_manual: null })
+}
+
 // ── Clientes arquivados (vale com qualquer cenário): "clientes-arquivados" = ["c1", "c3"] ──
 try {
   JSON.parse(localStorage.getItem('clientes-arquivados') || '[]').forEach((id) => {
