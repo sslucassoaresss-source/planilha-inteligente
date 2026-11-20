@@ -2,6 +2,7 @@ import { supabase, buscarTodasLinhas } from './supabase.js'
 import { mensagemErro } from './erros.js'
 import { esc } from './seguranca.js'
 import { prazoValido, PRAZOS_PRONTOS } from './prioridade.js'
+import { perguntar } from './pergunta.js'
 
 const { data: { session } } = await supabase.auth.getSession()
 if (!session) {
@@ -22,6 +23,12 @@ const tabelaWrapper   = document.getElementById('tabelaWrapper')
 const inputBuscaCliente = document.getElementById('buscaCliente')
 
 let todosClientes = []
+let verArquivados = false
+
+// Cliente arquivado (ativo = false) sai da lista e das buscas, mas o histórico fica.
+// Sem a coluna "ativo" no banco (antes do SQL rodar), todo cliente conta como ativo.
+const estaAtivo = (cliente) => cliente.ativo !== false
+const btnVerArquivados = document.getElementById('btnVerArquivados')
 
 function abrirModal(titulo = 'Novo Cliente') {
   modalTitulo.textContent = titulo
@@ -207,8 +214,10 @@ function renderizarTabela(lista) {
 
   lista.forEach(cliente => {
     const tr = document.createElement('tr')
+    const ativo = estaAtivo(cliente)
+    if (!ativo) tr.classList.add('cliente-arquivado')
     tr.innerHTML = `
-      <td><strong>${esc(cliente.nome)}</strong></td>
+      <td><strong>${esc(cliente.nome)}</strong>${ativo ? '' : ' <span class="badge est-selo-neutro">Arquivado</span>'}</td>
       <td>${esc(cliente.cidade) || '—'}</td>
       <td>${esc(cliente.telefone) || '—'}</td>
       <td class="obs-cell" title="${esc(cliente.observacoes)}">${esc(cliente.observacoes) || '—'}</td>
@@ -220,19 +229,27 @@ function renderizarTabela(lista) {
       <td>
         <div class="acoes">
           <button class="btn-editar" data-id="${cliente.id}">Editar</button>
-          <button class="btn-excluir" data-id="${cliente.id}">Excluir</button>
+          ${ativo
+            ? `<button class="btn-editar btn-arquivar" data-id="${cliente.id}">Arquivar</button>`
+            : `<button class="btn-editar btn-reativar" data-id="${cliente.id}">Reativar</button>`}
         </div>
       </td>
     `
     listaClientes.appendChild(tr)
   })
 
-  document.querySelectorAll('.btn-editar').forEach(btn => {
+  const porId = (id) => lista.find(c => c.id === id)
+
+  listaClientes.querySelectorAll('.btn-editar:not(.btn-arquivar):not(.btn-reativar)').forEach(btn => {
     btn.addEventListener('click', () => editarCliente(btn.dataset.id, lista))
   })
 
-  document.querySelectorAll('.btn-excluir').forEach(btn => {
-    btn.addEventListener('click', () => excluirCliente(btn.dataset.id))
+  listaClientes.querySelectorAll('.btn-arquivar').forEach(btn => {
+    btn.addEventListener('click', () => arquivarCliente(porId(btn.dataset.id)))
+  })
+
+  listaClientes.querySelectorAll('.btn-reativar').forEach(btn => {
+    btn.addEventListener('click', () => reativarCliente(porId(btn.dataset.id)))
   })
 
   document.querySelectorAll('.btn-desconto-rapido').forEach(btn => {
@@ -246,17 +263,35 @@ function renderizarTabela(lista) {
 function aplicarBusca() {
   const termo = normalizarTexto(inputBuscaCliente.value)
 
+  // Arquivados só aparecem quando pedidos, e sempre depois dos ativos
+  const ativos = todosClientes.filter(estaAtivo)
+  const arquivados = todosClientes.filter(c => !estaAtivo(c))
+  const base = verArquivados ? [...ativos, ...arquivados] : ativos
+  atualizarBotaoArquivados(arquivados.length)
+
   if (!termo) {
-    renderizarTabela(todosClientes)
+    renderizarTabela(base)
     return
   }
 
-  const filtrados = todosClientes.filter(c =>
+  const filtrados = base.filter(c =>
     normalizarTexto(c.nome).includes(termo) || normalizarTexto(c.cidade).includes(termo)
   )
 
   renderizarTabela(filtrados)
 }
+
+function atualizarBotaoArquivados(quantos) {
+  if (quantos === 0) verArquivados = false
+  btnVerArquivados.hidden = quantos === 0
+  btnVerArquivados.textContent = verArquivados ? 'Esconder clientes arquivados' : `Ver clientes arquivados (${quantos})`
+  btnVerArquivados.setAttribute('aria-pressed', String(verArquivados))
+}
+
+btnVerArquivados.addEventListener('click', () => {
+  verArquivados = !verArquivados
+  aplicarBusca()
+})
 
 inputBuscaCliente.addEventListener('input', aplicarBusca)
 
@@ -380,14 +415,46 @@ function editarCliente(id, lista) {
   abrirModal('Editar Cliente')
 }
 
-async function excluirCliente(id) {
-  const confirmar = confirm('Tem certeza que deseja excluir este cliente?\nEssa ação não pode ser desfeita.')
-  if (!confirmar) return
-
-  const { error } = await supabase.from('clientes').delete().eq('id', id)
-  if (error) { console.error('Erro ao excluir:', error); alert('Erro ao excluir. Tente novamente.'); return }
-
+// Cliente não é excluído (visitas, vendas e cobranças dele iriam junto, e o banco recusa):
+// é arquivado. PGRST204 (Supabase) ou 42703 (Postgres) = a coluna "ativo" ainda não existe.
+async function mudarSituacao(cliente, ativo, acao) {
+  const { error } = await supabase.from('clientes').update({ ativo }).eq('id', cliente.id)
+  if (error) {
+    console.error(`Erro ao ${acao} o cliente:`, error)
+    alert(['PGRST204', '42703'].includes(error.code)
+      ? `Não deu para ${acao}: o banco ainda não está preparado para isso. Avise quem cuida do sistema.`
+      : mensagemErro(error, acao))
+    return
+  }
+  // A prioridade e as bolinhas de cor (outros arquivos) refazem as contas sem o arquivado
+  document.dispatchEvent(new CustomEvent('clientes-mudaram'))
   carregarClientes()
+}
+
+async function arquivarCliente(cliente) {
+  if (!cliente) return
+  const ok = await perguntar({
+    titulo: 'Arquivar o cliente?',
+    linhas: [
+      `${cliente.nome} sai da lista, das rotas e da busca ao lançar visita, venda ou entrega.`,
+      'Visitas, vendas e cobranças dele continuam guardadas. Se ele ainda te deve, continua em "Quem me deve".',
+      'Dá para reativar quando quiser.',
+    ],
+    sim: 'Sim, arquivar',
+    nao: 'Não',
+  })
+  if (ok) await mudarSituacao(cliente, false, 'arquivar')
+}
+
+async function reativarCliente(cliente) {
+  if (!cliente) return
+  const ok = await perguntar({
+    titulo: 'Reativar o cliente?',
+    linhas: [`${cliente.nome} volta para a lista, as rotas e as buscas.`],
+    sim: 'Sim, reativar',
+    nao: 'Não',
+  })
+  if (ok) await mudarSituacao(cliente, true, 'reativar')
 }
 
 carregarClientes()

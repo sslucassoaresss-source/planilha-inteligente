@@ -131,3 +131,18 @@
     display: none;
   }
 }
+.btn-ver-arquivados {
+  display: block;
+  margin: 14px auto 0;
+  padding: 10px 14px;
+  min-height: 44px;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--accent-texto);
+  cursor: pointer;
+}
+
+.btn-ver-arquivados:hover { text-decoration: underline; }

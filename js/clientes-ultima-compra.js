@@ -139,7 +139,7 @@ function iniciar() {
     const [visitas, vendas, clientes] = await Promise.all([
       buscarTodasLinhas('visitas', { select: 'cliente_id, data_visita', order: 'id', filtro: (q) => q.eq('comprou', true) }),
       buscarTodasLinhas('vendas_estoque', { select: 'cliente_id, data_venda', order: 'id' }),
-      buscarTodasLinhas('clientes', { select: 'id', order: 'id' }),
+      buscarTodasLinhas('clientes', { select: '*', order: 'id' }), // '*' traz o "ativo" (se a coluna existir)
     ])
     if (visitas.error || vendas.error || clientes.error) {
       console.error('Erro ao carregar a última compra dos clientes:', visitas.error || vendas.error || clientes.error)
@@ -159,10 +159,11 @@ function iniciar() {
     vendas.data.forEach((v) => marcar(v.cliente_id, 'estoque', v.data_venda))
 
     ultimas = mapa
-    idsClientes = clientes.data.map((c) => c.id)
+    idsClientes = clientes.data.filter((c) => c.ativo !== false).map((c) => c.id) // arquivados não entram no resumo
     atualizarTodas()
     desenharResumo()
   }
 
   carregar()
+  document.addEventListener('clientes-mudaram', carregar) // arquivou ou reativou: refaz o resumo
 }

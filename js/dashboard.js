@@ -213,9 +213,9 @@ function renderizarVisitasRecentes(visitas) {
 
 // ── Clientes com desconto ativo ───────────────────────────────
 async function carregarDescontos() {
-  const { data: clientes, error } = await supabase
+  let { data: clientes, error } = await supabase
     .from('clientes')
-    .select('id, nome, desconto')
+    .select('*')
     .gt('desconto', 0)
     .order('desconto', { ascending: false })
 
@@ -223,6 +223,8 @@ async function carregarDescontos() {
     console.error('Erro ao carregar descontos:', error)
     return
   }
+
+  clientes = clientes.filter(c => c.ativo !== false) // arquivados não aparecem
 
   const lista = document.getElementById('descontosLista')
   lista.innerHTML = ''

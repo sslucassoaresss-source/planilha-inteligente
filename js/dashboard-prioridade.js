@@ -15,7 +15,7 @@ async function carregar() {
   if (!cards) return
 
   const [clientes, visitas, vendas] = await Promise.all([
-    buscarTodasLinhas('clientes', { select: 'id, nome, visitar_a_cada_dias, created_at', order: 'id' }),
+    buscarTodasLinhas('clientes', { select: '*', order: 'id' }), // '*': não falha se created_at ou ativo não existirem
     buscarTodasLinhas('visitas', { select: 'cliente_id, data_visita', order: 'id' }),
     buscarTodasLinhas('vendas_estoque', { select: 'cliente_id, data_venda', order: 'id' }),
   ])
@@ -24,7 +24,7 @@ async function carregar() {
     return
   }
 
-  const lista = atrasados(clientes.data, ultimoAtendimentoPorCliente({ visitas: visitas.data, vendas: vendas.data }), hojeISO())
+  const lista = atrasados(clientes.data.filter((c) => c.ativo !== false), ultimoAtendimentoPorCliente({ visitas: visitas.data, vendas: vendas.data }), hojeISO())
   if (!lista.length) return
 
   const n = lista.length

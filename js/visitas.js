@@ -45,7 +45,7 @@ let todasEmpresas = []
 
 async function carregarClientes() {
   const { data, error } = await buscarTodasLinhas('clientes', {
-    select: 'id, nome, observacoes, desconto',
+    select: '*', // inclui o "ativo" (arquivados ficam fora da busca), se a coluna existir
     order: 'nome'
   })
 
@@ -114,7 +114,7 @@ function renderizarSugestoes(filtro) {
   }
 
   const resultados = todosClientes
-    .filter(c => normalizarTexto(c.nome).includes(termo))
+    .filter(c => c.ativo !== false && normalizarTexto(c.nome).includes(termo))
     .slice(0, 8)
 
   if (resultados.length === 0) {

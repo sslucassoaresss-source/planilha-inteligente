@@ -516,3 +516,10 @@ if (localStorage.getItem('seed') === 'normal') {
   db.lembretes.length = 0
   db.lembretes.push({ id: 'l1', user_id: 'u1', texto: 'Mandar cotação > "Agro D\'Água" & Cia', cliente_id: 'c1', feito: false, feito_em: null, created_at: agora })
 }
+
+// ── Clientes arquivados (vale com qualquer cenário): "clientes-arquivados" = ["c1", "c3"] ──
+try {
+  JSON.parse(localStorage.getItem('clientes-arquivados') || '[]').forEach((id) => {
+    const c = db.clientes.find((x) => x.id === id); if (c) c.ativo = false
+  })
+} catch { /* sem lista: todos ativos */ }
