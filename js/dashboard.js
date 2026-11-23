@@ -81,9 +81,8 @@ function renderizarCards(visitas) {
 
   compraram.forEach(v => {
     const itens = v.itens_venda || []
-    const subtotal = itens.reduce((s, item) => s + (item.valor || 0), 0)
-    const desconto = v.desconto_aplicado || 0
-    totalVendido += Math.max(0, subtotal - desconto)
+    // Valor cheio: o desconto fixo do cliente é descontado na distribuidora, não da venda
+    totalVendido += itens.reduce((s, item) => s + (item.valor || 0), 0)
 
     itens.forEach(item => {
       if (item.comissao_manual !== null && item.comissao_manual !== undefined) {
@@ -116,8 +115,7 @@ function renderizarGrafico(visitas, ano, mes, estoquePorDia = {}) {
   visitas.forEach(v => {
     if (!v.comprou) return
     const dia = new Date(v.data_visita).getUTCDate()
-    const subtotal = (v.itens_venda || []).reduce((s, it) => s + (it.valor || 0), 0)
-    const totalVisita = Math.max(0, subtotal - (v.desconto_aplicado || 0))
+    const totalVisita = (v.itens_venda || []).reduce((s, it) => s + (it.valor || 0), 0)
     if (totalVisita > 0) {
       vendasPorDia[dia] = (vendasPorDia[dia] || 0) + totalVisita
     }

@@ -16,6 +16,12 @@ document.getElementById('conteudo').style.display = 'block'
 // Formata uma data como "AAAA-MM-DD" usando o fuso horário LOCAL do navegador.
 // Evita o bug do toISOString(), que converte pra UTC e pode "virar o dia"
 // à noite (Brasil está 3h atrás do UTC — depois das 21h, toISOString() já mostra o dia seguinte)
+// Valor da visita = soma dos itens. O desconto fixo do cliente não entra (é descontado na
+// distribuidora, não da venda); visitas antigas com desconto_aplicado voltam ao valor cheio.
+function totalDaVisita(v) {
+  return (v.itens_venda || []).reduce((s, it) => s + (it.valor || 0), 0)
+}
+
 function dataLocalStr(data) {
   return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`
 }
@@ -105,7 +111,6 @@ function selecionarCliente(cliente) {
     descontoFixo.style.display = 'none'
   }
 
-  // Recalcula o total (desconto pode mudar)
   recalcularTotal()
 }
 
@@ -213,23 +218,9 @@ function recalcularTotal() {
     subtotal += parseFloat(row.querySelector('.item-valor').value) || 0
   })
 
-  const desconto = clienteAtual?.desconto || 0
-  const totalFinal = Math.max(0, subtotal - desconto)
-
-  document.getElementById('subtotalItens').textContent =
-    subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-
-  const linhaDesconto = document.getElementById('linhaDescontoTotal')
-  if (desconto > 0) {
-    document.getElementById('descontoAplicadoTotal').textContent =
-      `− ${desconto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
-    linhaDesconto.style.display = 'flex'
-  } else {
-    linhaDesconto.style.display = 'none'
-  }
-
+  // O desconto fixo do cliente é só um lembrete: é descontado na distribuidora, não da venda
   document.getElementById('totalItens').textContent =
-    totalFinal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+    subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
 document.getElementById('btnAddItem').addEventListener('click', () => adicionarLinhaItem())
@@ -284,7 +275,6 @@ formVisita.addEventListener('submit', async (e) => {
   const status    = document.getElementById('comprou').value
   const comprou   = status === 'true'
   const aguardando = status === 'aguardando'
-  const desconto  = clienteAtual?.desconto || 0
 
   // Produtos do ESTOQUE do Caio (js/estoque-visitas.js). Tudo opcional: se esse
   // módulo não carregou, `vendaEstoque` fica undefined e a tela funciona como sempre.
@@ -323,8 +313,8 @@ formVisita.addEventListener('submit', async (e) => {
     cliente_id:        document.getElementById('clienteId').value,
     data_visita:       document.getElementById('dataVisita').value,
     comprou,
-    // O desconto fixo do cliente só vale para itens de empresa representada
-    desconto_aplicado: (comprou || aguardando) && itens.length > 0 ? desconto : 0,
+    // O desconto fixo do cliente não sai da venda (é descontado na distribuidora): só lembrete
+    desconto_aplicado: 0,
     observacao:        document.getElementById('observacao').value.trim() || null,
   }
   // Só manda a coluna quando precisa: assim, sem ela no banco, as visitas comuns continuam salvando
@@ -474,11 +464,7 @@ function renderizarResumo(visitas) {
   const hojeStr = dataLocalStr(hoje)
   const visitasDeHoje = visitas.filter(v => v.data_visita === hojeStr)
   const compraramHoje = visitasDeHoje.filter(v => v.comprou)
-  const totalHoje = compraramHoje.reduce((acc, v) => {
-    const subtotal = (v.itens_venda || []).reduce((s, it) => s + (it.valor || 0), 0)
-    const desconto = v.desconto_aplicado || 0
-    return acc + Math.max(0, subtotal - desconto)
-  }, 0)
+  const totalHoje = compraramHoje.reduce((acc, v) => acc + totalDaVisita(v), 0)
 
   document.getElementById('visitasHoje').textContent = visitasDeHoje.length
   document.getElementById('compraramHoje').textContent = compraramHoje.length
@@ -509,8 +495,7 @@ function renderizarTabela(visitas) {
     })
 
     const itens = v.itens_venda || []
-    const subtotal = itens.reduce((s, it) => s + (it.valor || 0), 0)
-    const totalVisita = Math.max(0, subtotal - (v.desconto_aplicado || 0))
+    const totalVisita = totalDaVisita(v)
     const valorFmt = totalVisita > 0
       ? totalVisita.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
       : '—'
@@ -575,7 +560,6 @@ function faltaColunaAguardando(error) {
   return ['PGRST204', '42703'].includes(error?.code)
 }
 
-const totalDoPedido = (v) => Math.max(0, (v.itens_venda || []).reduce((s, it) => s + (it.valor || 0), 0) - (v.desconto_aplicado || 0))
 const reais = (n) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const diaMes = (iso) => iso.split('-').reverse().slice(0, 2).join('/')
 
@@ -586,7 +570,7 @@ async function aprovarPedido(v) {
   const ok = await perguntar({
     titulo: 'Pedido aprovado?',
     linhas: [
-      `O pedido de ${v.clientes?.nome || 'cliente'} (${reais(totalDoPedido(v))}) vira venda, com a comissão.`,
+      `O pedido de ${v.clientes?.nome || 'cliente'} (${reais(totalDaVisita(v))}) vira venda, com a comissão.`,
       hojeStr === v.data_visita
         ? 'Conta hoje, dia da aprovação.'
         : `Conta hoje (${diaMes(hojeStr)}), dia da aprovação: a visita sai de ${diaMes(v.data_visita)} e passa para hoje.`,
@@ -611,7 +595,7 @@ async function pedidoNaoAprovado(v) {
   const ok = await perguntar({
     titulo: 'Pedido não aprovado?',
     linhas: [
-      `O pedido de ${reais(totalDoPedido(v))} é apagado.`,
+      `O pedido de ${reais(totalDaVisita(v))} é apagado.`,
       `A visita de ${diaMes(v.data_visita)} a ${v.clientes?.nome || 'cliente'} continua, como "Não comprou".`,
     ],
     sim: 'Sim, apagar o pedido',

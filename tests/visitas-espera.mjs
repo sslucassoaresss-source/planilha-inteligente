@@ -144,7 +144,7 @@ confere('agora entra no resumo de hoje (compraram 1, R$ 500,00)', r2.compraram =
 if (ONTEM.slice(0, 7) !== MES) { await js(`document.getElementById('selectMes').value = '${ONTEM.slice(0, 7)}'; document.getElementById('selectMes').dispatchEvent(new Event('change')); 1`); await sleep(1200) }
 await js(`document.querySelector('.btn-nao-aprovado[data-id="pN"]').click(); 1`); await sleep(500)
 p = await pergunta()
-confere('Não aprovado: pergunta e explica que a visita continua como "Não comprou"', p?.titulo === 'Pedido não aprovado?' && p.texto.includes('Não comprou') && p.texto.includes('150,00'), JSON.stringify(p))
+confere('Não aprovado: pergunta e explica que a visita continua como "Não comprou"', p?.titulo === 'Pedido não aprovado?' && p.texto.includes('Não comprou') && p.texto.includes('200,00'), JSON.stringify(p))
 await responder(true)
 const naoAprov = await visita('pN')
 confere('a visita continua, na mesma data, como "Não comprou" e sem desconto', naoAprov && naoAprov.comprou === false && naoAprov.aguardando_liberacao === false && naoAprov.data_visita === ONTEM && naoAprov.desconto_aplicado === 0, JSON.stringify(naoAprov))

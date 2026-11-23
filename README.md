@@ -22,7 +22,7 @@ Sales reps who cover a large territory usually end up juggling a spreadsheet for
 - Live widget listing clients with an active fixed discount
 
 ### 👥 Clientes (Clients)
-- Full CRUD with address, city, state, phone, and fixed discount (in R$, deducted once per visit total — not per item)
+- Full CRUD with address, city, state, phone, and fixed discount (in R$; a reminder only — the distributor applies it, so it never reduces the sale)
 - Optional Google Maps coordinates (paste `lat, lng` directly from the Maps app) for pinpoint-accurate directions, with automatic fallback to the text address when coordinates aren't set
 - Real-time search by name or city (accent- and case-insensitive)
 - Inline quick-edit for discount values directly from the table
@@ -43,7 +43,7 @@ Sales reps who cover a large territory usually end up juggling a spreadsheet for
 ### 🧾 Visitas (Visits)
 - Type-ahead client search (no more scrolling a 150-option dropdown from the road)
 - Multi-item sales per visit, each linked to a company, with automatic commission calculation (or manual override)
-- Fixed client discount clearly broken down: subtotal → discount → final total
+- Fixed client discount shown as a reminder when logging the visit (the sale keeps its full value)
 - Daily summary (visits today, purchases today, total sold today)
 - Persistent client notes surfaced automatically when logging a visit
 

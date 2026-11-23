@@ -168,7 +168,8 @@
 
         <!-- Desconto fixo do cliente -->
         <div class="desconto-fixo" id="descontoFixo" style="display:none">
-          💰 Este cliente tem <strong id="descontoFixoValor"></strong> de desconto fixo
+          💰 Lembrete: este cliente tem <strong id="descontoFixoValor"></strong> de desconto, tem que dar.
+          <span class="desconto-fixo-nota">Não muda o valor da venda: é descontado na distribuidora.</span>
         </div>
 
         <!-- Itens de venda (só aparece se Comprou) -->
@@ -181,14 +182,6 @@
 
           <div id="listaItens"></div>
 
-          <div class="itens-total">
-            <span>Subtotal dos itens:</span>
-            <strong id="subtotalItens">R$ 0,00</strong>
-          </div>
-          <div class="itens-total" id="linhaDescontoTotal" style="display:none">
-            <span>Desconto do cliente:</span>
-            <strong id="descontoAplicadoTotal">− R$ 0,00</strong>
-          </div>
           <div class="itens-total itens-total-final">
             <span>Total da visita:</span>
             <strong id="totalItens">R$ 0,00</strong>
