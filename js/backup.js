@@ -536,7 +536,8 @@ async function gerarRelatorioMes() {
 
   visitas.sort((a, b) => comparaTexto(a.data_visita, b.data_visita) || comparaTexto(a.clientes?.nome, b.clientes?.nome))
 
-  // Totais no mesmo formato do Dashboard (vendido líquido do desconto da visita)
+  // Totais no mesmo formato do Dashboard: valor cheio dos itens (o desconto fixo do cliente é
+  // descontado na distribuidora, não da venda)
   let totalVendido = 0
   let totalComissao = 0
   const porEmpresa = {}
@@ -544,9 +545,7 @@ async function gerarRelatorioMes() {
 
   const linhasVisitas = visitas.map((v) => {
     const itens = v.itens_venda || []
-    const subtotal = itens.reduce((s, it) => s + (it.valor || 0), 0)
-    const desconto = v.comprou ? (v.desconto_aplicado || 0) : 0
-    const total = v.comprou ? Math.max(0, subtotal - desconto) : 0
+    const total = v.comprou ? itens.reduce((s, it) => s + (it.valor || 0), 0) : 0
 
     if (v.comprou) {
       totalVendido += total
@@ -562,7 +561,7 @@ async function gerarRelatorioMes() {
         }
       })
     }
-    return { v, subtotal, desconto, total }
+    return { v, total }
   })
 
   const compraram = visitas.filter((v) => v.comprou).length
@@ -604,7 +603,7 @@ async function gerarRelatorioMes() {
         { rotulo: 'Visitas no mês', valor: visitas.length, tipo: 'numero' },
         { rotulo: 'Visitas em que a loja comprou', valor: compraram, tipo: 'numero' },
         { rotulo: 'Taxa de conversão', valor: visitas.length ? (compraram / visitas.length) * 100 : 0, tipo: 'percentual', nota: 'Das visitas, quantas viraram compra.' },
-        { rotulo: 'Total vendido', valor: totalVendido, tipo: 'moeda', nota: 'Já sem o desconto fixo do cliente.' },
+        { rotulo: 'Total vendido', valor: totalVendido, tipo: 'moeda', nota: 'Valor cheio dos pedidos (o desconto do cliente é dado na distribuidora, não sai da venda).' },
         { rotulo: 'Comissão estimada', valor: totalComissao, tipo: 'moeda' },
         { rotulo: 'Comissão já recebida', valor: comissaoRecebida, tipo: 'moeda' },
         { rotulo: 'Comissão ainda a receber', valor: comissaoAReceber, tipo: 'moeda' },
@@ -685,15 +684,13 @@ async function gerarRelatorioMes() {
   adicionarAba(wb, {
     nome: 'Visitas', cor: 'azul',
     titulo: `Visitas: ${nomeMesBonito}`,
-    descricao: 'Todas as visitas do mês, inclusive as em que a loja não comprou. O desconto é o desconto fixo do cliente.',
+    descricao: 'Todas as visitas do mês, inclusive as em que a loja não comprou.',
     linhas: linhasVisitas,
     colunas: [
       { titulo: 'Data', tipo: 'data', valor: (l) => l.v.data_visita },
       { titulo: 'Cliente', valor: (l) => l.v.clientes?.nome },
       { titulo: 'Cidade', valor: (l) => l.v.clientes?.cidade },
       { titulo: 'Comprou?', tipo: 'texto', valor: (l) => (l.v.aguardando_liberacao ? 'Esperando liberação' : l.v.comprou ? 'Sim' : 'Não') },
-      { titulo: 'Subtotal', tipo: 'moeda', soma: true, valor: (l) => (l.v.comprou ? l.subtotal : null) },
-      { titulo: 'Desconto', tipo: 'moeda', soma: true, valor: (l) => (l.v.comprou ? l.desconto : null) },
       { titulo: 'Total', tipo: 'moeda', soma: true, valor: (l) => (l.v.comprou ? l.total : null) },
       { titulo: 'Observação', valor: (l) => l.v.observacao },
     ],
@@ -932,7 +929,6 @@ async function gerarBackupCompleto() {
       { titulo: 'Cliente', valor: (l) => clientePorId[l.cliente_id]?.nome },
       { titulo: 'Cidade', valor: (l) => clientePorId[l.cliente_id]?.cidade },
       { titulo: 'Comprou?', tipo: 'texto', valor: (l) => (l.aguardando_liberacao ? 'Esperando liberação' : l.comprou ? 'Sim' : 'Não') },
-      { titulo: 'Desconto aplicado', tipo: 'moeda', soma: true, valor: (l) => (l.desconto_aplicado > 0 ? l.desconto_aplicado : null) },
       { titulo: 'Observação', valor: (l) => l.observacao },
     ],
   })

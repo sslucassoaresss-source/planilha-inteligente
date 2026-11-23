@@ -15,7 +15,7 @@ async function carregar() {
 
   const { data: pedidos, error } = await supabase
     .from('visitas')
-    .select('id, data_visita, desconto_aplicado, itens_venda(valor)')
+    .select('id, data_visita, itens_venda(valor)')
     .eq('aguardando_liberacao', true)
     .order('data_visita')
   if (error) {
@@ -24,10 +24,7 @@ async function carregar() {
   }
   if (!pedidos.length) return
 
-  const total = pedidos.reduce((soma, v) => {
-    const subtotal = (v.itens_venda || []).reduce((s, it) => s + (it.valor || 0), 0)
-    return soma + Math.max(0, subtotal - (v.desconto_aplicado || 0))
-  }, 0)
+  const total = pedidos.reduce((soma, v) => soma + (v.itens_venda || []).reduce((s, it) => s + (it.valor || 0), 0), 0)
   const n = pedidos.length
 
   const faixa = document.createElement('a')

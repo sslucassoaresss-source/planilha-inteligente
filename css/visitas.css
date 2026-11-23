@@ -150,6 +150,13 @@
   color: var(--verde-texto-4);
 }
 
+.desconto-fixo-nota {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
 /* ── Campo valor (aparece só quando comprou) ── */
 #campoValor {
   transition: opacity 0.15s;
